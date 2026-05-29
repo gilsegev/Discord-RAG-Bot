@@ -1,16 +1,15 @@
 """
 ingestion/run.py
 Full ingestion pipeline: parse -> chunk -> embed -> store.
-Improvements:
-  - Qdrant connection checked FIRST before any processing
-  - Empty records/chunks guards prevent cryptic numpy errors
-  - Time estimate printed before slow embedding step
-  - Stable point IDs prevent overwriting on re-index
+Usage:
+  python ingestion/run.py            # incremental upsert
+  python ingestion/run.py --recreate # drop and recreate collection
 Author: ThinkInSystems (Hemanth Aragonda)
 """
 import sys
 import time
 import hashlib
+import argparse
 import numpy as np
 from pathlib import Path
 
@@ -23,7 +22,7 @@ from ingestion.chunker import chunk_records
 EXPORT_DIR   = "chat_logs"
 COLLECTION   = "tpm_unite_history"
 EMBED_DIM    = 768
-BATCH_EMBED  = 32
+BATCH_EMBED  = 32    # safe for CPU — increase to 128 on GPU
 BATCH_UPSERT = 256
 
 
@@ -42,11 +41,12 @@ def connect_qdrant():
     return client
 
 
-def setup_collection(client, force_recreate: bool = True):
+def setup_collection(client, force_recreate: bool = False):
     """
     Create Qdrant collection with datetime and keyword indexes.
-    force_recreate=True drops existing collection first.
-    Set to False to safely skip if collection already exists.
+    force_recreate=False (default): skip if collection exists.
+    force_recreate=True: drop existing and recreate from scratch.
+    Use --recreate flag for full re-index runs.
     """
     from qdrant_client.models import (
         VectorParams, Distance, PayloadSchemaType
@@ -58,8 +58,8 @@ def setup_collection(client, force_recreate: bool = True):
     )
 
     if exists and not force_recreate:
-        print(f"  Collection '{COLLECTION}' already exists. "
-              f"Skipping recreate.\n")
+        print(f"  Collection '{COLLECTION}' exists. "
+              f"Running incremental upsert.\n")
         return
 
     if exists:
@@ -73,7 +73,7 @@ def setup_collection(client, force_recreate: bool = True):
             distance=Distance.COSINE,
         ),
     )
-    # DateTime index for "after 2022" date-range queries
+    # DateTime index for date-range queries e.g. "after 2022"
     client.create_payload_index(
         collection_name=COLLECTION,
         field_name="start_ts",
@@ -89,13 +89,17 @@ def setup_collection(client, force_recreate: bool = True):
 
 
 def load_models():
-    """Load Nomic Embed v1.5 — downloads ~500MB on first run."""
+    """
+    Load Nomic Embed v1.5.
+    Cached in .model_cache/ to avoid re-download on every run.
+    """
     print("  Loading Nomic Embed v1.5...")
-    print("  (First run downloads ~500MB — takes 2-5 minutes)")
+    print("  (First run downloads ~500MB — subsequent runs use cache)")
     from sentence_transformers import SentenceTransformer
     model = SentenceTransformer(
         "nomic-ai/nomic-embed-text-v1.5",
         trust_remote_code=True,
+        cache_folder=".model_cache",
     )
     print("  Model loaded.\n")
     return model
@@ -103,25 +107,24 @@ def load_models():
 
 def _stable_id(chunk: dict) -> int:
     """
-    Generate a stable integer ID from the chunk's message IDs.
-    Deterministic across re-runs — prevents overwriting wrong
-    points when the collection is re-indexed with new data.
+    Stable 64-bit integer ID from chunk's message IDs.
+    Uses 16 hex chars (64-bit space) to minimise collision risk
+    at scale. Deterministic across re-runs for safe incremental upsert.
     """
     key = "-".join(sorted(chunk["message_ids"]))
-    return int(hashlib.md5(key.encode()).hexdigest()[:8], 16)
+    return int(hashlib.md5(key.encode()).hexdigest()[:16], 16)
 
 
 def embed_chunks(model, chunks: list) -> np.ndarray:
     """
     Embed all chunks in batches.
-    IMPORTANT: Nomic requires 'search_document:' prefix on chunks.
+    Nomic requires 'search_document:' prefix on chunks.
     Queries use 'search_query:' prefix — different from doc prefix.
     """
     texts    = ["search_document: " + c["text"] for c in chunks]
     total    = len(texts)
     all_embs = []
 
-    # Estimate time before starting so user knows how long to wait
     est_mins = round((total / 32) * 0.15 / 60, 1)
     print(f"  Embedding {total} chunks "
           f"(estimated ~{max(est_mins, 0.1)} min on CPU)...")
@@ -130,7 +133,7 @@ def embed_chunks(model, chunks: list) -> np.ndarray:
         batch = texts[i:i + BATCH_EMBED]
         embs  = model.encode(
             batch,
-            normalize_embeddings=True,  # required for cosine similarity
+            normalize_embeddings=True,
             show_progress_bar=False,
         )
         all_embs.append(embs)
@@ -142,8 +145,8 @@ def embed_chunks(model, chunks: list) -> np.ndarray:
 
 def upsert_chunks(client, chunks: list, embeddings: np.ndarray):
     """
-    Upload chunks + embeddings to Qdrant in batches.
-    Uses stable hash-based IDs to prevent overwrite on re-index.
+    Upload chunks + embeddings to Qdrant.
+    Stable hash IDs mean re-runs safely upsert without corruption.
     """
     from qdrant_client.models import PointStruct
     total = len(chunks)
@@ -154,7 +157,7 @@ def upsert_chunks(client, chunks: list, embeddings: np.ndarray):
         b_vecs   = embeddings[i:i + BATCH_UPSERT]
         points   = [
             PointStruct(
-                id=_stable_id(b_chunks[j]),   # stable hash ID
+                id=_stable_id(b_chunks[j]),
                 vector=b_vecs[j].tolist(),
                 payload={
                     "text":          b_chunks[j]["text"],
@@ -176,49 +179,55 @@ def upsert_chunks(client, chunks: list, embeddings: np.ndarray):
 
 
 if __name__ == "__main__":
+    # ── CLI args ──────────────────────────────────────────────
+    arg_parser = argparse.ArgumentParser(
+        description="TPM Unite RAG Bot — Ingestion Pipeline"
+    )
+    arg_parser.add_argument(
+        "--recreate",
+        action="store_true",
+        help="Drop and recreate the Qdrant collection from scratch"
+    )
+    args = arg_parser.parse_args()
+
     t0 = time.time()
     print("=" * 50)
     print("TPM Unite RAG Bot — Ingestion Pipeline")
+    if args.recreate:
+        print("Mode: FULL RECREATE")
+    else:
+        print("Mode: INCREMENTAL UPSERT")
     print("=" * 50)
 
-    # ── Check Qdrant FIRST before any processing ──────────────
     print("\n── Step 1: Checking Qdrant connection ──")
     client = connect_qdrant()
 
-    # ── Parse ─────────────────────────────────────────────────
     print("\n── Step 2: Parsing exports ──")
     records = parse_all_exports(EXPORT_DIR)
 
-    # Guard: stop early if nothing was parsed
     if not records:
         print("\nERROR: No records parsed.")
-        print("Check that chat_logs/ has JSON files and channels")
-        print("match the ELIGIBLE_CHANNELS list in parser.py")
+        print("Check chat_logs/ has JSON files and channels")
+        print("match ELIGIBLE_CHANNELS in parser.py")
         sys.exit(1)
 
-    # ── Chunk ─────────────────────────────────────────────────
     print("\n── Step 3: Chunking ──")
     chunks = chunk_records(records)
 
-    # Guard: stop early if no chunks produced
     if not chunks:
-        print("\nERROR: No chunks created from records.")
+        print("\nERROR: No chunks created.")
         print("Check MIN_MSGS setting in chunker.py")
         sys.exit(1)
 
-    # ── Setup Qdrant collection ───────────────────────────────
     print("\n── Step 4: Setting up Qdrant collection ──")
-    setup_collection(client, force_recreate=True)
+    setup_collection(client, force_recreate=args.recreate)
 
-    # ── Load model ────────────────────────────────────────────
     print("\n── Step 5: Loading embedding model ──")
     model = load_models()
 
-    # ── Embed ─────────────────────────────────────────────────
     print("\n── Step 6: Embedding chunks ──")
     embeddings = embed_chunks(model, chunks)
 
-    # ── Store ─────────────────────────────────────────────────
     print("\n── Step 7: Storing in Qdrant ──")
     upsert_chunks(client, chunks, embeddings)
 
