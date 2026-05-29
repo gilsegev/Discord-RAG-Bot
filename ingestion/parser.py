@@ -66,8 +66,14 @@ def parse_export_file(json_path: str) -> list:
         if not content and not has_attachment:
             continue
 
-        # Skip very short noise — reactions, "+1", "lol" etc.
-        if len(content) < 8 and not has_attachment:
+        # Skip very short noise — under 3 characters
+        if len(content) < 3 and not has_attachment:
+            continue
+
+        # Clean content and skip if nothing remains after cleaning
+        # (handles emoji-only messages that become empty after stripping)
+        cleaned = _clean(content)
+        if not cleaned and not has_attachment:
             continue
 
         records.append({
@@ -75,7 +81,7 @@ def parse_export_file(json_path: str) -> list:
             "author":         msg["author"]["name"],
             "author_id":      msg["author"]["id"],
             "timestamp":      msg["timestamp"],    # ISO 8601
-            "content":        _clean(content),
+            "content":        cleaned,
             "channel":        channel_name,
             "channel_id":     channel_id,
             # reply chain — reference.messageId from methodology doc
@@ -96,8 +102,9 @@ def _clean(text: str) -> str:
     text = re.sub(r"<a?:\w+:\d+>",  "[emoji]",   text)
     text = re.sub(r"https?://\S+",  "[link]",    text)
     text = re.sub(r"\n{3,}",        "\n\n",      text)
-    # Fix emoji-between-letters pattern: [emoji]H[emoji]e → He
+    # Collapse emoji tokens — replace with space to preserve word boundaries
     text = re.sub(r"(\[emoji\])+",  " ",         text)
+    # Clean up any double spaces left behind
     text = re.sub(r"\s+",           " ",         text)
     return text.strip()
 
@@ -126,14 +133,15 @@ def parse_all_exports(export_dir: str) -> list:
 
 
 # ── Quick test ────────────────────────────────────────────────
-# Run directly to test against the chat_logs/ exports
 if __name__ == "__main__":
     records = parse_all_exports("chat_logs")
-    if records:
-        print("\nFirst record:")
-        print(f"  Author:    {records[0]['author']}")
-        print(f"  Timestamp: {records[0]['timestamp'][:10]}")
-        print(f"  Channel:   #{records[0]['channel']}")
-        print(f"  Content:   {records[0]['content'][:80]}...")
+    # Find first record with actual content for preview
+    preview = next((r for r in records if r.get("content")), None)
+    if preview:
+        print("\nFirst record with content:")
+        print(f"  Author:    {preview['author']}")
+        print(f"  Timestamp: {preview['timestamp'][:10]}")
+        print(f"  Channel:   #{preview['channel']}")
+        print(f"  Content:   {preview['content'][:80]}...")
     else:
-        print("\nNo records found — check chat_logs/ folder has JSON files")
+        print("\nNo records with content found")
