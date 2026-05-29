@@ -2,11 +2,17 @@
 ingestion/parser.py
 Parses DiscordChatExporter JSON exports into clean records.
 Schema confirmed from gilsegev/Discord-RAG-Bot methodology doc.
+Improvements:
+  - Timestamp sort uses datetime.fromisoformat for correctness
+  - Short message filter reduced to 3 chars (keeps short replies)
+  - Post-clean empty content guard (emoji-only messages skipped)
+  - Smarter test preview finds first non-empty record
 Author: ThinkInSystems (Hemanth Aragonda)
 """
 import json
 import re
 from pathlib import Path
+from datetime import datetime
 
 # ── All TPM Unite channels ────────────────────────────────────
 ELIGIBLE_CHANNELS = {
@@ -36,14 +42,19 @@ def parse_export_file(json_path: str) -> list:
     """
     Parse one DiscordChatExporter JSON file.
     Returns list of clean message records.
+    Skips: bots, system events, empty content, emoji-only messages.
     """
-    with open(json_path, encoding="utf-8") as f:
-        data = json.load(f)
+    try:
+        with open(json_path, encoding="utf-8") as f:
+            data = json.load(f)
+    except json.JSONDecodeError as e:
+        print(f"  WARN: Skipping {json_path} — JSON decode error: {e}")
+        return []
 
     channel_name = data["channel"]["name"].lower()
     channel_id   = data["channel"]["id"]
 
-    # Skip channels not in the list
+    # Skip channels not in the approved list
     if channel_name not in ELIGIBLE_CHANNELS:
         print(f"  SKIP: #{channel_name} (not in channel list)")
         return []
@@ -67,6 +78,7 @@ def parse_export_file(json_path: str) -> list:
             continue
 
         # Skip very short noise — under 3 characters
+        # (reduced from 8 to keep short replies like "ok", "yes")
         if len(content) < 3 and not has_attachment:
             continue
 
@@ -95,14 +107,19 @@ def parse_export_file(json_path: str) -> list:
 
 
 def _clean(text: str) -> str:
-    """Strip Discord syntax that adds noise to embeddings."""
+    """
+    Strip Discord syntax that adds noise to embeddings.
+    Order matters: URLs stripped before emoji to avoid partial matches.
+    """
+    # Strip Discord-specific syntax
     text = re.sub(r"<@!?\d+>",      "[mention]", text)
     text = re.sub(r"<#\d+>",        "[channel]", text)
     text = re.sub(r"<@&\d+>",       "[role]",    text)
     text = re.sub(r"<a?:\w+:\d+>",  "[emoji]",   text)
+    # URLs stripped before emoji collapse to avoid partial matches
     text = re.sub(r"https?://\S+",  "[link]",    text)
     text = re.sub(r"\n{3,}",        "\n\n",      text)
-    # Collapse emoji tokens — replace with space to preserve word boundaries
+    # Collapse emoji tokens — space preserves word boundaries
     text = re.sub(r"(\[emoji\])+",  " ",         text)
     # Clean up any double spaces left behind
     text = re.sub(r"\s+",           " ",         text)
@@ -113,6 +130,8 @@ def parse_all_exports(export_dir: str) -> list:
     """
     Parse all JSON files in the export directory.
     Deduplicates by message id across files.
+    Sorts chronologically using datetime — not string comparison —
+    to handle mixed timezone formats safely.
     """
     seen_ids    = set()
     all_records = []
@@ -124,8 +143,11 @@ def parse_all_exports(export_dir: str) -> list:
                 seen_ids.add(r["id"])
                 all_records.append(r)
 
-    # Sort chronologically
-    all_records.sort(key=lambda r: r["timestamp"])
+    # Sort by datetime object — safer than string sort for mixed
+    # timezone formats (e.g. +00:00 vs Z suffixes across exports)
+    all_records.sort(
+        key=lambda r: datetime.fromisoformat(r["timestamp"])
+    )
 
     print(f"\nTotal: {len(all_records)} messages from "
           f"{len({r['channel'] for r in all_records})} channel(s)")
