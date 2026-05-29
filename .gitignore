@@ -9,6 +9,8 @@ logs/
 
 # Qdrant data
 qdrant_data/
+Qdrant
+store
 
 # Environment variables — never commit
 .env

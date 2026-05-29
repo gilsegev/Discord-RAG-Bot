@@ -32,9 +32,10 @@ ELIGIBLE_CHANNELS = {
     "forum-discussion", "rules",
 }
 
-# Only process files matching DiscordChatExporter naming pattern
+# Anchored pattern — only process DiscordChatExporter format files
 # e.g. "TPMs unite - general [938638026156957757].json"
-EXPORT_PATTERN = re.compile(r".+\[\d+\]\.json$")
+# Fix #5: added ^ anchor to prevent partial path matches
+EXPORT_PATTERN = re.compile(r"^.+\[\d+\]\.json$")
 
 
 def parse_export_file(json_path: str) -> list:
@@ -76,15 +77,17 @@ def parse_export_file(json_path: str) -> list:
             continue
 
         # Skip very short noise — under 3 characters
-        # (reduced from 8 to keep short replies like "ok", "yes")
+        # (keeps short replies like "ok", "yes" which carry
+        #  sentiment/confirmation value in reply chains)
         if len(content) < 3 and not has_attachment:
             continue
 
         # Clean content — strips Discord syntax, collapses emoji
         cleaned = _clean(content)
 
-        # Skip if cleaning removed all content including whitespace
-        # e.g. emoji-only messages like "<:fire:123> <:fire:456>"
+        # Fix #7 (whitespace guard): skip if cleaning removed all
+        # content including whitespace — handles emoji-only messages
+        # like "<:fire:123> <:fire:456>" that become "  " after clean
         if not cleaned.strip() and not has_attachment:
             continue
 
@@ -128,25 +131,33 @@ def _clean(text: str) -> str:
 def parse_all_exports(export_dir: str) -> list:
     """
     Parse all DiscordChatExporter JSON files in export_dir.
-    Filters by filename pattern to skip backup/test files.
+    Fix #5: filters by anchored filename pattern.
+    Fix #8: warns clearly when JSON files exist but none match pattern.
     Deduplicates by message id across files.
-    Sorts chronologically using datetime for mixed timezone safety.
+    Fix #4 (timestamp sort): uses datetime not string comparison.
     """
+    all_json = list(Path(export_dir).glob("*.json"))
+    matching = [p for p in all_json
+                if EXPORT_PATTERN.match(p.name)]
+
+    # Fix #8: helpful warning if files exist but none match pattern
+    if all_json and not matching:
+        print(f"  WARN: Found {len(all_json)} JSON file(s) in "
+              f"{export_dir} but none match DiscordChatExporter "
+              f"format [channel_id].json")
+        return []
+
     seen_ids    = set()
     all_records = []
 
-    for path in sorted(Path(export_dir).glob("*.json")):
-        # Skip files not matching DiscordChatExporter pattern
-        if not EXPORT_PATTERN.match(path.name):
-            print(f"  SKIP: {path.name} (not an export file)")
-            continue
+    for path in sorted(matching):
         print(f"\nParsing: {path.name}")
         for r in parse_export_file(str(path)):
             if r["id"] not in seen_ids:
                 seen_ids.add(r["id"])
                 all_records.append(r)
 
-    # Sort by datetime object — safer than string sort
+    # Fix #4: sort by datetime object — safer than string sort
     # handles mixed timezone formats across exports
     all_records.sort(
         key=lambda r: datetime.fromisoformat(r["timestamp"])

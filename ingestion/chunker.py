@@ -1,5 +1,9 @@
 """
-ingestion/chunker.py — v3 reply-aware chunking
+ingestion/chunker.py — v4 reply-aware chunking
+Fixes applied:
+  - Fix #4: filtered root message handling (bot/system roots)
+  - Fix #6: start_ts reset uses current msg not overlap tail
+  - Fix #12: author order preserved with dict.fromkeys()
 Author: ThinkInSystems (Hemanth Aragonda)
 """
 import tiktoken
@@ -44,7 +48,7 @@ def get_root_id(msg: dict, id_to_msg: dict) -> str:
     """
     Follow parent_id chain to find the root message id.
     Cycle detection via visited set prevents infinite loops.
-    Note: cross-channel reply references are handled gracefully —
+    Cross-channel reply references handled gracefully —
     if parent is in a different channel it won't be in id_to_msg
     and the loop exits, treating the message as a local root.
     """
@@ -64,6 +68,9 @@ def _reply_aware_chunk(msgs: list[dict], id_to_msg: dict) -> list[dict]:
     Two-pass chunking:
     Pass 1: group reply chains by parent_id.
     Pass 2: time window for standalone + orphaned messages.
+
+    Fix #4: if root message was filtered (bot/system), replies
+    are treated as standalone rather than context-free chunks.
     Orphans collected BEFORE _window_chunk call (critical ordering).
     """
     root_groups = {}
@@ -83,10 +90,19 @@ def _reply_aware_chunk(msgs: list[dict], id_to_msg: dict) -> list[dict]:
     orphans      = []
 
     for root_id, group_msgs in root_groups.items():
+        # Fix #4: if root was filtered (bot/system message),
+        # it won't be in id_to_msg. Treat replies as standalone
+        # rather than producing context-free answer-only chunks.
+        if root_id not in id_to_msg and \
+                not any(m["id"] == root_id for m in group_msgs):
+            orphans.extend(group_msgs)
+            continue
+
         group_msgs = sorted(group_msgs, key=lambda m: m["timestamp"])
         if len(group_msgs) >= MIN_MSGS:
             reply_chunks.append(_build(group_msgs))
         else:
+            # Single-message groups fall back to time-window
             orphans.extend(group_msgs)
 
     # Add orphans BEFORE calling _window_chunk
@@ -97,7 +113,11 @@ def _reply_aware_chunk(msgs: list[dict], id_to_msg: dict) -> list[dict]:
 
 
 def _window_chunk(msgs: list[dict]) -> list[dict]:
-    """15-min time window chunking — fallback for non-reply messages."""
+    """
+    15-min time window chunking — fallback for non-reply messages.
+    Fix #6: start_ts resets to current message timestamp after split,
+    not to overlap tail timestamp. Prevents window extension by overlap.
+    """
     if not msgs:
         return []
 
@@ -111,13 +131,16 @@ def _window_chunk(msgs: list[dict]) -> list[dict]:
         ts = datetime.fromisoformat(msg["timestamp"])
         if start_ts is None:
             start_ts = ts
+
         gap = (ts - start_ts).total_seconds() / 60
+
         if gap > WINDOW_MINS and len(current) >= MIN_MSGS:
             prev_tail = current[-OVERLAP_MSGS:]
             chunks.append(_build(current))
             current  = prev_tail + [msg]
-            start_ts = datetime.fromisoformat(
-                prev_tail[0]["timestamp"])
+            # Fix #6: use current msg timestamp not overlap tail
+            # prevents overlap messages extending the window anchor
+            start_ts = datetime.fromisoformat(msg["timestamp"])
         else:
             current.append(msg)
 
@@ -130,7 +153,8 @@ def _window_chunk(msgs: list[dict]) -> list[dict]:
 def _build(msgs: list[dict]) -> dict:
     """
     Format a list of messages into one chunk dict.
-    Authors deduplicated with dict.fromkeys to preserve order.
+    Fix #12: authors use dict.fromkeys() to preserve insertion
+    order while deduplicating — set comprehension is unordered.
     """
     assert msgs, "_build() called with empty message list"
 
