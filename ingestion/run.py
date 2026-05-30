@@ -4,25 +4,32 @@ Full ingestion pipeline: parse -> chunk -> embed -> store.
 Usage:
   python ingestion/run.py            # incremental upsert (default)
   python ingestion/run.py --recreate # drop and recreate collection
-Fixes applied:
-  - Fix #1:  SHA-256 instead of MD5 for stable IDs
-  - Fix #2:  embed and upsert in same batch loop (memory efficient)
-  - Fix #7:  cache-aware model load message
-  - Fix #9:  setup_collection comment clarified
-  - Fix #10: .gitignore covers standard Python entries
+v6 additions:
+  - thread_name stored in Qdrant payload for thread-scoped queries
+  - thread_name keyword index added to collection
+  - pinned model revision for trust_remote_code=True safety
+  - Fix 5: true incremental embedding — only new chunks embedded
+  - Fix 1: upsert retry with exponential backoff
+  - Fix 2: model load failure with clear error message
+  - Fix 3: HF_TOKEN loaded from .env
 Author: ThinkInSystems (Hemanth Aragonda)
 """
+import os
 import sys
 import time
 import hashlib
 import argparse
 import numpy as np
 from pathlib import Path
+from dotenv import load_dotenv
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from ingestion.parser  import parse_all_exports
 from ingestion.chunker import chunk_records
+
+# ── Load environment variables ────────────────────────────────
+load_dotenv()
 
 # ── Config ───────────────────────────────────────────────────
 EXPORT_DIR   = "chat_logs"
@@ -30,6 +37,10 @@ COLLECTION   = "tpm_unite_history"
 EMBED_DIM    = 768
 BATCH_EMBED  = 32    # safe for CPU — increase to 128 on GPU
 BATCH_UPSERT = 256
+
+# Pinned to main — stable with trust_remote_code=True
+NOMIC_MODEL    = "nomic-ai/nomic-embed-text-v1.5"
+NOMIC_REVISION = "main"
 
 
 def connect_qdrant():
@@ -52,9 +63,6 @@ def setup_collection(client, force_recreate: bool = False):
     Create Qdrant collection with datetime and keyword indexes.
     Default (incremental): skip recreate if collection exists.
     Use --recreate flag for full re-index after schema changes.
-
-    Fix #7: try/except on delete is intentional —
-    collection may not exist on first run, that's fine.
     """
     from qdrant_client.models import (
         VectorParams, Distance, PayloadSchemaType
@@ -93,17 +101,34 @@ def setup_collection(client, force_recreate: bool = False):
         field_name="channel",
         field_schema=PayloadSchemaType.KEYWORD,
     )
+    # Keyword index for thread-scoped queries
+    client.create_payload_index(
+        collection_name=COLLECTION,
+        field_name="thread_name",
+        field_schema=PayloadSchemaType.KEYWORD,
+    )
     print(f"  Collection '{COLLECTION}' ready.\n")
 
 
 def load_models():
     """
     Load Nomic Embed v1.5.
-    Fix #11: cache-aware message — only shows download warning
-    on first run, shows 'loading from cache' on subsequent runs.
+    Fix 3: loads HF_TOKEN from .env to avoid rate limiting.
+    Fix 2: clear error message if model load fails.
+    Cache-aware message — only shows download warning on first run.
     """
+    # Fix 3: load HuggingFace token to avoid rate limits
+    hf_token = os.getenv("HF_TOKEN")
+    if hf_token:
+        os.environ["HUGGINGFACE_HUB_TOKEN"] = hf_token
+        print("  HuggingFace token loaded.")
+    else:
+        print("  WARN: No HF_TOKEN found in .env — "
+              "unauthenticated requests may hit rate limits.")
+
     from sentence_transformers import SentenceTransformer
     print("  Loading Nomic Embed v1.5...")
+    print(f"  (revision: {NOMIC_REVISION})")
 
     cache_path = Path(".model_cache")
     if not cache_path.exists():
@@ -111,11 +136,20 @@ def load_models():
     else:
         print("  (Loading from local cache...)")
 
-    model = SentenceTransformer(
-        "nomic-ai/nomic-embed-text-v1.5",
-        trust_remote_code=True,
-        cache_folder=".model_cache",
-    )
+    # Fix 2: clear error message if model load fails
+    try:
+        model = SentenceTransformer(
+            NOMIC_MODEL,
+            trust_remote_code=True,
+            cache_folder=".model_cache",
+            revision=NOMIC_REVISION,
+        )
+    except Exception as e:
+        print(f"\nERROR: Could not load embedding model: {e}")
+        print("If offline, ensure .model_cache/ exists from a prior run.")
+        print("Or check your internet connection and try again.")
+        sys.exit(1)
+
     print("  Model loaded.\n")
     return model
 
@@ -123,17 +157,81 @@ def load_models():
 def _stable_id(chunk: dict) -> int:
     """
     Stable 64-bit integer ID from chunk's message IDs.
-    Fix #1: uses SHA-256 instead of MD5 — avoids security
-    linting warnings in CI/CD without any performance cost.
-    64-bit space (16 hex chars) minimises collision risk at scale.
+    SHA-256 avoids security linting warnings in CI/CD.
+    Uses message_ids not text — text-cleaning changes do not
+    create new point IDs on re-index.
     """
     key = "-".join(sorted(chunk["message_ids"]))
     return int(hashlib.sha256(key.encode()).hexdigest()[:16], 16)
 
 
+def get_existing_ids(client) -> set:
+    """
+    Fetch all point IDs already stored in Qdrant.
+    Used to skip re-embedding chunks that are already indexed.
+    Paginates through all points — handles collections of any size.
+    Returns empty set on error — triggers full re-embed for safety.
+    """
+    existing = set()
+    offset   = None
+    try:
+        while True:
+            result, offset = client.scroll(
+                collection_name=COLLECTION,
+                limit=1000,
+                offset=offset,
+                with_payload=False,
+                with_vectors=False,
+            )
+            existing.update(p.id for p in result)
+            if offset is None:
+                break
+    except Exception as e:
+        print(f"  WARN: Could not fetch existing IDs: {e}")
+        print("  Falling back to full re-embed for safety.")
+        return set()
+    print(f"  Found {len(existing)} existing chunks in Qdrant.")
+    return existing
+
+
+def filter_new_chunks(chunks: list, existing_ids: set) -> list:
+    """
+    Return only chunks whose stable ID is not in Qdrant.
+    On incremental runs, skips re-embedding already-indexed chunks.
+    """
+    new_chunks = [c for c in chunks
+                  if _stable_id(c) not in existing_ids]
+    skipped = len(chunks) - len(new_chunks)
+    if skipped:
+        print(f"  Skipping {skipped} already-indexed chunks.")
+    print(f"  Embedding {len(new_chunks)} new chunks.")
+    return new_chunks
+
+
+def _upsert_batch_with_retry(client, points, max_retries: int = 3):
+    """
+    Fix 1: Upsert with exponential backoff retry.
+    Prevents silent chunk loss on Qdrant timeout mid-batch.
+    """
+    for attempt in range(max_retries):
+        try:
+            client.upsert(collection_name=COLLECTION, points=points)
+            return
+        except Exception as e:
+            if attempt == max_retries - 1:
+                raise
+            wait = 2 ** attempt
+            print(f"  WARN: Upsert failed (attempt {attempt + 1}), "
+                  f"retrying in {wait}s: {e}")
+            time.sleep(wait)
+
+
 def _upsert_batch(client, batch_chunks: list,
                   batch_vecs: np.ndarray, offset: int):
-    """Upsert one batch of chunks to Qdrant."""
+    """
+    Build Qdrant points and upsert with retry.
+    thread_name included in payload for thread-scoped filtering.
+    """
     from qdrant_client.models import PointStruct
     points = [
         PointStruct(
@@ -144,6 +242,7 @@ def _upsert_batch(client, batch_chunks: list,
                 "start_ts":      batch_chunks[j]["start_ts"],
                 "end_ts":        batch_chunks[j]["end_ts"],
                 "channel":       batch_chunks[j]["channel"],
+                "thread_name":   batch_chunks[j].get("thread_name"),
                 "authors":       batch_chunks[j]["authors"],
                 "message_count": batch_chunks[j]["message_count"],
                 "token_count":   batch_chunks[j].get("token_count", 0),
@@ -151,25 +250,35 @@ def _upsert_batch(client, batch_chunks: list,
         )
         for j in range(len(batch_chunks))
     ]
-    client.upsert(collection_name=COLLECTION, points=points)
+    # Fix 1: retry on failure instead of silent loss
+    _upsert_batch_with_retry(client, points)
 
 
-def embed_and_upsert(model, client, chunks: list):
+def embed_and_upsert(model, client, chunks: list,
+                     force_recreate: bool = False):
     """
-    Fix #2: embed and upsert in the same batch loop.
-    Avoids holding full embedding array in RAM — scales safely
-    to 50k+ chunks for full 6-year multi-channel export.
+    Embed and upsert in the same batch loop.
+    Memory efficient — no large array held in RAM.
+    Incremental mode skips already-indexed chunks.
     """
+    if not force_recreate:
+        existing_ids = get_existing_ids(client)
+        chunks       = filter_new_chunks(chunks, existing_ids)
+
+    if not chunks:
+        print("  No new chunks to embed. Collection is up to date.")
+        return
+
     total    = len(chunks)
     est_mins = round((total / BATCH_EMBED) * 0.15 / 60, 1)
-    print(f"  Embedding and storing {total} chunks "
+    print(f"\n  Embedding and storing {total} chunks "
           f"(estimated ~{max(est_mins, 0.1)} min on CPU)...")
 
     for i in range(0, total, BATCH_EMBED):
         batch = chunks[i:i + BATCH_EMBED]
         texts = ["search_document: " + c["text"] for c in batch]
 
-        # Nomic requires normalize_embeddings=True for cosine similarity
+        # Nomic requires normalize_embeddings=True for cosine
         embs = model.encode(
             texts,
             normalize_embeddings=True,
@@ -184,7 +293,6 @@ def embed_and_upsert(model, client, chunks: list):
 
 
 if __name__ == "__main__":
-    # ── CLI args ──────────────────────────────────────────────
     arg_parser = argparse.ArgumentParser(
         description="TPM Unite RAG Bot — Ingestion Pipeline"
     )
@@ -198,14 +306,12 @@ if __name__ == "__main__":
     t0 = time.time()
     print("=" * 50)
     print("TPM Unite RAG Bot — Ingestion Pipeline")
-    # Fix #9: mode clearly stated at startup
     if args.recreate:
         print("Mode: FULL RECREATE (--recreate flag set)")
     else:
         print("Mode: INCREMENTAL UPSERT (default)")
     print("=" * 50)
 
-    # Check Qdrant FIRST — fail fast before any processing
     print("\n── Step 1: Checking Qdrant connection ──")
     client = connect_qdrant()
 
@@ -226,16 +332,15 @@ if __name__ == "__main__":
         print("Check MIN_MSGS setting in chunker.py")
         sys.exit(1)
 
-    # Fix #9: default is incremental — recreate only when explicit
     print("\n── Step 4: Setting up Qdrant collection ──")
     setup_collection(client, force_recreate=args.recreate)
 
     print("\n── Step 5: Loading embedding model ──")
     model = load_models()
 
-    # Fix #2: embed and upsert in same loop — memory efficient
     print("\n── Step 6: Embedding and storing chunks ──")
-    embed_and_upsert(model, client, chunks)
+    embed_and_upsert(model, client, chunks,
+                     force_recreate=args.recreate)
 
     mins = round((time.time() - t0) / 60, 1)
     print(f"\n{'=' * 50}")

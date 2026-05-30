@@ -19,3 +19,9 @@ store
 __pycache__/
 *.pyc
 *.pyo
+
+# Chat log exports — never commit community data
+chat_logs/*.json
+
+# Test files
+*.test.json

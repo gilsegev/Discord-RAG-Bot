@@ -2,6 +2,10 @@
 ingestion/parser.py
 Parses DiscordChatExporter JSON exports into clean records.
 Schema confirmed from gilsegev/Discord-RAG-Bot methodology doc.
+v6 additions:
+  - Forum thread support via channel.category eligibility
+  - thread_name preserved for semantic retrieval
+  - File size warning for large exports
 Author: ThinkInSystems (Hemanth Aragonda)
 """
 import json
@@ -28,22 +32,33 @@ ELIGIBLE_CHANNELS = {
     "amazon", "netflix", "meta", "google", "apple", "microsoft",
     # Offtopic category
     "offtopic", "investments-and-finances",
-    # Uncategorized
+    # Uncategorized / Forum channels
     "forum-discussion", "rules",
 }
 
 # Anchored pattern — only process DiscordChatExporter format files
 # e.g. "TPMs unite - general [938638026156957757].json"
-# Fix #5: added ^ anchor to prevent partial path matches
-EXPORT_PATTERN = re.compile(r"^.+\[\d+\]\.json$")
+EXPORT_PATTERN   = re.compile(r"^.+\[\d+\]\.json$")
+FORUM_THREAD_TYPE = "GuildPublicThread"
+LARGE_FILE_MB    = 200  # warn if export file exceeds this size
 
 
 def parse_export_file(json_path: str) -> list:
     """
     Parse one DiscordChatExporter JSON file.
     Returns list of clean message records.
-    Skips: bots, system events, empty/whitespace/emoji-only content.
+
+    Forum thread handling:
+    - GuildPublicThread exports use channel.category for eligibility
+    - thread_name stored separately for semantic retrieval
+    - File size warning for exports that may stress RAM
     """
+    # Fix 5: warn on large files before loading into RAM
+    file_size_mb = Path(json_path).stat().st_size / (1024 * 1024)
+    if file_size_mb > LARGE_FILE_MB:
+        print(f"  WARN: Large file ({file_size_mb:.0f}MB) — "
+              f"consider splitting by date range if RAM is limited.")
+
     try:
         with open(json_path, encoding="utf-8") as f:
             data = json.load(f)
@@ -51,11 +66,27 @@ def parse_export_file(json_path: str) -> list:
         print(f"  WARN: Skipping {json_path} — JSON error: {e}")
         return []
 
-    channel_name = data["channel"]["name"].lower()
+    channel_type = data["channel"].get("type", "GuildTextChat")
     channel_id   = data["channel"]["id"]
+    raw_name     = data["channel"]["name"]
 
-    if channel_name not in ELIGIBLE_CHANNELS:
-        print(f"  SKIP: #{channel_name} (not in channel list)")
+    # Forum threads: use category for eligibility check
+    # channel.name is the thread title not the parent channel
+    if channel_type == FORUM_THREAD_TYPE:
+        parent_channel = data["channel"].get("category", "").lower()
+        thread_name    = raw_name
+        channel_name   = parent_channel
+    else:
+        parent_channel = raw_name.lower()
+        thread_name    = None
+        channel_name   = raw_name.lower()
+
+    eligible_name = parent_channel if channel_type == FORUM_THREAD_TYPE \
+        else channel_name
+
+    if eligible_name not in ELIGIBLE_CHANNELS:
+        print(f"  SKIP: #{raw_name} "
+              f"(category '{eligible_name}' not in channel list)")
         return []
 
     records = []
@@ -77,17 +108,15 @@ def parse_export_file(json_path: str) -> list:
             continue
 
         # Skip very short noise — under 3 characters
-        # (keeps short replies like "ok", "yes" which carry
-        #  sentiment/confirmation value in reply chains)
+        # (keeps short replies like "ok", "yes" in reply chains)
         if len(content) < 3 and not has_attachment:
             continue
 
         # Clean content — strips Discord syntax, collapses emoji
         cleaned = _clean(content)
 
-        # Fix #7 (whitespace guard): skip if cleaning removed all
-        # content including whitespace — handles emoji-only messages
-        # like "<:fire:123> <:fire:456>" that become "  " after clean
+        # Skip if cleaning removed all content including whitespace
+        # handles emoji-only messages that become spaces after clean
         if not cleaned.strip() and not has_attachment:
             continue
 
@@ -99,13 +128,16 @@ def parse_export_file(json_path: str) -> list:
             "content":        cleaned.strip(),
             "channel":        channel_name,
             "channel_id":     channel_id,
+            "thread_name":    thread_name,         # None for normal channels
             # reply chain — reference.messageId from methodology doc
             "parent_id":      msg.get("reference", {}).get("messageId"),
             "mentions":       [m["name"] for m in msg.get("mentions", [])],
             "has_attachment": has_attachment,
         })
 
-    print(f"  OK: #{channel_name}: {len(records)} messages parsed")
+    thread_info = f" (thread: {thread_name})" if thread_name else ""
+    print(f"  OK: #{channel_name}{thread_info}: "
+          f"{len(records)} messages parsed")
     return records
 
 
@@ -131,16 +163,16 @@ def _clean(text: str) -> str:
 def parse_all_exports(export_dir: str) -> list:
     """
     Parse all DiscordChatExporter JSON files in export_dir.
-    Fix #5: filters by anchored filename pattern.
-    Fix #8: warns clearly when JSON files exist but none match pattern.
+    Filters by filename pattern to skip backup/test files.
+    Warns clearly when JSON files exist but none match pattern.
     Deduplicates by message id across files.
-    Fix #4 (timestamp sort): uses datetime not string comparison.
+    Sorts chronologically using datetime for mixed timezone safety.
     """
     all_json = list(Path(export_dir).glob("*.json"))
     matching = [p for p in all_json
                 if EXPORT_PATTERN.match(p.name)]
 
-    # Fix #8: helpful warning if files exist but none match pattern
+    # Helpful warning if files exist but none match pattern
     if all_json and not matching:
         print(f"  WARN: Found {len(all_json)} JSON file(s) in "
               f"{export_dir} but none match DiscordChatExporter "
@@ -157,8 +189,7 @@ def parse_all_exports(export_dir: str) -> list:
                 seen_ids.add(r["id"])
                 all_records.append(r)
 
-    # Fix #4: sort by datetime object — safer than string sort
-    # handles mixed timezone formats across exports
+    # Sort by datetime — safer than string sort for mixed timezones
     all_records.sort(
         key=lambda r: datetime.fromisoformat(r["timestamp"])
     )
@@ -177,6 +208,8 @@ if __name__ == "__main__":
         print(f"  Author:    {preview['author']}")
         print(f"  Timestamp: {preview['timestamp'][:10]}")
         print(f"  Channel:   #{preview['channel']}")
+        if preview.get("thread_name"):
+            print(f"  Thread:    {preview['thread_name']}")
         print(f"  Content:   {preview['content'][:80]}...")
     else:
         print("\nNo records with content found")
