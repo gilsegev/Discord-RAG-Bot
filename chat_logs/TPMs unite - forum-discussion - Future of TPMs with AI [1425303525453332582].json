@@ -1,0 +1,633 @@
+{
+  "guild": {
+    "id": "853099205206999050",
+    "name": "TPMs unite",
+    "iconUrl": "https://cdn.discordapp.com/icons/853099205206999050/472b55453e54d59cad3b3fc6215992a5.png?size=512"
+  },
+  "channel": {
+    "id": "1425303525453332582",
+    "type": "GuildPublicThread",
+    "categoryId": "1134690339043692704",
+    "category": "forum-discussion",
+    "name": "Future of TPMs with AI",
+    "topic": null
+  },
+  "dateRange": {
+    "after": null,
+    "before": null
+  },
+  "exportedAt": "2026-05-29T13:44:59.3782183-05:00",
+  "messages": [
+    {
+      "id": "1425303525453332582",
+      "type": "Default",
+      "timestamp": "2025-10-07T21:07:21.327-05:00",
+      "timestampEdited": null,
+      "callEndedTimestamp": null,
+      "isPinned": false,
+      "content": "Starting a thread to see how everyone view the AI transformation on TPM as a role. \nWhy do you think it is a boon and how you plan to use it to be more productive. \n\nWhy do you think it is a role killer and how do you want to adopt",
+      "author": {
+        "id": "907836348986191922",
+        "name": "pa3_p",
+        "discriminator": "0000",
+        "nickname": "Pwin",
+        "color": null,
+        "isBot": false,
+        "roles": [],
+        "avatarUrl": "https://cdn.discordapp.com/embed/avatars/0.png"
+      },
+      "attachments": [],
+      "embeds": [],
+      "stickers": [],
+      "reactions": [],
+      "mentions": [],
+      "inlineEmojis": []
+    },
+    {
+      "id": "1427886646942240799",
+      "type": "Default",
+      "timestamp": "2025-10-15T00:11:45.482-05:00",
+      "timestampEdited": "2025-10-15T00:11:53.597-05:00",
+      "callEndedTimestamp": null,
+      "isPinned": false,
+      "content": "It is a tool, and we need to learn it how to use and utilize it. Automate, use and save time, so that you can focuz more on strategy and execution",
+      "author": {
+        "id": "790413306783334420",
+        "name": "pamomap",
+        "discriminator": "0000",
+        "nickname": "Pamda",
+        "color": null,
+        "isBot": false,
+        "roles": [],
+        "avatarUrl": "https://cdn.discordapp.com/avatars/790413306783334420/b26f54a0ec02f650fe8112b9fe1c40b4.png?size=512"
+      },
+      "attachments": [],
+      "embeds": [],
+      "stickers": [],
+      "reactions": [
+        {
+          "emoji": {
+            "id": "",
+            "name": "\uD83D\uDCAF",
+            "code": "100",
+            "isAnimated": false,
+            "imageUrl": "https://cdn.jsdelivr.net/gh/twitter/twemoji@latest/assets/svg/1f4af.svg"
+          },
+          "count": 2,
+          "users": [
+            {
+              "id": "150071474063933440",
+              "name": "paytun",
+              "discriminator": "0000",
+              "nickname": "paytun",
+              "color": null,
+              "isBot": false,
+              "avatarUrl": "https://cdn.discordapp.com/avatars/150071474063933440/a34f3e02f25650e71d977484ae580f05.png?size=512"
+            },
+            {
+              "id": "1225261459420741702",
+              "name": "violet_delight5",
+              "discriminator": "0000",
+              "nickname": "Violet_Delight5",
+              "color": null,
+              "isBot": false,
+              "avatarUrl": "https://cdn.discordapp.com/avatars/1225261459420741702/1b7652b5b0d4e582628fc39f57fe8d83.png?size=512"
+            }
+          ]
+        }
+      ],
+      "mentions": [],
+      "inlineEmojis": []
+    },
+    {
+      "id": "1432242922618753044",
+      "type": "Default",
+      "timestamp": "2025-10-27T00:42:02.539-05:00",
+      "timestampEdited": null,
+      "callEndedTimestamp": null,
+      "isPinned": false,
+      "content": "Anyone built AI workflows to help your manual work?",
+      "author": {
+        "id": "907836348986191922",
+        "name": "pa3_p",
+        "discriminator": "0000",
+        "nickname": "Pwin",
+        "color": null,
+        "isBot": false,
+        "roles": [],
+        "avatarUrl": "https://cdn.discordapp.com/embed/avatars/0.png"
+      },
+      "attachments": [],
+      "embeds": [],
+      "stickers": [],
+      "reactions": [
+        {
+          "emoji": {
+            "id": "",
+            "name": "\uD83D\uDC4B",
+            "code": "wave",
+            "isAnimated": false,
+            "imageUrl": "https://cdn.jsdelivr.net/gh/twitter/twemoji@latest/assets/svg/1f44b.svg"
+          },
+          "count": 1,
+          "users": [
+            {
+              "id": "1225261459420741702",
+              "name": "violet_delight5",
+              "discriminator": "0000",
+              "nickname": "Violet_Delight5",
+              "color": null,
+              "isBot": false,
+              "avatarUrl": "https://cdn.discordapp.com/avatars/1225261459420741702/1b7652b5b0d4e582628fc39f57fe8d83.png?size=512"
+            }
+          ]
+        }
+      ],
+      "mentions": [],
+      "inlineEmojis": []
+    },
+    {
+      "id": "1432823606085419171",
+      "type": "Default",
+      "timestamp": "2025-10-28T15:09:28.266-05:00",
+      "timestampEdited": null,
+      "callEndedTimestamp": null,
+      "isPinned": false,
+      "content": "I have started a  building a AI workflow, a very simple one which generates a Report using data from Jira and Confluence.",
+      "author": {
+        "id": "1153118700115873903",
+        "name": "koddy21",
+        "discriminator": "0000",
+        "nickname": "Vaish",
+        "color": null,
+        "isBot": false,
+        "roles": [],
+        "avatarUrl": "https://cdn.discordapp.com/avatars/1153118700115873903/157e517cdbf371a47aaead44675714a3.png?size=512"
+      },
+      "attachments": [],
+      "embeds": [],
+      "stickers": [],
+      "reactions": [],
+      "mentions": [],
+      "inlineEmojis": []
+    },
+    {
+      "id": "1432860645224878140",
+      "type": "Default",
+      "timestamp": "2025-10-28T17:36:39.085-05:00",
+      "timestampEdited": null,
+      "callEndedTimestamp": null,
+      "isPinned": false,
+      "content": "/subscribe \nI agree what @Pamda mentioned. \nWe have been running a hackathon and develop one AI Use case per week. \nGenerating reports, meeting summarizer, updating Jira Epics with Cursor based on plans, etc. etc. \n\nAnyone interested in a sharing session?",
+      "author": {
+        "id": "1065336892310175815",
+        "name": "michigoetz",
+        "discriminator": "0000",
+        "nickname": "michigoetz",
+        "color": null,
+        "isBot": false,
+        "roles": [],
+        "avatarUrl": "https://cdn.discordapp.com/embed/avatars/1.png"
+      },
+      "attachments": [],
+      "embeds": [],
+      "stickers": [],
+      "reactions": [],
+      "mentions": [
+        {
+          "id": "790413306783334420",
+          "name": "pamomap",
+          "discriminator": "0000",
+          "nickname": "Pamda",
+          "color": null,
+          "isBot": false,
+          "roles": [],
+          "avatarUrl": "https://cdn.discordapp.com/avatars/790413306783334420/b26f54a0ec02f650fe8112b9fe1c40b4.png?size=512"
+        }
+      ],
+      "inlineEmojis": []
+    },
+    {
+      "id": "1433090224476651730",
+      "type": "Default",
+      "timestamp": "2025-10-29T08:48:55.044-05:00",
+      "timestampEdited": null,
+      "callEndedTimestamp": null,
+      "isPinned": false,
+      "content": "Great topic. I've been spending some time on building agents to monitor meeting summaries, posts (what meta uses instead of email) and chat threads to compile program updates, assess risks, etc. The data compilation portion alone can save me hours.",
+      "author": {
+        "id": "790967144778956851",
+        "name": "caliman9853",
+        "discriminator": "0000",
+        "nickname": "CaliMan",
+        "color": "#E74C3C",
+        "isBot": false,
+        "roles": [
+          {
+            "id": "893548412081934346",
+            "name": "ReadMe Channel",
+            "color": "#E74C3C",
+            "position": 19
+          },
+          {
+            "id": "938561503127285771",
+            "name": "new role",
+            "color": null,
+            "position": 18
+          },
+          {
+            "id": "1508892214699491610",
+            "name": "Unanswered questions notifications",
+            "color": null,
+            "position": 4
+          },
+          {
+            "id": "1508892737242665101",
+            "name": "spam alerts",
+            "color": "#E91E63",
+            "position": 3
+          },
+          {
+            "id": "1508892852074057900",
+            "name": "general notifications",
+            "color": null,
+            "position": 2
+          },
+          {
+            "id": "1509585200739254362",
+            "name": "rag project member",
+            "color": null,
+            "position": 1
+          }
+        ],
+        "avatarUrl": "https://cdn.discordapp.com/embed/avatars/2.png"
+      },
+      "attachments": [],
+      "embeds": [],
+      "stickers": [],
+      "reactions": [],
+      "mentions": [],
+      "inlineEmojis": []
+    },
+    {
+      "id": "1433336786628907028",
+      "type": "Reply",
+      "timestamp": "2025-10-30T01:08:40.042-05:00",
+      "timestampEdited": null,
+      "callEndedTimestamp": null,
+      "isPinned": false,
+      "content": "We should chat. I have been building some AI workflows as well for planning and execution.",
+      "author": {
+        "id": "907836348986191922",
+        "name": "pa3_p",
+        "discriminator": "0000",
+        "nickname": "Pwin",
+        "color": null,
+        "isBot": false,
+        "roles": [],
+        "avatarUrl": "https://cdn.discordapp.com/embed/avatars/0.png"
+      },
+      "attachments": [],
+      "embeds": [],
+      "stickers": [],
+      "reactions": [],
+      "mentions": [
+        {
+          "id": "790967144778956851",
+          "name": "caliman9853",
+          "discriminator": "0000",
+          "nickname": "CaliMan",
+          "color": "#E74C3C",
+          "isBot": false,
+          "roles": [
+            {
+              "id": "893548412081934346",
+              "name": "ReadMe Channel",
+              "color": "#E74C3C",
+              "position": 19
+            },
+            {
+              "id": "938561503127285771",
+              "name": "new role",
+              "color": null,
+              "position": 18
+            },
+            {
+              "id": "1508892214699491610",
+              "name": "Unanswered questions notifications",
+              "color": null,
+              "position": 4
+            },
+            {
+              "id": "1508892737242665101",
+              "name": "spam alerts",
+              "color": "#E91E63",
+              "position": 3
+            },
+            {
+              "id": "1508892852074057900",
+              "name": "general notifications",
+              "color": null,
+              "position": 2
+            },
+            {
+              "id": "1509585200739254362",
+              "name": "rag project member",
+              "color": null,
+              "position": 1
+            }
+          ],
+          "avatarUrl": "https://cdn.discordapp.com/embed/avatars/2.png"
+        }
+      ],
+      "reference": {
+        "type": "Default",
+        "messageId": "1433090224476651730",
+        "channelId": "1425303525453332582",
+        "guildId": "853099205206999050"
+      },
+      "inlineEmojis": []
+    },
+    {
+      "id": "1433450327759261779",
+      "type": "Reply",
+      "timestamp": "2025-10-30T08:39:50.357-05:00",
+      "timestampEdited": null,
+      "callEndedTimestamp": null,
+      "isPinned": false,
+      "content": "How do you feel about writing a couple of posts sharing your work flows and prompts that we could share in the #ai-for-tpms channel or even do a couple of chats if more people are interested in learning?",
+      "author": {
+        "id": "790967144778956851",
+        "name": "caliman9853",
+        "discriminator": "0000",
+        "nickname": "CaliMan",
+        "color": "#E74C3C",
+        "isBot": false,
+        "roles": [
+          {
+            "id": "893548412081934346",
+            "name": "ReadMe Channel",
+            "color": "#E74C3C",
+            "position": 19
+          },
+          {
+            "id": "938561503127285771",
+            "name": "new role",
+            "color": null,
+            "position": 18
+          },
+          {
+            "id": "1508892214699491610",
+            "name": "Unanswered questions notifications",
+            "color": null,
+            "position": 4
+          },
+          {
+            "id": "1508892737242665101",
+            "name": "spam alerts",
+            "color": "#E91E63",
+            "position": 3
+          },
+          {
+            "id": "1508892852074057900",
+            "name": "general notifications",
+            "color": null,
+            "position": 2
+          },
+          {
+            "id": "1509585200739254362",
+            "name": "rag project member",
+            "color": null,
+            "position": 1
+          }
+        ],
+        "avatarUrl": "https://cdn.discordapp.com/embed/avatars/2.png"
+      },
+      "attachments": [],
+      "embeds": [],
+      "stickers": [],
+      "reactions": [],
+      "mentions": [
+        {
+          "id": "907836348986191922",
+          "name": "pa3_p",
+          "discriminator": "0000",
+          "nickname": "Pwin",
+          "color": null,
+          "isBot": false,
+          "roles": [],
+          "avatarUrl": "https://cdn.discordapp.com/embed/avatars/0.png"
+        }
+      ],
+      "reference": {
+        "type": "Default",
+        "messageId": "1433336786628907028",
+        "channelId": "1425303525453332582",
+        "guildId": "853099205206999050"
+      },
+      "inlineEmojis": []
+    },
+    {
+      "id": "1437137512211677266",
+      "type": "Reply",
+      "timestamp": "2025-11-09T11:51:23.635-06:00",
+      "timestampEdited": null,
+      "callEndedTimestamp": null,
+      "isPinned": false,
+      "content": "Happy to join that train as I have also some workflows and use cases in place.",
+      "author": {
+        "id": "1065336892310175815",
+        "name": "michigoetz",
+        "discriminator": "0000",
+        "nickname": "michigoetz",
+        "color": null,
+        "isBot": false,
+        "roles": [],
+        "avatarUrl": "https://cdn.discordapp.com/embed/avatars/1.png"
+      },
+      "attachments": [],
+      "embeds": [],
+      "stickers": [],
+      "reactions": [],
+      "mentions": [
+        {
+          "id": "790967144778956851",
+          "name": "caliman9853",
+          "discriminator": "0000",
+          "nickname": "CaliMan",
+          "color": "#E74C3C",
+          "isBot": false,
+          "roles": [
+            {
+              "id": "893548412081934346",
+              "name": "ReadMe Channel",
+              "color": "#E74C3C",
+              "position": 19
+            },
+            {
+              "id": "938561503127285771",
+              "name": "new role",
+              "color": null,
+              "position": 18
+            },
+            {
+              "id": "1508892214699491610",
+              "name": "Unanswered questions notifications",
+              "color": null,
+              "position": 4
+            },
+            {
+              "id": "1508892737242665101",
+              "name": "spam alerts",
+              "color": "#E91E63",
+              "position": 3
+            },
+            {
+              "id": "1508892852074057900",
+              "name": "general notifications",
+              "color": null,
+              "position": 2
+            },
+            {
+              "id": "1509585200739254362",
+              "name": "rag project member",
+              "color": null,
+              "position": 1
+            }
+          ],
+          "avatarUrl": "https://cdn.discordapp.com/embed/avatars/2.png"
+        }
+      ],
+      "reference": {
+        "type": "Default",
+        "messageId": "1433450327759261779",
+        "channelId": "1425303525453332582",
+        "guildId": "853099205206999050"
+      },
+      "inlineEmojis": []
+    },
+    {
+      "id": "1447994742377025657",
+      "type": "Default",
+      "timestamp": "2025-12-09T10:54:09.024-06:00",
+      "timestampEdited": null,
+      "callEndedTimestamp": null,
+      "isPinned": false,
+      "content": "I have a few things posted in #ai-for-tpms, I've been automating a lot of the busy work and using it to help accelerate information gather and giving me better insights to make decisions with it... along with content creation, reports, docs, decks, etc... and building personas to review and give me brutal feedback on work",
+      "author": {
+        "id": "150071474063933440",
+        "name": "paytun",
+        "discriminator": "0000",
+        "nickname": "paytun",
+        "color": "#25C059",
+        "isBot": false,
+        "roles": [
+          {
+            "id": "864371622231801856",
+            "name": "Moderator",
+            "color": "#25C059",
+            "position": 25
+          },
+          {
+            "id": "888509975440289873",
+            "name": "Server Booster",
+            "color": "#F47FFF",
+            "position": 20
+          },
+          {
+            "id": "893548412081934346",
+            "name": "ReadMe Channel",
+            "color": "#E74C3C",
+            "position": 19
+          },
+          {
+            "id": "1178049214299779092",
+            "name": "Manage Users",
+            "color": "#2ECC71",
+            "position": 6
+          }
+        ],
+        "avatarUrl": "https://cdn.discordapp.com/guilds/853099205206999050/users/150071474063933440/avatars/2ab4cd4390ea031d5bc6e498373ef74f.png?size=512"
+      },
+      "attachments": [],
+      "embeds": [],
+      "stickers": [],
+      "reactions": [
+        {
+          "emoji": {
+            "id": "",
+            "name": "✌️",
+            "code": "v",
+            "isAnimated": false,
+            "imageUrl": "https://cdn.jsdelivr.net/gh/twitter/twemoji@latest/assets/svg/270c.svg"
+          },
+          "count": 1,
+          "users": [
+            {
+              "id": "907836348986191922",
+              "name": "pa3_p",
+              "discriminator": "0000",
+              "nickname": "Pwin",
+              "color": null,
+              "isBot": false,
+              "avatarUrl": "https://cdn.discordapp.com/embed/avatars/0.png"
+            }
+          ]
+        }
+      ],
+      "mentions": [],
+      "inlineEmojis": []
+    },
+    {
+      "id": "1447995108212609056",
+      "type": "Default",
+      "timestamp": "2025-12-09T10:55:36.246-06:00",
+      "timestampEdited": null,
+      "callEndedTimestamp": null,
+      "isPinned": false,
+      "content": "vs code w/ gh copilot + mcp is an amazing toolset right now",
+      "author": {
+        "id": "150071474063933440",
+        "name": "paytun",
+        "discriminator": "0000",
+        "nickname": "paytun",
+        "color": "#25C059",
+        "isBot": false,
+        "roles": [
+          {
+            "id": "864371622231801856",
+            "name": "Moderator",
+            "color": "#25C059",
+            "position": 25
+          },
+          {
+            "id": "888509975440289873",
+            "name": "Server Booster",
+            "color": "#F47FFF",
+            "position": 20
+          },
+          {
+            "id": "893548412081934346",
+            "name": "ReadMe Channel",
+            "color": "#E74C3C",
+            "position": 19
+          },
+          {
+            "id": "1178049214299779092",
+            "name": "Manage Users",
+            "color": "#2ECC71",
+            "position": 6
+          }
+        ],
+        "avatarUrl": "https://cdn.discordapp.com/guilds/853099205206999050/users/150071474063933440/avatars/2ab4cd4390ea031d5bc6e498373ef74f.png?size=512"
+      },
+      "attachments": [],
+      "embeds": [],
+      "stickers": [],
+      "reactions": [],
+      "mentions": [],
+      "inlineEmojis": []
+    }
+  ],
+  "messageCount": 11
+}

@@ -1,0 +1,313 @@
+{
+  "guild": {
+    "id": "853099205206999050",
+    "name": "TPMs unite",
+    "iconUrl": "https://cdn.discordapp.com/icons/853099205206999050/472b55453e54d59cad3b3fc6215992a5.png?size=512"
+  },
+  "channel": {
+    "id": "1134691933449621565",
+    "type": "GuildPublicThread",
+    "categoryId": "1134690339043692704",
+    "category": "forum-discussion",
+    "name": "Test post for the new forum",
+    "topic": null
+  },
+  "dateRange": {
+    "after": null,
+    "before": null
+  },
+  "exportedAt": "2026-05-29T13:46:55.930905-05:00",
+  "messages": [
+    {
+      "id": "1134691933449621565",
+      "type": "Default",
+      "timestamp": "2023-07-28T22:40:38.491-05:00",
+      "timestampEdited": null,
+      "callEndedTimestamp": null,
+      "isPinned": false,
+      "content": "Testing the new community forum feature",
+      "author": {
+        "id": "790967144778956851",
+        "name": "caliman9853",
+        "discriminator": "0000",
+        "nickname": "CaliMan",
+        "color": "#E74C3C",
+        "isBot": false,
+        "roles": [
+          {
+            "id": "893548412081934346",
+            "name": "ReadMe Channel",
+            "color": "#E74C3C",
+            "position": 19
+          },
+          {
+            "id": "938561503127285771",
+            "name": "new role",
+            "color": null,
+            "position": 18
+          },
+          {
+            "id": "1508892214699491610",
+            "name": "Unanswered questions notifications",
+            "color": null,
+            "position": 4
+          },
+          {
+            "id": "1508892737242665101",
+            "name": "spam alerts",
+            "color": "#E91E63",
+            "position": 3
+          },
+          {
+            "id": "1508892852074057900",
+            "name": "general notifications",
+            "color": null,
+            "position": 2
+          },
+          {
+            "id": "1509585200739254362",
+            "name": "rag project member",
+            "color": null,
+            "position": 1
+          }
+        ],
+        "avatarUrl": "https://cdn.discordapp.com/embed/avatars/2.png"
+      },
+      "attachments": [],
+      "embeds": [],
+      "stickers": [],
+      "reactions": [
+        {
+          "emoji": {
+            "id": "",
+            "name": "\uD83D\uDC4D",
+            "code": "thumbsup",
+            "isAnimated": false,
+            "imageUrl": "https://cdn.jsdelivr.net/gh/twitter/twemoji@latest/assets/svg/1f44d.svg"
+          },
+          "count": 9,
+          "users": [
+            {
+              "id": "150071474063933440",
+              "name": "paytun",
+              "discriminator": "0000",
+              "nickname": "paytun",
+              "color": null,
+              "isBot": false,
+              "avatarUrl": "https://cdn.discordapp.com/avatars/150071474063933440/a34f3e02f25650e71d977484ae580f05.png?size=512"
+            },
+            {
+              "id": "350859563291115520",
+              "name": "m007averick",
+              "discriminator": "0000",
+              "nickname": "m007averick",
+              "color": null,
+              "isBot": false,
+              "avatarUrl": "https://cdn.discordapp.com/embed/avatars/0.png"
+            },
+            {
+              "id": "531969324450185237",
+              "name": "pitbull11111",
+              "discriminator": "0000",
+              "nickname": "pitbull11111",
+              "color": null,
+              "isBot": false,
+              "avatarUrl": "https://cdn.discordapp.com/embed/avatars/3.png"
+            },
+            {
+              "id": "811787590801424454",
+              "name": "ztpm",
+              "discriminator": "0000",
+              "nickname": "Zhanat",
+              "color": null,
+              "isBot": false,
+              "avatarUrl": "https://cdn.discordapp.com/avatars/811787590801424454/03d2311e5337267dd12770c83f0e6855.png?size=512"
+            },
+            {
+              "id": "813418044180660294",
+              "name": "benbeinglass",
+              "discriminator": "0000",
+              "nickname": "BenB",
+              "color": null,
+              "isBot": false,
+              "avatarUrl": "https://cdn.discordapp.com/embed/avatars/3.png"
+            },
+            {
+              "id": "821540270113161248",
+              "name": "worldpeaceful",
+              "discriminator": "0000",
+              "nickname": "peaceful",
+              "color": null,
+              "isBot": false,
+              "avatarUrl": "https://cdn.discordapp.com/embed/avatars/3.png"
+            },
+            {
+              "id": "822546052514709534",
+              "name": ".17mia",
+              "discriminator": "0000",
+              "nickname": "17MIA",
+              "color": null,
+              "isBot": false,
+              "avatarUrl": "https://cdn.discordapp.com/avatars/822546052514709534/cd1e61701c0bb304ad6774a0376907b4.png?size=512"
+            },
+            {
+              "id": "904817838194315284",
+              "name": "becalmbekind",
+              "discriminator": "0000",
+              "nickname": "becalmbekind",
+              "color": null,
+              "isBot": false,
+              "avatarUrl": "https://cdn.discordapp.com/embed/avatars/4.png"
+            },
+            {
+              "id": "987389704011939860",
+              "name": "lg2673",
+              "discriminator": "0000",
+              "nickname": "LG",
+              "color": null,
+              "isBot": false,
+              "avatarUrl": "https://cdn.discordapp.com/avatars/987389704011939860/6fdc1d66352b928bcfaa16f72e0da047.png?size=512"
+            }
+          ]
+        }
+      ],
+      "mentions": [],
+      "inlineEmojis": []
+    },
+    {
+      "id": "1134904131375611978",
+      "type": "Default",
+      "timestamp": "2023-07-29T12:43:50.419-05:00",
+      "timestampEdited": null,
+      "callEndedTimestamp": null,
+      "isPinned": false,
+      "content": "Working!",
+      "author": {
+        "id": "150071474063933440",
+        "name": "paytun",
+        "discriminator": "0000",
+        "nickname": "paytun",
+        "color": "#25C059",
+        "isBot": false,
+        "roles": [
+          {
+            "id": "864371622231801856",
+            "name": "Moderator",
+            "color": "#25C059",
+            "position": 25
+          },
+          {
+            "id": "888509975440289873",
+            "name": "Server Booster",
+            "color": "#F47FFF",
+            "position": 20
+          },
+          {
+            "id": "893548412081934346",
+            "name": "ReadMe Channel",
+            "color": "#E74C3C",
+            "position": 19
+          },
+          {
+            "id": "1178049214299779092",
+            "name": "Manage Users",
+            "color": "#2ECC71",
+            "position": 6
+          }
+        ],
+        "avatarUrl": "https://cdn.discordapp.com/guilds/853099205206999050/users/150071474063933440/avatars/2ab4cd4390ea031d5bc6e498373ef74f.png?size=512"
+      },
+      "attachments": [],
+      "embeds": [],
+      "stickers": [],
+      "reactions": [
+        {
+          "emoji": {
+            "id": "",
+            "name": "❤️",
+            "code": "heart",
+            "isAnimated": false,
+            "imageUrl": "https://cdn.jsdelivr.net/gh/twitter/twemoji@latest/assets/svg/2764.svg"
+          },
+          "count": 1,
+          "users": [
+            {
+              "id": "790967144778956851",
+              "name": "caliman9853",
+              "discriminator": "0000",
+              "nickname": "CaliMan",
+              "color": "#E74C3C",
+              "isBot": false,
+              "avatarUrl": "https://cdn.discordapp.com/embed/avatars/2.png"
+            }
+          ]
+        }
+      ],
+      "mentions": [],
+      "inlineEmojis": []
+    },
+    {
+      "id": "1134917655615242281",
+      "type": "Default",
+      "timestamp": "2023-07-29T13:37:34.849-05:00",
+      "timestampEdited": null,
+      "callEndedTimestamp": null,
+      "isPinned": false,
+      "content": "Can anybody try to start a new forum discussion?",
+      "author": {
+        "id": "790967144778956851",
+        "name": "caliman9853",
+        "discriminator": "0000",
+        "nickname": "CaliMan",
+        "color": "#E74C3C",
+        "isBot": false,
+        "roles": [
+          {
+            "id": "893548412081934346",
+            "name": "ReadMe Channel",
+            "color": "#E74C3C",
+            "position": 19
+          },
+          {
+            "id": "938561503127285771",
+            "name": "new role",
+            "color": null,
+            "position": 18
+          },
+          {
+            "id": "1508892214699491610",
+            "name": "Unanswered questions notifications",
+            "color": null,
+            "position": 4
+          },
+          {
+            "id": "1508892737242665101",
+            "name": "spam alerts",
+            "color": "#E91E63",
+            "position": 3
+          },
+          {
+            "id": "1508892852074057900",
+            "name": "general notifications",
+            "color": null,
+            "position": 2
+          },
+          {
+            "id": "1509585200739254362",
+            "name": "rag project member",
+            "color": null,
+            "position": 1
+          }
+        ],
+        "avatarUrl": "https://cdn.discordapp.com/embed/avatars/2.png"
+      },
+      "attachments": [],
+      "embeds": [],
+      "stickers": [],
+      "reactions": [],
+      "mentions": [],
+      "inlineEmojis": []
+    }
+  ],
+  "messageCount": 3
+}

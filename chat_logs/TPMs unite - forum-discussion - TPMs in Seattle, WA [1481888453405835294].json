@@ -1,0 +1,140 @@
+{
+  "guild": {
+    "id": "853099205206999050",
+    "name": "TPMs unite",
+    "iconUrl": "https://cdn.discordapp.com/icons/853099205206999050/472b55453e54d59cad3b3fc6215992a5.png?size=512"
+  },
+  "channel": {
+    "id": "1481888453405835294",
+    "type": "GuildPublicThread",
+    "categoryId": "1134690339043692704",
+    "category": "forum-discussion",
+    "name": "TPMs in Seattle, WA",
+    "topic": null
+  },
+  "dateRange": {
+    "after": null,
+    "before": null
+  },
+  "exportedAt": "2026-05-29T13:44:53.792378-05:00",
+  "messages": [
+    {
+      "id": "1481888453405835294",
+      "type": "Default",
+      "timestamp": "2026-03-13T00:35:39.448-05:00",
+      "timestampEdited": "2026-03-13T00:36:55.415-05:00",
+      "callEndedTimestamp": null,
+      "isPinned": false,
+      "content": "We’re currently looking for a couple of TPMs in the Seattle, WA area. If you have 5+ years of TPM experience and are interested in new opportunities, please send me your profile or resume. #job-openings",
+      "author": {
+        "id": "1311688844349018125",
+        "name": "skj004",
+        "discriminator": "0000",
+        "nickname": "SKJ",
+        "color": null,
+        "isBot": false,
+        "roles": [],
+        "avatarUrl": "https://cdn.discordapp.com/embed/avatars/5.png"
+      },
+      "attachments": [],
+      "embeds": [],
+      "stickers": [],
+      "reactions": [
+        {
+          "emoji": {
+            "id": "",
+            "name": "\uD83D\uDC4D",
+            "code": "thumbsup",
+            "isAnimated": false,
+            "imageUrl": "https://cdn.jsdelivr.net/gh/twitter/twemoji@latest/assets/svg/1f44d.svg"
+          },
+          "count": 2,
+          "users": [
+            {
+              "id": "880458335265095691",
+              "name": "burrdurrkay",
+              "discriminator": "0000",
+              "nickname": "burrdurrkay",
+              "color": null,
+              "isBot": false,
+              "avatarUrl": "https://cdn.discordapp.com/avatars/880458335265095691/a27b9b4d1fb0dd86f2aaaa60494d938f.png?size=512"
+            },
+            {
+              "id": "1050499929728102430",
+              "name": "indirab",
+              "discriminator": "0000",
+              "nickname": "Indira Bhowmick",
+              "color": null,
+              "isBot": false,
+              "avatarUrl": "https://cdn.discordapp.com/embed/avatars/2.png"
+            }
+          ]
+        }
+      ],
+      "mentions": [],
+      "inlineEmojis": []
+    },
+    {
+      "id": "1507435181412188320",
+      "type": "Default",
+      "timestamp": "2026-05-22T12:29:14.04-05:00",
+      "timestampEdited": null,
+      "callEndedTimestamp": null,
+      "isPinned": false,
+      "content": "I am looking for Senior or Staff TPM role",
+      "author": {
+        "id": "1507430920595050650",
+        "name": "tony_60144",
+        "discriminator": "0000",
+        "nickname": "StaffTPM",
+        "color": null,
+        "isBot": false,
+        "roles": [],
+        "avatarUrl": "https://cdn.discordapp.com/embed/avatars/2.png"
+      },
+      "attachments": [],
+      "embeds": [],
+      "stickers": [],
+      "reactions": [],
+      "mentions": [],
+      "inlineEmojis": []
+    },
+    {
+      "id": "1509161240977604650",
+      "type": "Default",
+      "timestamp": "2026-05-27T06:47:58.709-05:00",
+      "timestampEdited": null,
+      "callEndedTimestamp": null,
+      "isPinned": false,
+      "content": "Hi @SKJ , I have 10+ years of US experience as a TPM including startups and companies like Amazon and Expedia.  I am interested in being considered for these roles. Can you please share the job description and where should I send you my resume?",
+      "author": {
+        "id": "1396015946954571876",
+        "name": "zen_lynx_50522",
+        "discriminator": "0000",
+        "nickname": "Zen",
+        "color": null,
+        "isBot": false,
+        "roles": [],
+        "avatarUrl": "https://cdn.discordapp.com/embed/avatars/0.png"
+      },
+      "attachments": [],
+      "embeds": [],
+      "stickers": [],
+      "reactions": [],
+      "mentions": [
+        {
+          "id": "1311688844349018125",
+          "name": "skj004",
+          "discriminator": "0000",
+          "nickname": "SKJ",
+          "color": null,
+          "isBot": false,
+          "roles": [],
+          "avatarUrl": "https://cdn.discordapp.com/embed/avatars/5.png"
+        }
+      ],
+      "inlineEmojis": []
+    }
+  ],
+  "messageCount": 3
+}

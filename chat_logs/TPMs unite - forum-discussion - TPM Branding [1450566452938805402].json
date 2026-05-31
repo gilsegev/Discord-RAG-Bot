@@ -1,0 +1,438 @@
+{
+  "guild": {
+    "id": "853099205206999050",
+    "name": "TPMs unite",
+    "iconUrl": "https://cdn.discordapp.com/icons/853099205206999050/472b55453e54d59cad3b3fc6215992a5.png?size=512"
+  },
+  "channel": {
+    "id": "1450566452938805402",
+    "type": "GuildPublicThread",
+    "categoryId": "1134690339043692704",
+    "category": "forum-discussion",
+    "name": "TPM Branding",
+    "topic": null
+  },
+  "dateRange": {
+    "after": null,
+    "before": null
+  },
+  "exportedAt": "2026-05-29T13:44:56.8799602-05:00",
+  "messages": [
+    {
+      "id": "1450566452938805402",
+      "type": "Default",
+      "timestamp": "2025-12-16T13:13:12.602-06:00",
+      "timestampEdited": null,
+      "callEndedTimestamp": null,
+      "isPinned": false,
+      "content": "What are good examples of brand building you have seen from TPM functions, mostly for external audiences?",
+      "author": {
+        "id": "858824476828106772",
+        "name": "arav1nd",
+        "discriminator": "0000",
+        "nickname": "AG",
+        "color": "#25C059",
+        "isBot": false,
+        "roles": [
+          {
+            "id": "864371622231801856",
+            "name": "Moderator",
+            "color": "#25C059",
+            "position": 25
+          },
+          {
+            "id": "888509975440289873",
+            "name": "Server Booster",
+            "color": "#F47FFF",
+            "position": 20
+          },
+          {
+            "id": "893548412081934346",
+            "name": "ReadMe Channel",
+            "color": "#E74C3C",
+            "position": 19
+          },
+          {
+            "id": "1178049214299779092",
+            "name": "Manage Users",
+            "color": "#2ECC71",
+            "position": 6
+          }
+        ],
+        "avatarUrl": "https://cdn.discordapp.com/avatars/858824476828106772/6eac6e7cac939345c3a4149e70f37e86.png?size=512"
+      },
+      "attachments": [],
+      "embeds": [],
+      "stickers": [],
+      "reactions": [],
+      "mentions": [],
+      "inlineEmojis": []
+    },
+    {
+      "id": "1450577269339979798",
+      "type": "Default",
+      "timestamp": "2025-12-16T13:56:11.433-06:00",
+      "timestampEdited": null,
+      "callEndedTimestamp": null,
+      "isPinned": false,
+      "content": "Speaking at major industry conferences. This is from my experience in Space Situational Awareness.",
+      "author": {
+        "id": "1209258646895329281",
+        "name": "vns2024",
+        "discriminator": "0000",
+        "nickname": "VA",
+        "color": null,
+        "isBot": false,
+        "roles": [],
+        "avatarUrl": "https://cdn.discordapp.com/avatars/1209258646895329281/9aeccd2a727dc14d26739f0eb97125b8.png?size=512"
+      },
+      "attachments": [],
+      "embeds": [],
+      "stickers": [],
+      "reactions": [],
+      "mentions": [],
+      "inlineEmojis": []
+    },
+    {
+      "id": "1450577544964345998",
+      "type": "Default",
+      "timestamp": "2025-12-16T13:57:17.147-06:00",
+      "timestampEdited": "2025-12-16T14:14:38.161-06:00",
+      "callEndedTimestamp": null,
+      "isPinned": false,
+      "content": "also participation in blog posts, technical articles, linkedin posts from industry experts. Engagement which really showcases domain expertise",
+      "author": {
+        "id": "1209258646895329281",
+        "name": "vns2024",
+        "discriminator": "0000",
+        "nickname": "VA",
+        "color": null,
+        "isBot": false,
+        "roles": [],
+        "avatarUrl": "https://cdn.discordapp.com/avatars/1209258646895329281/9aeccd2a727dc14d26739f0eb97125b8.png?size=512"
+      },
+      "attachments": [],
+      "embeds": [],
+      "stickers": [],
+      "reactions": [
+        {
+          "emoji": {
+            "id": "",
+            "name": "\uD83D\uDC46",
+            "code": "point_up_2",
+            "isAnimated": false,
+            "imageUrl": "https://cdn.jsdelivr.net/gh/twitter/twemoji@latest/assets/svg/1f446.svg"
+          },
+          "count": 2,
+          "users": [
+            {
+              "id": "930336844015611965",
+              "name": "scalability1",
+              "discriminator": "0000",
+              "nickname": "scalability1",
+              "color": null,
+              "isBot": false,
+              "avatarUrl": "https://cdn.discordapp.com/embed/avatars/2.png"
+            },
+            {
+              "id": "1070868669372059729",
+              "name": "studentoflife9653",
+              "discriminator": "0000",
+              "nickname": "studentoflife2023",
+              "color": null,
+              "isBot": false,
+              "avatarUrl": "https://cdn.discordapp.com/embed/avatars/2.png"
+            }
+          ]
+        }
+      ],
+      "mentions": [],
+      "inlineEmojis": []
+    },
+    {
+      "id": "1450585697500004363",
+      "type": "Default",
+      "timestamp": "2025-12-16T14:29:40.863-06:00",
+      "timestampEdited": null,
+      "callEndedTimestamp": null,
+      "isPinned": false,
+      "content": "From a TPM lens, brand building usually shows up through execution. Things like running flawless large-scale launches with no customer impact, setting up clear customer-facing release readiness and comms, making partner integrations smooth and predictable, and leading strong incident response with transparent postmortems all build external trust. Over time, customers and partners associate the brand with reliability, scale, and operational maturity.",
+      "author": {
+        "id": "1369114689115783268",
+        "name": "sree08202",
+        "discriminator": "0000",
+        "nickname": "Sri D",
+        "color": null,
+        "isBot": false,
+        "roles": [],
+        "avatarUrl": "https://cdn.discordapp.com/embed/avatars/0.png"
+      },
+      "attachments": [],
+      "embeds": [],
+      "stickers": [],
+      "reactions": [],
+      "mentions": [],
+      "inlineEmojis": []
+    },
+    {
+      "id": "1450630528519635198",
+      "type": "Default",
+      "timestamp": "2025-12-16T17:27:49.411-06:00",
+      "timestampEdited": null,
+      "callEndedTimestamp": null,
+      "isPinned": false,
+      "content": "I think on scenario is how incidents are handled. Coordination, clear leadership communication, and postmortems with followup to close all open AI go a long way in building trust externally. Those wins and effort often stick more than success announcements.",
+      "author": {
+        "id": "921916180309086250",
+        "name": "illusionustpanda",
+        "discriminator": "0000",
+        "nickname": "illusionustpanda",
+        "color": null,
+        "isBot": false,
+        "roles": [],
+        "avatarUrl": "https://cdn.discordapp.com/embed/avatars/4.png"
+      },
+      "attachments": [],
+      "embeds": [],
+      "stickers": [],
+      "reactions": [],
+      "mentions": [],
+      "inlineEmojis": []
+    },
+    {
+      "id": "1450630698791600301",
+      "type": "Default",
+      "timestamp": "2025-12-16T17:28:30.007-06:00",
+      "timestampEdited": null,
+      "callEndedTimestamp": null,
+      "isPinned": false,
+      "content": "Another example I’ve seen is strong impact when TPMs help translate execution into external stories, example contributing to blogs, case studies, or conference talks that explain how complex systems were built or scaled. That combination of solid execution plus storytelling builds trust.",
+      "author": {
+        "id": "921916180309086250",
+        "name": "illusionustpanda",
+        "discriminator": "0000",
+        "nickname": "illusionustpanda",
+        "color": null,
+        "isBot": false,
+        "roles": [],
+        "avatarUrl": "https://cdn.discordapp.com/embed/avatars/4.png"
+      },
+      "attachments": [],
+      "embeds": [],
+      "stickers": [],
+      "reactions": [],
+      "mentions": [],
+      "inlineEmojis": []
+    },
+    {
+      "id": "1450664384031621221",
+      "type": "Reply",
+      "timestamp": "2025-12-16T19:42:21.194-06:00",
+      "timestampEdited": null,
+      "callEndedTimestamp": null,
+      "isPinned": false,
+      "content": "more interested in this .. have you seen specific examples that left an impression or worked well for what they were trying to achieve?",
+      "author": {
+        "id": "858824476828106772",
+        "name": "arav1nd",
+        "discriminator": "0000",
+        "nickname": "AG",
+        "color": "#25C059",
+        "isBot": false,
+        "roles": [
+          {
+            "id": "864371622231801856",
+            "name": "Moderator",
+            "color": "#25C059",
+            "position": 25
+          },
+          {
+            "id": "888509975440289873",
+            "name": "Server Booster",
+            "color": "#F47FFF",
+            "position": 20
+          },
+          {
+            "id": "893548412081934346",
+            "name": "ReadMe Channel",
+            "color": "#E74C3C",
+            "position": 19
+          },
+          {
+            "id": "1178049214299779092",
+            "name": "Manage Users",
+            "color": "#2ECC71",
+            "position": 6
+          }
+        ],
+        "avatarUrl": "https://cdn.discordapp.com/avatars/858824476828106772/6eac6e7cac939345c3a4149e70f37e86.png?size=512"
+      },
+      "attachments": [],
+      "embeds": [],
+      "stickers": [],
+      "reactions": [],
+      "mentions": [
+        {
+          "id": "921916180309086250",
+          "name": "illusionustpanda",
+          "discriminator": "0000",
+          "nickname": "illusionustpanda",
+          "color": null,
+          "isBot": false,
+          "roles": [],
+          "avatarUrl": "https://cdn.discordapp.com/embed/avatars/4.png"
+        }
+      ],
+      "reference": {
+        "type": "Default",
+        "messageId": "1450630698791600301",
+        "channelId": "1450566452938805402",
+        "guildId": "853099205206999050"
+      },
+      "inlineEmojis": []
+    },
+    {
+      "id": "1452780642864463873",
+      "type": "Reply",
+      "timestamp": "2025-12-22T15:51:36.618-06:00",
+      "timestampEdited": null,
+      "callEndedTimestamp": null,
+      "isPinned": false,
+      "content": "An example I’ve worked on is when the similar operational issue keeps coming up. Instead of just fixing each incident, I aggregated the data, identify the systemic gap, and then shipped an update with updated docs, a troubleshooting guide, and a blog post explaining the failure modes and architectural changes. That kind of “we learned + here’s what changed” storytelling builds real trust.",
+      "author": {
+        "id": "921916180309086250",
+        "name": "illusionustpanda",
+        "discriminator": "0000",
+        "nickname": "illusionustpanda",
+        "color": null,
+        "isBot": false,
+        "roles": [],
+        "avatarUrl": "https://cdn.discordapp.com/embed/avatars/4.png"
+      },
+      "attachments": [],
+      "embeds": [],
+      "stickers": [],
+      "reactions": [],
+      "mentions": [
+        {
+          "id": "858824476828106772",
+          "name": "arav1nd",
+          "discriminator": "0000",
+          "nickname": "AG",
+          "color": "#25C059",
+          "isBot": false,
+          "roles": [
+            {
+              "id": "864371622231801856",
+              "name": "Moderator",
+              "color": "#25C059",
+              "position": 25
+            },
+            {
+              "id": "888509975440289873",
+              "name": "Server Booster",
+              "color": "#F47FFF",
+              "position": 20
+            },
+            {
+              "id": "893548412081934346",
+              "name": "ReadMe Channel",
+              "color": "#E74C3C",
+              "position": 19
+            },
+            {
+              "id": "1178049214299779092",
+              "name": "Manage Users",
+              "color": "#2ECC71",
+              "position": 6
+            }
+          ],
+          "avatarUrl": "https://cdn.discordapp.com/avatars/858824476828106772/6eac6e7cac939345c3a4149e70f37e86.png?size=512"
+        }
+      ],
+      "reference": {
+        "type": "Default",
+        "messageId": "1450664384031621221",
+        "channelId": "1450566452938805402",
+        "guildId": "853099205206999050"
+      },
+      "inlineEmojis": []
+    },
+    {
+      "id": "1452780814013169807",
+      "type": "Default",
+      "timestamp": "2025-12-22T15:52:17.423-06:00",
+      "timestampEdited": null,
+      "callEndedTimestamp": null,
+      "isPinned": false,
+      "content": "In one scenario, such an approach led to the development of a new feature.",
+      "author": {
+        "id": "921916180309086250",
+        "name": "illusionustpanda",
+        "discriminator": "0000",
+        "nickname": "illusionustpanda",
+        "color": null,
+        "isBot": false,
+        "roles": [],
+        "avatarUrl": "https://cdn.discordapp.com/embed/avatars/4.png"
+      },
+      "attachments": [],
+      "embeds": [],
+      "stickers": [],
+      "reactions": [],
+      "mentions": [],
+      "inlineEmojis": []
+    },
+    {
+      "id": "1452825051807350917",
+      "type": "Default",
+      "timestamp": "2025-12-22T18:48:04.535-06:00",
+      "timestampEdited": null,
+      "callEndedTimestamp": null,
+      "isPinned": false,
+      "content": "Sorry, to be clear - I'm looking for examples of blogs/ forums, etc. where you've been these types of stories being shared",
+      "author": {
+        "id": "858824476828106772",
+        "name": "arav1nd",
+        "discriminator": "0000",
+        "nickname": "AG",
+        "color": "#25C059",
+        "isBot": false,
+        "roles": [
+          {
+            "id": "864371622231801856",
+            "name": "Moderator",
+            "color": "#25C059",
+            "position": 25
+          },
+          {
+            "id": "888509975440289873",
+            "name": "Server Booster",
+            "color": "#F47FFF",
+            "position": 20
+          },
+          {
+            "id": "893548412081934346",
+            "name": "ReadMe Channel",
+            "color": "#E74C3C",
+            "position": 19
+          },
+          {
+            "id": "1178049214299779092",
+            "name": "Manage Users",
+            "color": "#2ECC71",
+            "position": 6
+          }
+        ],
+        "avatarUrl": "https://cdn.discordapp.com/avatars/858824476828106772/6eac6e7cac939345c3a4149e70f37e86.png?size=512"
+      },
+      "attachments": [],
+      "embeds": [],
+      "stickers": [],
+      "reactions": [],
+      "mentions": [],
+      "inlineEmojis": []
+    }
+  ],
+  "messageCount": 10
+}

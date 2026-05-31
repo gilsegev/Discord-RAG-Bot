@@ -1,0 +1,287 @@
+{
+  "guild": {
+    "id": "853099205206999050",
+    "name": "TPMs unite",
+    "iconUrl": "https://cdn.discordapp.com/icons/853099205206999050/472b55453e54d59cad3b3fc6215992a5.png?size=512"
+  },
+  "channel": {
+    "id": "1413078366839504937",
+    "type": "GuildPublicThread",
+    "categoryId": "1134690339043692704",
+    "category": "forum-discussion",
+    "name": "Do You still Code?",
+    "topic": null
+  },
+  "dateRange": {
+    "after": null,
+    "before": null
+  },
+  "exportedAt": "2026-05-29T13:45:07.3788265-05:00",
+  "messages": [
+    {
+      "id": "1413078366839504937",
+      "type": "Default",
+      "timestamp": "2025-09-04T03:28:56.381-05:00",
+      "timestampEdited": null,
+      "callEndedTimestamp": null,
+      "isPinned": false,
+      "content": "In my case, I started out as a Java Developer about two decades ago. These days, I still keep in touch with coding - mostly for structuring data, pulling data from APIs for analysis, small automations, or integrations.\n\nWith the rise of AI, I find it amazing that I can now write programs in different languages with much more ease, and even understand or adapt scripts quickly.\n\nI’m curious - what about you?\n\nDo you still code in your TPM role?\n\nIf yes, in what context (automation, data analysis, side projects)?\n\nOr do you prefer to focus purely on leadership and program execution?\n\nWould love to hear your experiences!",
+      "author": {
+        "id": "1409829277557461043",
+        "name": "rrvaluecreator",
+        "discriminator": "0000",
+        "nickname": "RR",
+        "color": null,
+        "isBot": false,
+        "roles": [],
+        "avatarUrl": "https://cdn.discordapp.com/embed/avatars/3.png"
+      },
+      "attachments": [],
+      "embeds": [],
+      "stickers": [],
+      "reactions": [],
+      "mentions": [],
+      "inlineEmojis": []
+    },
+    {
+      "id": "1413221590371663962",
+      "type": "Default",
+      "timestamp": "2025-09-04T12:58:03.532-05:00",
+      "timestampEdited": null,
+      "callEndedTimestamp": null,
+      "isPinned": false,
+      "content": "I don't generally write code nor plan on it. I sometimes read PRs, but not often.\n\nMy team vibecoded a quarterly planning tool while I was out and now I need to maintain it, so now I have to vibecode some. Honestly, it's terribly designed from a UX and data model perspective because they rushed it out to replace the Google Sheets we'd been using previously",
+      "author": {
+        "id": "221701464832081920",
+        "name": "jayama",
+        "discriminator": "0000",
+        "nickname": "LeverageCoach",
+        "color": "#DA004E",
+        "isBot": false,
+        "roles": [
+          {
+            "id": "874426797394100234",
+            "name": "Contributer",
+            "color": "#DA004E",
+            "position": 24
+          }
+        ],
+        "avatarUrl": "https://cdn.discordapp.com/avatars/221701464832081920/3179b193b0942afc8bd9771192cedef2.png?size=512"
+      },
+      "attachments": [],
+      "embeds": [],
+      "stickers": [],
+      "reactions": [
+        {
+          "emoji": {
+            "id": "",
+            "name": "\uD83D\uDC4D",
+            "code": "thumbsup",
+            "isAnimated": false,
+            "imageUrl": "https://cdn.jsdelivr.net/gh/twitter/twemoji@latest/assets/svg/1f44d.svg"
+          },
+          "count": 1,
+          "users": [
+            {
+              "id": "1409829277557461043",
+              "name": "rrvaluecreator",
+              "discriminator": "0000",
+              "nickname": "RR",
+              "color": null,
+              "isBot": false,
+              "avatarUrl": "https://cdn.discordapp.com/embed/avatars/3.png"
+            }
+          ]
+        }
+      ],
+      "mentions": [],
+      "inlineEmojis": []
+    },
+    {
+      "id": "1413221746466619392",
+      "type": "Default",
+      "timestamp": "2025-09-04T12:58:40.748-05:00",
+      "timestampEdited": "2025-09-04T12:59:01.794-05:00",
+      "callEndedTimestamp": null,
+      "isPinned": false,
+      "content": "It's usually not that high leverage for me to write code directly. The planning tool may be the exception",
+      "author": {
+        "id": "221701464832081920",
+        "name": "jayama",
+        "discriminator": "0000",
+        "nickname": "LeverageCoach",
+        "color": "#DA004E",
+        "isBot": false,
+        "roles": [
+          {
+            "id": "874426797394100234",
+            "name": "Contributer",
+            "color": "#DA004E",
+            "position": 24
+          }
+        ],
+        "avatarUrl": "https://cdn.discordapp.com/avatars/221701464832081920/3179b193b0942afc8bd9771192cedef2.png?size=512"
+      },
+      "attachments": [],
+      "embeds": [],
+      "stickers": [],
+      "reactions": [],
+      "mentions": [],
+      "inlineEmojis": []
+    },
+    {
+      "id": "1413421820853485610",
+      "type": "Default",
+      "timestamp": "2025-09-05T02:13:42.199-05:00",
+      "timestampEdited": "2025-09-05T02:14:10.331-05:00",
+      "callEndedTimestamp": null,
+      "isPinned": false,
+      "content": "Nice to hear this. So a website, What is the data source for this, is it integrated to some tools like Jira, GitHub etc.?",
+      "author": {
+        "id": "1409829277557461043",
+        "name": "rrvaluecreator",
+        "discriminator": "0000",
+        "nickname": "RR",
+        "color": null,
+        "isBot": false,
+        "roles": [],
+        "avatarUrl": "https://cdn.discordapp.com/embed/avatars/3.png"
+      },
+      "attachments": [],
+      "embeds": [],
+      "stickers": [],
+      "reactions": [],
+      "mentions": [],
+      "inlineEmojis": []
+    },
+    {
+      "id": "1413534277630693396",
+      "type": "Default",
+      "timestamp": "2025-09-05T09:40:33.984-05:00",
+      "timestampEdited": null,
+      "callEndedTimestamp": null,
+      "isPinned": false,
+      "content": "Effectively just a web front end using a data model stored in Jira",
+      "author": {
+        "id": "221701464832081920",
+        "name": "jayama",
+        "discriminator": "0000",
+        "nickname": "LeverageCoach",
+        "color": "#DA004E",
+        "isBot": false,
+        "roles": [
+          {
+            "id": "874426797394100234",
+            "name": "Contributer",
+            "color": "#DA004E",
+            "position": 24
+          }
+        ],
+        "avatarUrl": "https://cdn.discordapp.com/avatars/221701464832081920/3179b193b0942afc8bd9771192cedef2.png?size=512"
+      },
+      "attachments": [],
+      "embeds": [],
+      "stickers": [],
+      "reactions": [],
+      "mentions": [],
+      "inlineEmojis": []
+    },
+    {
+      "id": "1413609700842537021",
+      "type": "Reply",
+      "timestamp": "2025-09-05T14:40:16.279-05:00",
+      "timestampEdited": null,
+      "callEndedTimestamp": null,
+      "isPinned": false,
+      "content": "got you, nice.",
+      "author": {
+        "id": "1409829277557461043",
+        "name": "rrvaluecreator",
+        "discriminator": "0000",
+        "nickname": "RR",
+        "color": null,
+        "isBot": false,
+        "roles": [],
+        "avatarUrl": "https://cdn.discordapp.com/embed/avatars/3.png"
+      },
+      "attachments": [],
+      "embeds": [],
+      "stickers": [],
+      "reactions": [],
+      "mentions": [
+        {
+          "id": "221701464832081920",
+          "name": "jayama",
+          "discriminator": "0000",
+          "nickname": "LeverageCoach",
+          "color": "#DA004E",
+          "isBot": false,
+          "roles": [
+            {
+              "id": "874426797394100234",
+              "name": "Contributer",
+              "color": "#DA004E",
+              "position": 24
+            }
+          ],
+          "avatarUrl": "https://cdn.discordapp.com/avatars/221701464832081920/3179b193b0942afc8bd9771192cedef2.png?size=512"
+        }
+      ],
+      "reference": {
+        "type": "Default",
+        "messageId": "1413534277630693396",
+        "channelId": "1413078366839504937",
+        "guildId": "853099205206999050"
+      },
+      "inlineEmojis": []
+    },
+    {
+      "id": "1427886812663386294",
+      "type": "Default",
+      "timestamp": "2025-10-15T00:12:24.993-05:00",
+      "timestampEdited": null,
+      "callEndedTimestamp": null,
+      "isPinned": false,
+      "content": "Yes, everyday",
+      "author": {
+        "id": "790413306783334420",
+        "name": "pamomap",
+        "discriminator": "0000",
+        "nickname": "Pamda",
+        "color": null,
+        "isBot": false,
+        "roles": [],
+        "avatarUrl": "https://cdn.discordapp.com/avatars/790413306783334420/b26f54a0ec02f650fe8112b9fe1c40b4.png?size=512"
+      },
+      "attachments": [],
+      "embeds": [],
+      "stickers": [],
+      "reactions": [
+        {
+          "emoji": {
+            "id": "",
+            "name": "\uD83D\uDC4D",
+            "code": "thumbsup",
+            "isAnimated": false,
+            "imageUrl": "https://cdn.jsdelivr.net/gh/twitter/twemoji@latest/assets/svg/1f44d.svg"
+          },
+          "count": 1,
+          "users": [
+            {
+              "id": "1409829277557461043",
+              "name": "rrvaluecreator",
+              "discriminator": "0000",
+              "nickname": "RR",
+              "color": null,
+              "isBot": false,
+              "avatarUrl": "https://cdn.discordapp.com/embed/avatars/3.png"
+            }
+          ]
+        }
+      ],
+      "mentions": [],
+      "inlineEmojis": []
+    }
+  ],
+  "messageCount": 7
+}

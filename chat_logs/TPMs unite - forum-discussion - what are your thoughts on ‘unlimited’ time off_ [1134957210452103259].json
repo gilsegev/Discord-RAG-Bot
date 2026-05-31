@@ -1,0 +1,1775 @@
+{
+  "guild": {
+    "id": "853099205206999050",
+    "name": "TPMs unite",
+    "iconUrl": "https://cdn.discordapp.com/icons/853099205206999050/472b55453e54d59cad3b3fc6215992a5.png?size=512"
+  },
+  "channel": {
+    "id": "1134957210452103259",
+    "type": "GuildPublicThread",
+    "categoryId": "1134690339043692704",
+    "category": "forum-discussion",
+    "name": "what are your thoughts on ‘unlimited’ time off?",
+    "topic": null
+  },
+  "dateRange": {
+    "after": null,
+    "before": null
+  },
+  "exportedAt": "2026-05-29T13:45:11.0540206-05:00",
+  "messages": [
+    {
+      "id": "1134957210452103259",
+      "type": "Default",
+      "timestamp": "2023-07-29T16:14:45.457-05:00",
+      "timestampEdited": null,
+      "callEndedTimestamp": null,
+      "isPinned": false,
+      "content": "Curious how you feel about it?",
+      "author": {
+        "id": "150071474063933440",
+        "name": "paytun",
+        "discriminator": "0000",
+        "nickname": "paytun",
+        "color": "#25C059",
+        "isBot": false,
+        "roles": [
+          {
+            "id": "864371622231801856",
+            "name": "Moderator",
+            "color": "#25C059",
+            "position": 25
+          },
+          {
+            "id": "888509975440289873",
+            "name": "Server Booster",
+            "color": "#F47FFF",
+            "position": 20
+          },
+          {
+            "id": "893548412081934346",
+            "name": "ReadMe Channel",
+            "color": "#E74C3C",
+            "position": 19
+          },
+          {
+            "id": "1178049214299779092",
+            "name": "Manage Users",
+            "color": "#2ECC71",
+            "position": 6
+          }
+        ],
+        "avatarUrl": "https://cdn.discordapp.com/guilds/853099205206999050/users/150071474063933440/avatars/2ab4cd4390ea031d5bc6e498373ef74f.png?size=512"
+      },
+      "attachments": [],
+      "embeds": [],
+      "stickers": [],
+      "reactions": [],
+      "mentions": [],
+      "inlineEmojis": []
+    },
+    {
+      "id": "1134957523359772674",
+      "type": "Default",
+      "timestamp": "2023-07-29T16:16:00.06-05:00",
+      "timestampEdited": "2023-07-29T16:16:29.982-05:00",
+      "callEndedTimestamp": null,
+      "isPinned": false,
+      "content": "Love it. I have it and I take way more vacation than I have been able to anywhere else. My manager insists that we take at least 25 days of vacation per year (not including holidays).",
+      "author": {
+        "id": "795088011950817316",
+        "name": "sullied2915",
+        "discriminator": "0000",
+        "nickname": "sullied",
+        "color": null,
+        "isBot": false,
+        "roles": [],
+        "avatarUrl": "https://cdn.discordapp.com/avatars/795088011950817316/26143c16a879444334b736e53f5276da.png?size=512"
+      },
+      "attachments": [],
+      "embeds": [],
+      "stickers": [],
+      "reactions": [
+        {
+          "emoji": {
+            "id": "",
+            "name": "❤️",
+            "code": "heart",
+            "isAnimated": false,
+            "imageUrl": "https://cdn.jsdelivr.net/gh/twitter/twemoji@latest/assets/svg/2764.svg"
+          },
+          "count": 7,
+          "users": [
+            {
+              "id": "150071474063933440",
+              "name": "paytun",
+              "discriminator": "0000",
+              "nickname": "paytun",
+              "color": "#25C059",
+              "isBot": false,
+              "avatarUrl": "https://cdn.discordapp.com/guilds/853099205206999050/users/150071474063933440/avatars/2ab4cd4390ea031d5bc6e498373ef74f.png?size=512"
+            },
+            {
+              "id": "403638107372519426",
+              "name": "modernpicasso",
+              "discriminator": "0000",
+              "nickname": "modernpicasso",
+              "color": null,
+              "isBot": false,
+              "avatarUrl": "https://cdn.discordapp.com/avatars/403638107372519426/e3ceea22be9bb778219490f4c7d0c51e.png?size=512"
+            },
+            {
+              "id": "481531322674839552",
+              "name": "khaosflo",
+              "discriminator": "0000",
+              "nickname": "khaos_flo",
+              "color": null,
+              "isBot": false,
+              "avatarUrl": "https://cdn.discordapp.com/avatars/481531322674839552/1f0ca542ab4e69730d91594f5d7cfd2c.png?size=512"
+            },
+            {
+              "id": "559835834896089088",
+              "name": "hawk6522",
+              "discriminator": "0000",
+              "nickname": "Hawk",
+              "color": null,
+              "isBot": false,
+              "avatarUrl": "https://cdn.discordapp.com/avatars/559835834896089088/702970a38776b2d1e7f362174aaf4c99.png?size=512"
+            },
+            {
+              "id": "786451794896093184",
+              "name": "amanbawa",
+              "discriminator": "0000",
+              "nickname": "amanbawa",
+              "color": null,
+              "isBot": false,
+              "avatarUrl": "https://cdn.discordapp.com/avatars/786451794896093184/e507404767fe55732c5538b448348131.png?size=512"
+            },
+            {
+              "id": "813418044180660294",
+              "name": "benbeinglass",
+              "discriminator": "0000",
+              "nickname": "BenB",
+              "color": null,
+              "isBot": false,
+              "avatarUrl": "https://cdn.discordapp.com/embed/avatars/3.png"
+            },
+            {
+              "id": "1067925557054021773",
+              "name": "vs2190",
+              "discriminator": "0000",
+              "nickname": "VS",
+              "color": null,
+              "isBot": false,
+              "avatarUrl": "https://cdn.discordapp.com/embed/avatars/1.png"
+            }
+          ]
+        }
+      ],
+      "mentions": [],
+      "inlineEmojis": []
+    },
+    {
+      "id": "1134958207199101141",
+      "type": "Default",
+      "timestamp": "2023-07-29T16:18:43.1-05:00",
+      "timestampEdited": null,
+      "callEndedTimestamp": null,
+      "isPinned": false,
+      "content": "Manager and company dependent.. be disciplined in taking vacation (don't undertake it) if unlimited PTO.\n\nit is big for large companies as they don't have to carry that amount of accured time on the balance sheet",
+      "author": {
+        "id": "821540270113161248",
+        "name": "worldpeaceful",
+        "discriminator": "0000",
+        "nickname": "peaceful",
+        "color": null,
+        "isBot": false,
+        "roles": [],
+        "avatarUrl": "https://cdn.discordapp.com/embed/avatars/3.png"
+      },
+      "attachments": [],
+      "embeds": [],
+      "stickers": [],
+      "reactions": [],
+      "mentions": [],
+      "inlineEmojis": []
+    },
+    {
+      "id": "1134958322693451806",
+      "type": "Default",
+      "timestamp": "2023-07-29T16:19:10.636-05:00",
+      "timestampEdited": null,
+      "callEndedTimestamp": null,
+      "isPinned": false,
+      "content": "Same here at Autodesk. My manager mentioned I can take 5 weeks as a rough guidance. Nowhere to apply, no questions asked - just update the team calendar and stay off the grid. Amazing for mental health breaks and just as a breather when it starts feeling out of control. One of the best things any company can offer their employees.",
+      "author": {
+        "id": "461747559409385472",
+        "name": "ephemera108",
+        "discriminator": "0000",
+        "nickname": "Ephemera",
+        "color": null,
+        "isBot": false,
+        "roles": [],
+        "avatarUrl": "https://cdn.discordapp.com/avatars/461747559409385472/c1ee975506a1574bb4c36ac78eccfb54.png?size=512"
+      },
+      "attachments": [],
+      "embeds": [],
+      "stickers": [],
+      "reactions": [],
+      "mentions": [],
+      "inlineEmojis": []
+    },
+    {
+      "id": "1134959201219792896",
+      "type": "Default",
+      "timestamp": "2023-07-29T16:22:40.093-05:00",
+      "timestampEdited": "2023-07-29T16:39:03.489-05:00",
+      "callEndedTimestamp": null,
+      "isPinned": false,
+      "content": "Only benefits you if leadership utilizes it. Worked couple of places where people took 6-8 weeks off and no body gave a whim. Worked other places where people would attend meetings during pto days.",
+      "author": {
+        "id": "888326239759269958",
+        "name": "misterrightnow",
+        "discriminator": "0000",
+        "nickname": "mrright1",
+        "color": null,
+        "isBot": false,
+        "roles": [],
+        "avatarUrl": "https://cdn.discordapp.com/embed/avatars/2.png"
+      },
+      "attachments": [],
+      "embeds": [],
+      "stickers": [],
+      "reactions": [],
+      "mentions": [],
+      "inlineEmojis": []
+    },
+    {
+      "id": "1134963085220778054",
+      "type": "Default",
+      "timestamp": "2023-07-29T16:38:06.111-05:00",
+      "timestampEdited": null,
+      "callEndedTimestamp": null,
+      "isPinned": false,
+      "content": "It's a nice idea but I think it favors the employer in the end. Most employees probably won't exceed the number of days they'd normally get. I assume the employer also doesn't have to pay back accrued vacation days since none gets accrued?",
+      "author": {
+        "id": "790967144778956851",
+        "name": "caliman9853",
+        "discriminator": "0000",
+        "nickname": "CaliMan",
+        "color": "#E74C3C",
+        "isBot": false,
+        "roles": [
+          {
+            "id": "893548412081934346",
+            "name": "ReadMe Channel",
+            "color": "#E74C3C",
+            "position": 19
+          },
+          {
+            "id": "938561503127285771",
+            "name": "new role",
+            "color": null,
+            "position": 18
+          },
+          {
+            "id": "1508892214699491610",
+            "name": "Unanswered questions notifications",
+            "color": null,
+            "position": 4
+          },
+          {
+            "id": "1508892737242665101",
+            "name": "spam alerts",
+            "color": "#E91E63",
+            "position": 3
+          },
+          {
+            "id": "1508892852074057900",
+            "name": "general notifications",
+            "color": null,
+            "position": 2
+          },
+          {
+            "id": "1509585200739254362",
+            "name": "rag project member",
+            "color": null,
+            "position": 1
+          }
+        ],
+        "avatarUrl": "https://cdn.discordapp.com/embed/avatars/2.png"
+      },
+      "attachments": [],
+      "embeds": [],
+      "stickers": [],
+      "reactions": [
+        {
+          "emoji": {
+            "id": "",
+            "name": "\uD83D\uDCAF",
+            "code": "100",
+            "isAnimated": false,
+            "imageUrl": "https://cdn.jsdelivr.net/gh/twitter/twemoji@latest/assets/svg/1f4af.svg"
+          },
+          "count": 10,
+          "users": [
+            {
+              "id": "150071474063933440",
+              "name": "paytun",
+              "discriminator": "0000",
+              "nickname": "paytun",
+              "color": "#25C059",
+              "isBot": false,
+              "avatarUrl": "https://cdn.discordapp.com/guilds/853099205206999050/users/150071474063933440/avatars/2ab4cd4390ea031d5bc6e498373ef74f.png?size=512"
+            },
+            {
+              "id": "225664482016362496",
+              "name": "psychospam",
+              "discriminator": "0000",
+              "nickname": "psychospam",
+              "color": null,
+              "isBot": false,
+              "avatarUrl": "https://cdn.discordapp.com/avatars/225664482016362496/c62e413d775636c1ae4b88eb8d3b3217.png?size=512"
+            },
+            {
+              "id": "282052155035353088",
+              "name": "indij0",
+              "discriminator": "0000",
+              "nickname": "Indigo",
+              "color": null,
+              "isBot": false,
+              "avatarUrl": "https://cdn.discordapp.com/avatars/282052155035353088/2b473323f79e85eaa853acbe7415d916.png?size=512"
+            },
+            {
+              "id": "481531322674839552",
+              "name": "khaosflo",
+              "discriminator": "0000",
+              "nickname": "khaos_flo",
+              "color": null,
+              "isBot": false,
+              "avatarUrl": "https://cdn.discordapp.com/avatars/481531322674839552/1f0ca542ab4e69730d91594f5d7cfd2c.png?size=512"
+            },
+            {
+              "id": "742817471009914911",
+              "name": "akrock9198",
+              "discriminator": "0000",
+              "nickname": "akrock",
+              "color": null,
+              "isBot": false,
+              "avatarUrl": "https://cdn.discordapp.com/embed/avatars/2.png"
+            },
+            {
+              "id": "821540270113161248",
+              "name": "worldpeaceful",
+              "discriminator": "0000",
+              "nickname": "peaceful",
+              "color": null,
+              "isBot": false,
+              "avatarUrl": "https://cdn.discordapp.com/embed/avatars/3.png"
+            },
+            {
+              "id": "858824476828106772",
+              "name": "arav1nd",
+              "discriminator": "0000",
+              "nickname": "aravind",
+              "color": null,
+              "isBot": false,
+              "avatarUrl": "https://cdn.discordapp.com/avatars/858824476828106772/6eac6e7cac939345c3a4149e70f37e86.png?size=512"
+            },
+            {
+              "id": "968666193206607882",
+              "name": "ardenknoll",
+              "discriminator": "0000",
+              "nickname": "ArdenKnoll",
+              "color": null,
+              "isBot": false,
+              "avatarUrl": "https://cdn.discordapp.com/avatars/968666193206607882/d74435e2300a3ceb01cc31b073b8809c.png?size=512"
+            },
+            {
+              "id": "1067925557054021773",
+              "name": "vs2190",
+              "discriminator": "0000",
+              "nickname": "VS",
+              "color": null,
+              "isBot": false,
+              "avatarUrl": "https://cdn.discordapp.com/embed/avatars/1.png"
+            },
+            {
+              "id": "1120918081120776192",
+              "name": "g2406",
+              "discriminator": "0000",
+              "nickname": "g2406",
+              "color": null,
+              "isBot": false,
+              "avatarUrl": "https://cdn.discordapp.com/embed/avatars/2.png"
+            }
+          ]
+        }
+      ],
+      "mentions": [],
+      "inlineEmojis": []
+    },
+    {
+      "id": "1134963251961135184",
+      "type": "Default",
+      "timestamp": "2023-07-29T16:38:45.865-05:00",
+      "timestampEdited": null,
+      "callEndedTimestamp": null,
+      "isPinned": false,
+      "content": "Employer/manager dependent for sure.",
+      "author": {
+        "id": "795088011950817316",
+        "name": "sullied2915",
+        "discriminator": "0000",
+        "nickname": "sullied",
+        "color": null,
+        "isBot": false,
+        "roles": [],
+        "avatarUrl": "https://cdn.discordapp.com/avatars/795088011950817316/26143c16a879444334b736e53f5276da.png?size=512"
+      },
+      "attachments": [],
+      "embeds": [],
+      "stickers": [],
+      "reactions": [
+        {
+          "emoji": {
+            "id": "",
+            "name": "\uD83D\uDCAF",
+            "code": "100",
+            "isAnimated": false,
+            "imageUrl": "https://cdn.jsdelivr.net/gh/twitter/twemoji@latest/assets/svg/1f4af.svg"
+          },
+          "count": 3,
+          "users": [
+            {
+              "id": "150071474063933440",
+              "name": "paytun",
+              "discriminator": "0000",
+              "nickname": "paytun",
+              "color": "#25C059",
+              "isBot": false,
+              "avatarUrl": "https://cdn.discordapp.com/guilds/853099205206999050/users/150071474063933440/avatars/2ab4cd4390ea031d5bc6e498373ef74f.png?size=512"
+            },
+            {
+              "id": "282052155035353088",
+              "name": "indij0",
+              "discriminator": "0000",
+              "nickname": "Indigo",
+              "color": null,
+              "isBot": false,
+              "avatarUrl": "https://cdn.discordapp.com/avatars/282052155035353088/2b473323f79e85eaa853acbe7415d916.png?size=512"
+            },
+            {
+              "id": "481531322674839552",
+              "name": "khaosflo",
+              "discriminator": "0000",
+              "nickname": "khaos_flo",
+              "color": null,
+              "isBot": false,
+              "avatarUrl": "https://cdn.discordapp.com/avatars/481531322674839552/1f0ca542ab4e69730d91594f5d7cfd2c.png?size=512"
+            }
+          ]
+        }
+      ],
+      "mentions": [],
+      "inlineEmojis": []
+    },
+    {
+      "id": "1134963531054338049",
+      "type": "Reply",
+      "timestamp": "2023-07-29T16:39:52.406-05:00",
+      "timestampEdited": null,
+      "callEndedTimestamp": null,
+      "isPinned": false,
+      "content": "they don't have to carry on balance sheet that's the big benefit.. but if your manager is good as @sullied @Ephemera suggested than it can be great benefit",
+      "author": {
+        "id": "821540270113161248",
+        "name": "worldpeaceful",
+        "discriminator": "0000",
+        "nickname": "peaceful",
+        "color": null,
+        "isBot": false,
+        "roles": [],
+        "avatarUrl": "https://cdn.discordapp.com/embed/avatars/3.png"
+      },
+      "attachments": [],
+      "embeds": [],
+      "stickers": [],
+      "reactions": [],
+      "mentions": [
+        {
+          "id": "461747559409385472",
+          "name": "ephemera108",
+          "discriminator": "0000",
+          "nickname": "Ephemera",
+          "color": null,
+          "isBot": false,
+          "roles": [],
+          "avatarUrl": "https://cdn.discordapp.com/avatars/461747559409385472/c1ee975506a1574bb4c36ac78eccfb54.png?size=512"
+        },
+        {
+          "id": "790967144778956851",
+          "name": "caliman9853",
+          "discriminator": "0000",
+          "nickname": "CaliMan",
+          "color": "#E74C3C",
+          "isBot": false,
+          "roles": [
+            {
+              "id": "893548412081934346",
+              "name": "ReadMe Channel",
+              "color": "#E74C3C",
+              "position": 19
+            },
+            {
+              "id": "938561503127285771",
+              "name": "new role",
+              "color": null,
+              "position": 18
+            },
+            {
+              "id": "1508892214699491610",
+              "name": "Unanswered questions notifications",
+              "color": null,
+              "position": 4
+            },
+            {
+              "id": "1508892737242665101",
+              "name": "spam alerts",
+              "color": "#E91E63",
+              "position": 3
+            },
+            {
+              "id": "1508892852074057900",
+              "name": "general notifications",
+              "color": null,
+              "position": 2
+            },
+            {
+              "id": "1509585200739254362",
+              "name": "rag project member",
+              "color": null,
+              "position": 1
+            }
+          ],
+          "avatarUrl": "https://cdn.discordapp.com/embed/avatars/2.png"
+        },
+        {
+          "id": "795088011950817316",
+          "name": "sullied2915",
+          "discriminator": "0000",
+          "nickname": "sullied",
+          "color": null,
+          "isBot": false,
+          "roles": [],
+          "avatarUrl": "https://cdn.discordapp.com/avatars/795088011950817316/26143c16a879444334b736e53f5276da.png?size=512"
+        }
+      ],
+      "reference": {
+        "type": "Default",
+        "messageId": "1134963085220778054",
+        "channelId": "1134957210452103259",
+        "guildId": "853099205206999050"
+      },
+      "inlineEmojis": []
+    },
+    {
+      "id": "1134963855408250962",
+      "type": "Reply",
+      "timestamp": "2023-07-29T16:41:09.738-05:00",
+      "timestampEdited": null,
+      "callEndedTimestamp": null,
+      "isPinned": false,
+      "content": "Wow that's a nice point.. never thought of it that way... nothing for them to pay back since nothing accrues.",
+      "author": {
+        "id": "461747559409385472",
+        "name": "ephemera108",
+        "discriminator": "0000",
+        "nickname": "Ephemera",
+        "color": null,
+        "isBot": false,
+        "roles": [],
+        "avatarUrl": "https://cdn.discordapp.com/avatars/461747559409385472/c1ee975506a1574bb4c36ac78eccfb54.png?size=512"
+      },
+      "attachments": [],
+      "embeds": [],
+      "stickers": [],
+      "reactions": [],
+      "mentions": [
+        {
+          "id": "790967144778956851",
+          "name": "caliman9853",
+          "discriminator": "0000",
+          "nickname": "CaliMan",
+          "color": "#E74C3C",
+          "isBot": false,
+          "roles": [
+            {
+              "id": "893548412081934346",
+              "name": "ReadMe Channel",
+              "color": "#E74C3C",
+              "position": 19
+            },
+            {
+              "id": "938561503127285771",
+              "name": "new role",
+              "color": null,
+              "position": 18
+            },
+            {
+              "id": "1508892214699491610",
+              "name": "Unanswered questions notifications",
+              "color": null,
+              "position": 4
+            },
+            {
+              "id": "1508892737242665101",
+              "name": "spam alerts",
+              "color": "#E91E63",
+              "position": 3
+            },
+            {
+              "id": "1508892852074057900",
+              "name": "general notifications",
+              "color": null,
+              "position": 2
+            },
+            {
+              "id": "1509585200739254362",
+              "name": "rag project member",
+              "color": null,
+              "position": 1
+            }
+          ],
+          "avatarUrl": "https://cdn.discordapp.com/embed/avatars/2.png"
+        }
+      ],
+      "reference": {
+        "type": "Default",
+        "messageId": "1134963085220778054",
+        "channelId": "1134957210452103259",
+        "guildId": "853099205206999050"
+      },
+      "inlineEmojis": []
+    },
+    {
+      "id": "1134964197726355557",
+      "type": "Default",
+      "timestamp": "2023-07-29T16:42:31.353-05:00",
+      "timestampEdited": null,
+      "callEndedTimestamp": null,
+      "isPinned": false,
+      "content": "Yup and most people are guilted into never taking as much time off if there isn't a culture of taking PTO",
+      "author": {
+        "id": "1120918081120776192",
+        "name": "g2406",
+        "discriminator": "0000",
+        "nickname": "g2406",
+        "color": null,
+        "isBot": false,
+        "roles": [],
+        "avatarUrl": "https://cdn.discordapp.com/embed/avatars/2.png"
+      },
+      "attachments": [],
+      "embeds": [],
+      "stickers": [],
+      "reactions": [],
+      "mentions": [],
+      "inlineEmojis": []
+    },
+    {
+      "id": "1134964545660653599",
+      "type": "Reply",
+      "timestamp": "2023-07-29T16:43:54.307-05:00",
+      "timestampEdited": null,
+      "callEndedTimestamp": null,
+      "isPinned": false,
+      "content": "Need to check on this though. Could be a law that mandates a minimum number of days owed. Sounds like something CA would do \uD83D\uDE42",
+      "author": {
+        "id": "790967144778956851",
+        "name": "caliman9853",
+        "discriminator": "0000",
+        "nickname": "CaliMan",
+        "color": "#E74C3C",
+        "isBot": false,
+        "roles": [
+          {
+            "id": "893548412081934346",
+            "name": "ReadMe Channel",
+            "color": "#E74C3C",
+            "position": 19
+          },
+          {
+            "id": "938561503127285771",
+            "name": "new role",
+            "color": null,
+            "position": 18
+          },
+          {
+            "id": "1508892214699491610",
+            "name": "Unanswered questions notifications",
+            "color": null,
+            "position": 4
+          },
+          {
+            "id": "1508892737242665101",
+            "name": "spam alerts",
+            "color": "#E91E63",
+            "position": 3
+          },
+          {
+            "id": "1508892852074057900",
+            "name": "general notifications",
+            "color": null,
+            "position": 2
+          },
+          {
+            "id": "1509585200739254362",
+            "name": "rag project member",
+            "color": null,
+            "position": 1
+          }
+        ],
+        "avatarUrl": "https://cdn.discordapp.com/embed/avatars/2.png"
+      },
+      "attachments": [],
+      "embeds": [],
+      "stickers": [],
+      "reactions": [],
+      "mentions": [
+        {
+          "id": "461747559409385472",
+          "name": "ephemera108",
+          "discriminator": "0000",
+          "nickname": "Ephemera",
+          "color": null,
+          "isBot": false,
+          "roles": [],
+          "avatarUrl": "https://cdn.discordapp.com/avatars/461747559409385472/c1ee975506a1574bb4c36ac78eccfb54.png?size=512"
+        }
+      ],
+      "reference": {
+        "type": "Default",
+        "messageId": "1134963855408250962",
+        "channelId": "1134957210452103259",
+        "guildId": "853099205206999050"
+      },
+      "inlineEmojis": [
+        {
+          "id": "",
+          "name": "\uD83D\uDE42",
+          "code": "slight_smile",
+          "isAnimated": false,
+          "imageUrl": "https://cdn.jsdelivr.net/gh/twitter/twemoji@latest/assets/svg/1f642.svg"
+        }
+      ]
+    },
+    {
+      "id": "1134964976872870149",
+      "type": "Reply",
+      "timestamp": "2023-07-29T16:45:37.116-05:00",
+      "timestampEdited": null,
+      "callEndedTimestamp": null,
+      "isPinned": false,
+      "content": "CA doesn't have rule like that. my previous company before meta had unlimited vacation day",
+      "author": {
+        "id": "821540270113161248",
+        "name": "worldpeaceful",
+        "discriminator": "0000",
+        "nickname": "peaceful",
+        "color": null,
+        "isBot": false,
+        "roles": [],
+        "avatarUrl": "https://cdn.discordapp.com/embed/avatars/3.png"
+      },
+      "attachments": [],
+      "embeds": [],
+      "stickers": [],
+      "reactions": [],
+      "mentions": [
+        {
+          "id": "790967144778956851",
+          "name": "caliman9853",
+          "discriminator": "0000",
+          "nickname": "CaliMan",
+          "color": "#E74C3C",
+          "isBot": false,
+          "roles": [
+            {
+              "id": "893548412081934346",
+              "name": "ReadMe Channel",
+              "color": "#E74C3C",
+              "position": 19
+            },
+            {
+              "id": "938561503127285771",
+              "name": "new role",
+              "color": null,
+              "position": 18
+            },
+            {
+              "id": "1508892214699491610",
+              "name": "Unanswered questions notifications",
+              "color": null,
+              "position": 4
+            },
+            {
+              "id": "1508892737242665101",
+              "name": "spam alerts",
+              "color": "#E91E63",
+              "position": 3
+            },
+            {
+              "id": "1508892852074057900",
+              "name": "general notifications",
+              "color": null,
+              "position": 2
+            },
+            {
+              "id": "1509585200739254362",
+              "name": "rag project member",
+              "color": null,
+              "position": 1
+            }
+          ],
+          "avatarUrl": "https://cdn.discordapp.com/embed/avatars/2.png"
+        }
+      ],
+      "reference": {
+        "type": "Default",
+        "messageId": "1134964545660653599",
+        "channelId": "1134957210452103259",
+        "guildId": "853099205206999050"
+      },
+      "inlineEmojis": []
+    },
+    {
+      "id": "1134968850979491850",
+      "type": "Default",
+      "timestamp": "2023-07-29T17:01:00.775-05:00",
+      "timestampEdited": null,
+      "callEndedTimestamp": null,
+      "isPinned": false,
+      "content": "Yeah, have worked at multiple places with unlimited pto, never been paid any unaccrued stuff \uD83D\uDE42",
+      "author": {
+        "id": "858824476828106772",
+        "name": "arav1nd",
+        "discriminator": "0000",
+        "nickname": "AG",
+        "color": "#25C059",
+        "isBot": false,
+        "roles": [
+          {
+            "id": "864371622231801856",
+            "name": "Moderator",
+            "color": "#25C059",
+            "position": 25
+          },
+          {
+            "id": "888509975440289873",
+            "name": "Server Booster",
+            "color": "#F47FFF",
+            "position": 20
+          },
+          {
+            "id": "893548412081934346",
+            "name": "ReadMe Channel",
+            "color": "#E74C3C",
+            "position": 19
+          },
+          {
+            "id": "1178049214299779092",
+            "name": "Manage Users",
+            "color": "#2ECC71",
+            "position": 6
+          }
+        ],
+        "avatarUrl": "https://cdn.discordapp.com/avatars/858824476828106772/6eac6e7cac939345c3a4149e70f37e86.png?size=512"
+      },
+      "attachments": [],
+      "embeds": [],
+      "stickers": [],
+      "reactions": [],
+      "mentions": [],
+      "inlineEmojis": [
+        {
+          "id": "",
+          "name": "\uD83D\uDE42",
+          "code": "slight_smile",
+          "isAnimated": false,
+          "imageUrl": "https://cdn.jsdelivr.net/gh/twitter/twemoji@latest/assets/svg/1f642.svg"
+        }
+      ]
+    },
+    {
+      "id": "1134971126381035520",
+      "type": "Default",
+      "timestamp": "2023-07-29T17:10:03.273-05:00",
+      "timestampEdited": null,
+      "callEndedTimestamp": null,
+      "isPinned": false,
+      "content": "Only okay as long as there is a policy forcing everyone to take minimum time off. Otherwise unlimited is just a gimmick.",
+      "author": {
+        "id": "859671224933941258",
+        "name": "rewoldntaton",
+        "discriminator": "0000",
+        "nickname": "rewoldntaton",
+        "color": null,
+        "isBot": false,
+        "roles": [],
+        "avatarUrl": "https://cdn.discordapp.com/embed/avatars/5.png"
+      },
+      "attachments": [],
+      "embeds": [],
+      "stickers": [],
+      "reactions": [
+        {
+          "emoji": {
+            "id": "",
+            "name": "\uD83D\uDCAF",
+            "code": "100",
+            "isAnimated": false,
+            "imageUrl": "https://cdn.jsdelivr.net/gh/twitter/twemoji@latest/assets/svg/1f4af.svg"
+          },
+          "count": 3,
+          "users": [
+            {
+              "id": "150071474063933440",
+              "name": "paytun",
+              "discriminator": "0000",
+              "nickname": "paytun",
+              "color": "#25C059",
+              "isBot": false,
+              "avatarUrl": "https://cdn.discordapp.com/guilds/853099205206999050/users/150071474063933440/avatars/2ab4cd4390ea031d5bc6e498373ef74f.png?size=512"
+            },
+            {
+              "id": "481531322674839552",
+              "name": "khaosflo",
+              "discriminator": "0000",
+              "nickname": "khaos_flo",
+              "color": null,
+              "isBot": false,
+              "avatarUrl": "https://cdn.discordapp.com/avatars/481531322674839552/1f0ca542ab4e69730d91594f5d7cfd2c.png?size=512"
+            },
+            {
+              "id": "723741382816301136",
+              "name": "saitpm",
+              "discriminator": "0000",
+              "nickname": "SaiB_TPM",
+              "color": null,
+              "isBot": false,
+              "avatarUrl": "https://cdn.discordapp.com/avatars/723741382816301136/6e1d3884c4a8e29eedffa247b63ba457.png?size=512"
+            }
+          ]
+        }
+      ],
+      "mentions": [],
+      "inlineEmojis": []
+    },
+    {
+      "id": "1135437681862643843",
+      "type": "Default",
+      "timestamp": "2023-07-31T00:03:58.768-05:00",
+      "timestampEdited": null,
+      "callEndedTimestamp": null,
+      "isPinned": false,
+      "content": "We had this when I was working at a consulting company.  It did not work well because if I was billable on a project, the partner would say \"this is not a good time to take vacation\".  Instead, they preferred we took it when we were on the bench or during typical American holiday periods.  It was also frowned upon to take more than 2 weeks at a time.  Since sometimes I was billable for years at a time, this was not pleasant.  When we switched to accrued PTO, we would often get into use it or lose it situations at the end of the year.  Sometimes they would make exceptions to roll it over into the next quarter but mostly we were expected to submit our time requests at least 3 months in advance.",
+      "author": {
+        "id": "915831135903293451",
+        "name": "dmodemd",
+        "discriminator": "0000",
+        "nickname": "DModeMD",
+        "color": "#DA004E",
+        "isBot": false,
+        "roles": [
+          {
+            "id": "874426797394100234",
+            "name": "Contributer",
+            "color": "#DA004E",
+            "position": 24
+          }
+        ],
+        "avatarUrl": "https://cdn.discordapp.com/avatars/915831135903293451/79a3e3efcc98bcce644f7ba7c66f81b0.png?size=512"
+      },
+      "attachments": [],
+      "embeds": [],
+      "stickers": [],
+      "reactions": [
+        {
+          "emoji": {
+            "id": "",
+            "name": "\uD83D\uDC4D",
+            "code": "thumbsup",
+            "isAnimated": false,
+            "imageUrl": "https://cdn.jsdelivr.net/gh/twitter/twemoji@latest/assets/svg/1f44d.svg"
+          },
+          "count": 2,
+          "users": [
+            {
+              "id": "150071474063933440",
+              "name": "paytun",
+              "discriminator": "0000",
+              "nickname": "paytun",
+              "color": "#25C059",
+              "isBot": false,
+              "avatarUrl": "https://cdn.discordapp.com/guilds/853099205206999050/users/150071474063933440/avatars/2ab4cd4390ea031d5bc6e498373ef74f.png?size=512"
+            },
+            {
+              "id": "403638107372519426",
+              "name": "modernpicasso",
+              "discriminator": "0000",
+              "nickname": "modernpicasso",
+              "color": null,
+              "isBot": false,
+              "avatarUrl": "https://cdn.discordapp.com/avatars/403638107372519426/e3ceea22be9bb778219490f4c7d0c51e.png?size=512"
+            }
+          ]
+        }
+      ],
+      "mentions": [],
+      "inlineEmojis": []
+    },
+    {
+      "id": "1135624669869916231",
+      "type": "Default",
+      "timestamp": "2023-07-31T12:27:00.183-05:00",
+      "timestampEdited": null,
+      "callEndedTimestamp": null,
+      "isPinned": false,
+      "content": "I have unlimited PTO right now & enjoy not having to tally my days off but there are definitely some leaders (who make a boatload of $$) who take off probably 3-4 months of equivalent time off a year which can be frustrating. It works well if everyone is held accountable for their workflows and senior leadership ensures the policy isn’t being taken advantage of",
+      "author": {
+        "id": "1078309929506574386",
+        "name": "skiski1011",
+        "discriminator": "0000",
+        "nickname": "skiski",
+        "color": null,
+        "isBot": false,
+        "roles": [],
+        "avatarUrl": "https://cdn.discordapp.com/avatars/1078309929506574386/7ab2f82fbe3f60e725c3f4cb3833e3ce.png?size=512"
+      },
+      "attachments": [],
+      "embeds": [],
+      "stickers": [],
+      "reactions": [
+        {
+          "emoji": {
+            "id": "",
+            "name": "\uD83D\uDC4D",
+            "code": "thumbsup",
+            "isAnimated": false,
+            "imageUrl": "https://cdn.jsdelivr.net/gh/twitter/twemoji@latest/assets/svg/1f44d.svg"
+          },
+          "count": 2,
+          "users": [
+            {
+              "id": "150071474063933440",
+              "name": "paytun",
+              "discriminator": "0000",
+              "nickname": "paytun",
+              "color": "#25C059",
+              "isBot": false,
+              "avatarUrl": "https://cdn.discordapp.com/guilds/853099205206999050/users/150071474063933440/avatars/2ab4cd4390ea031d5bc6e498373ef74f.png?size=512"
+            },
+            {
+              "id": "888326239759269958",
+              "name": "misterrightnow",
+              "discriminator": "0000",
+              "nickname": "mrright1",
+              "color": null,
+              "isBot": false,
+              "avatarUrl": "https://cdn.discordapp.com/embed/avatars/2.png"
+            }
+          ]
+        }
+      ],
+      "mentions": [],
+      "inlineEmojis": []
+    },
+    {
+      "id": "1138124202407366736",
+      "type": "Default",
+      "timestamp": "2023-08-07T09:59:15.179-05:00",
+      "timestampEdited": null,
+      "callEndedTimestamp": null,
+      "isPinned": false,
+      "content": "It depends on the company culture. If companies culture is in favor (genuinely) then of course amazing.\n\n\nIf not, then complete opposite haha",
+      "author": {
+        "id": "689727225712607252",
+        "name": "goldenterry",
+        "discriminator": "0000",
+        "nickname": "terry.",
+        "color": null,
+        "isBot": false,
+        "roles": [],
+        "avatarUrl": "https://cdn.discordapp.com/avatars/689727225712607252/bb7924fe587ee11e6e24a1ac4f0283cf.png?size=512"
+      },
+      "attachments": [],
+      "embeds": [],
+      "stickers": [],
+      "reactions": [],
+      "mentions": [],
+      "inlineEmojis": []
+    },
+    {
+      "id": "1158067573896773722",
+      "type": "Reply",
+      "timestamp": "2023-10-01T10:47:05.472-05:00",
+      "timestampEdited": "2023-10-01T10:47:42.406-05:00",
+      "callEndedTimestamp": null,
+      "isPinned": false,
+      "content": "yeah i feel at a consulting consulting company, it's a diff situation because when you end an engagement typically you're either looking for new work or take a short vacation to avoid bench time for too long when there isn't much work yet in the pipeline.. but i can see ppl taking advantage and just take time off and then come back on the bench looknig for new work everytime they end an engagement...",
+      "author": {
+        "id": "403638107372519426",
+        "name": "modernpicasso",
+        "discriminator": "0000",
+        "nickname": "modernpicasso",
+        "color": null,
+        "isBot": false,
+        "roles": [],
+        "avatarUrl": "https://cdn.discordapp.com/avatars/403638107372519426/e3ceea22be9bb778219490f4c7d0c51e.png?size=512"
+      },
+      "attachments": [],
+      "embeds": [],
+      "stickers": [],
+      "reactions": [],
+      "mentions": [
+        {
+          "id": "915831135903293451",
+          "name": "dmodemd",
+          "discriminator": "0000",
+          "nickname": "DModeMD",
+          "color": "#DA004E",
+          "isBot": false,
+          "roles": [
+            {
+              "id": "874426797394100234",
+              "name": "Contributer",
+              "color": "#DA004E",
+              "position": 24
+            }
+          ],
+          "avatarUrl": "https://cdn.discordapp.com/avatars/915831135903293451/79a3e3efcc98bcce644f7ba7c66f81b0.png?size=512"
+        }
+      ],
+      "reference": {
+        "type": "Default",
+        "messageId": "1135437681862643843",
+        "channelId": "1134957210452103259",
+        "guildId": "853099205206999050"
+      },
+      "inlineEmojis": []
+    },
+    {
+      "id": "1158084872758362285",
+      "type": "Default",
+      "timestamp": "2023-10-01T11:55:49.842-05:00",
+      "timestampEdited": null,
+      "callEndedTimestamp": null,
+      "isPinned": false,
+      "content": "For the 16yrs I was at my company I was 98% billable and at some clients 5-7yrs.  So trying to make me wait until bench time or traditional American holidays didn't work for me.",
+      "author": {
+        "id": "915831135903293451",
+        "name": "dmodemd",
+        "discriminator": "0000",
+        "nickname": "DModeMD",
+        "color": "#DA004E",
+        "isBot": false,
+        "roles": [
+          {
+            "id": "874426797394100234",
+            "name": "Contributer",
+            "color": "#DA004E",
+            "position": 24
+          }
+        ],
+        "avatarUrl": "https://cdn.discordapp.com/avatars/915831135903293451/79a3e3efcc98bcce644f7ba7c66f81b0.png?size=512"
+      },
+      "attachments": [],
+      "embeds": [],
+      "stickers": [],
+      "reactions": [],
+      "mentions": [],
+      "inlineEmojis": []
+    },
+    {
+      "id": "1158089506352808076",
+      "type": "Default",
+      "timestamp": "2023-10-01T12:14:14.577-05:00",
+      "timestampEdited": null,
+      "callEndedTimestamp": null,
+      "isPinned": false,
+      "content": "Wow that’s a very stable long standing duration at your clients",
+      "author": {
+        "id": "403638107372519426",
+        "name": "modernpicasso",
+        "discriminator": "0000",
+        "nickname": "modernpicasso",
+        "color": null,
+        "isBot": false,
+        "roles": [],
+        "avatarUrl": "https://cdn.discordapp.com/avatars/403638107372519426/e3ceea22be9bb778219490f4c7d0c51e.png?size=512"
+      },
+      "attachments": [],
+      "embeds": [],
+      "stickers": [],
+      "reactions": [],
+      "mentions": [],
+      "inlineEmojis": []
+    },
+    {
+      "id": "1158089905524719927",
+      "type": "Default",
+      "timestamp": "2023-10-01T12:15:49.747-05:00",
+      "timestampEdited": null,
+      "callEndedTimestamp": null,
+      "isPinned": false,
+      "content": "Yeah definitely can’t wait until bench time or traditional statutory holidays",
+      "author": {
+        "id": "403638107372519426",
+        "name": "modernpicasso",
+        "discriminator": "0000",
+        "nickname": "modernpicasso",
+        "color": null,
+        "isBot": false,
+        "roles": [],
+        "avatarUrl": "https://cdn.discordapp.com/avatars/403638107372519426/e3ceea22be9bb778219490f4c7d0c51e.png?size=512"
+      },
+      "attachments": [],
+      "embeds": [],
+      "stickers": [],
+      "reactions": [],
+      "mentions": [],
+      "inlineEmojis": []
+    },
+    {
+      "id": "1158090476105236600",
+      "type": "Default",
+      "timestamp": "2023-10-01T12:18:05.784-05:00",
+      "timestampEdited": "2023-10-01T12:18:16.359-05:00",
+      "callEndedTimestamp": null,
+      "isPinned": false,
+      "content": "Think I’ve have around a month or so of bench time on average in between engagements if I don’t take time off during that transition period",
+      "author": {
+        "id": "403638107372519426",
+        "name": "modernpicasso",
+        "discriminator": "0000",
+        "nickname": "modernpicasso",
+        "color": null,
+        "isBot": false,
+        "roles": [],
+        "avatarUrl": "https://cdn.discordapp.com/avatars/403638107372519426/e3ceea22be9bb778219490f4c7d0c51e.png?size=512"
+      },
+      "attachments": [],
+      "embeds": [],
+      "stickers": [],
+      "reactions": [],
+      "mentions": [],
+      "inlineEmojis": []
+    },
+    {
+      "id": "1158091533136969738",
+      "type": "Default",
+      "timestamp": "2023-10-01T12:22:17.8-05:00",
+      "timestampEdited": null,
+      "callEndedTimestamp": null,
+      "isPinned": false,
+      "content": "Each engagement lasts from anywhere between 6 months to 24 months",
+      "author": {
+        "id": "403638107372519426",
+        "name": "modernpicasso",
+        "discriminator": "0000",
+        "nickname": "modernpicasso",
+        "color": null,
+        "isBot": false,
+        "roles": [],
+        "avatarUrl": "https://cdn.discordapp.com/avatars/403638107372519426/e3ceea22be9bb778219490f4c7d0c51e.png?size=512"
+      },
+      "attachments": [],
+      "embeds": [],
+      "stickers": [],
+      "reactions": [],
+      "mentions": [],
+      "inlineEmojis": []
+    },
+    {
+      "id": "1158091640938954763",
+      "type": "Reply",
+      "timestamp": "2023-10-01T12:22:43.502-05:00",
+      "timestampEdited": null,
+      "callEndedTimestamp": null,
+      "isPinned": false,
+      "content": "I was only on the bench twice.  Once for about 6 weeks, another for about 3 months.  Every other switch was back to back.",
+      "author": {
+        "id": "915831135903293451",
+        "name": "dmodemd",
+        "discriminator": "0000",
+        "nickname": "DModeMD",
+        "color": "#DA004E",
+        "isBot": false,
+        "roles": [
+          {
+            "id": "874426797394100234",
+            "name": "Contributer",
+            "color": "#DA004E",
+            "position": 24
+          }
+        ],
+        "avatarUrl": "https://cdn.discordapp.com/avatars/915831135903293451/79a3e3efcc98bcce644f7ba7c66f81b0.png?size=512"
+      },
+      "attachments": [],
+      "embeds": [],
+      "stickers": [],
+      "reactions": [],
+      "mentions": [
+        {
+          "id": "403638107372519426",
+          "name": "modernpicasso",
+          "discriminator": "0000",
+          "nickname": "modernpicasso",
+          "color": null,
+          "isBot": false,
+          "roles": [],
+          "avatarUrl": "https://cdn.discordapp.com/avatars/403638107372519426/e3ceea22be9bb778219490f4c7d0c51e.png?size=512"
+        }
+      ],
+      "reference": {
+        "type": "Default",
+        "messageId": "1158090476105236600",
+        "channelId": "1134957210452103259",
+        "guildId": "853099205206999050"
+      },
+      "inlineEmojis": []
+    },
+    {
+      "id": "1158091667665064018",
+      "type": "Default",
+      "timestamp": "2023-10-01T12:22:49.874-05:00",
+      "timestampEdited": null,
+      "callEndedTimestamp": null,
+      "isPinned": false,
+      "content": "I calculated I was the highest revenue earning employee they ever had \uD83D\uDE09. Unfortunately, they didn't track that metric, only quarterly utilization rate.  I would place high but others working at companies that allowed billing over 40 hours would beat everyone.",
+      "author": {
+        "id": "915831135903293451",
+        "name": "dmodemd",
+        "discriminator": "0000",
+        "nickname": "DModeMD",
+        "color": "#DA004E",
+        "isBot": false,
+        "roles": [
+          {
+            "id": "874426797394100234",
+            "name": "Contributer",
+            "color": "#DA004E",
+            "position": 24
+          }
+        ],
+        "avatarUrl": "https://cdn.discordapp.com/avatars/915831135903293451/79a3e3efcc98bcce644f7ba7c66f81b0.png?size=512"
+      },
+      "attachments": [],
+      "embeds": [],
+      "stickers": [],
+      "reactions": [
+        {
+          "emoji": {
+            "id": "",
+            "name": "\uD83D\uDD25",
+            "code": "fire",
+            "isAnimated": false,
+            "imageUrl": "https://cdn.jsdelivr.net/gh/twitter/twemoji@latest/assets/svg/1f525.svg"
+          },
+          "count": 1,
+          "users": [
+            {
+              "id": "403638107372519426",
+              "name": "modernpicasso",
+              "discriminator": "0000",
+              "nickname": "modernpicasso",
+              "color": null,
+              "isBot": false,
+              "avatarUrl": "https://cdn.discordapp.com/avatars/403638107372519426/e3ceea22be9bb778219490f4c7d0c51e.png?size=512"
+            }
+          ]
+        },
+        {
+          "emoji": {
+            "id": "",
+            "name": "\uD83D\uDC4F",
+            "code": "clap",
+            "isAnimated": false,
+            "imageUrl": "https://cdn.jsdelivr.net/gh/twitter/twemoji@latest/assets/svg/1f44f.svg"
+          },
+          "count": 1,
+          "users": [
+            {
+              "id": "403638107372519426",
+              "name": "modernpicasso",
+              "discriminator": "0000",
+              "nickname": "modernpicasso",
+              "color": null,
+              "isBot": false,
+              "avatarUrl": "https://cdn.discordapp.com/avatars/403638107372519426/e3ceea22be9bb778219490f4c7d0c51e.png?size=512"
+            }
+          ]
+        }
+      ],
+      "mentions": [],
+      "inlineEmojis": [
+        {
+          "id": "",
+          "name": "\uD83D\uDE09",
+          "code": "wink",
+          "isAnimated": false,
+          "imageUrl": "https://cdn.jsdelivr.net/gh/twitter/twemoji@latest/assets/svg/1f609.svg"
+        }
+      ]
+    },
+    {
+      "id": "1163057122066579476",
+      "type": "Default",
+      "timestamp": "2023-10-15T05:13:46.457-05:00",
+      "timestampEdited": "2023-10-15T06:23:34.698-05:00",
+      "callEndedTimestamp": null,
+      "isPinned": false,
+      "content": "tbh it is a corporate tactic to make you guilty for taking PTOs as you have to request from your manager rather than using your holidays that you have rightfully accumulated previously. It has its benefits in the short run with a good manager but long term/macro sense it is only good for corporation as they don’t have to pay out accrued leaves & have most of the employees taking way less PTOs",
+      "author": {
+        "id": "723741382816301136",
+        "name": "saitpm",
+        "discriminator": "0000",
+        "nickname": "SaiB_TPM",
+        "color": null,
+        "isBot": false,
+        "roles": [],
+        "avatarUrl": "https://cdn.discordapp.com/avatars/723741382816301136/6e1d3884c4a8e29eedffa247b63ba457.png?size=512"
+      },
+      "attachments": [],
+      "embeds": [],
+      "stickers": [],
+      "reactions": [],
+      "mentions": [],
+      "inlineEmojis": []
+    },
+    {
+      "id": "1164030943774920735",
+      "type": "Default",
+      "timestamp": "2023-10-17T21:43:23.645-05:00",
+      "timestampEdited": null,
+      "callEndedTimestamp": null,
+      "isPinned": false,
+      "content": "Unlimited PTO is largely a gimmick imo it’s just kind of acknowledging the reality that people should be thinking to much about whether they have enough days or not they should be taking enough time to recharge when it’s feasible. Culture determines whether there are feasible times or they’re pushing to burnout.",
+      "author": {
+        "id": "875901761993461791",
+        "name": "gentlemanviking.",
+        "discriminator": "0000",
+        "nickname": "GentlemanViking",
+        "color": null,
+        "isBot": false,
+        "roles": [],
+        "avatarUrl": "https://cdn.discordapp.com/avatars/875901761993461791/27a8ee8c5c5015dba4af26ad8f8dd74e.png?size=512"
+      },
+      "attachments": [],
+      "embeds": [],
+      "stickers": [],
+      "reactions": [
+        {
+          "emoji": {
+            "id": "",
+            "name": "\uD83D\uDC4D\uD83C\uDFFB",
+            "code": "thumbsup_tone1",
+            "isAnimated": false,
+            "imageUrl": "https://cdn.jsdelivr.net/gh/twitter/twemoji@latest/assets/svg/1f44d-1f3fb.svg"
+          },
+          "count": 1,
+          "users": [
+            {
+              "id": "790967144778956851",
+              "name": "caliman9853",
+              "discriminator": "0000",
+              "nickname": "CaliMan",
+              "color": "#E74C3C",
+              "isBot": false,
+              "avatarUrl": "https://cdn.discordapp.com/embed/avatars/2.png"
+            }
+          ]
+        }
+      ],
+      "mentions": [],
+      "inlineEmojis": []
+    },
+    {
+      "id": "1164060961842417775",
+      "type": "Default",
+      "timestamp": "2023-10-17T23:42:40.51-05:00",
+      "timestampEdited": null,
+      "callEndedTimestamp": null,
+      "isPinned": false,
+      "content": "My best advice is to schedule and get approval as much in advance as possible.  That makes it harder for them to decide later that its not a good time.  \nKeep count of your days. If you make a request and they complain you have taken too much, let them know the real number and that it is typical for other companies.",
+      "author": {
+        "id": "915831135903293451",
+        "name": "dmodemd",
+        "discriminator": "0000",
+        "nickname": "DModeMD",
+        "color": "#DA004E",
+        "isBot": false,
+        "roles": [
+          {
+            "id": "874426797394100234",
+            "name": "Contributer",
+            "color": "#DA004E",
+            "position": 24
+          }
+        ],
+        "avatarUrl": "https://cdn.discordapp.com/avatars/915831135903293451/79a3e3efcc98bcce644f7ba7c66f81b0.png?size=512"
+      },
+      "attachments": [],
+      "embeds": [],
+      "stickers": [],
+      "reactions": [],
+      "mentions": [],
+      "inlineEmojis": []
+    },
+    {
+      "id": "1164061566833016842",
+      "type": "Default",
+      "timestamp": "2023-10-17T23:45:04.751-05:00",
+      "timestampEdited": null,
+      "callEndedTimestamp": null,
+      "isPinned": false,
+      "content": "I once had a travel vacation planned well in advance and two days before my boss asked me to cancel it because we had a new project at a new client starting the next week.  He wanted the whole team there the first week.  He offered to have all cancellation fees paid.  If I refused, he would get someone else for the project and I would be \"on the bench\" waiting for hopefully a new project someday or be let go.",
+      "author": {
+        "id": "915831135903293451",
+        "name": "dmodemd",
+        "discriminator": "0000",
+        "nickname": "DModeMD",
+        "color": "#DA004E",
+        "isBot": false,
+        "roles": [
+          {
+            "id": "874426797394100234",
+            "name": "Contributer",
+            "color": "#DA004E",
+            "position": 24
+          }
+        ],
+        "avatarUrl": "https://cdn.discordapp.com/avatars/915831135903293451/79a3e3efcc98bcce644f7ba7c66f81b0.png?size=512"
+      },
+      "attachments": [],
+      "embeds": [],
+      "stickers": [],
+      "reactions": [],
+      "mentions": [],
+      "inlineEmojis": []
+    },
+    {
+      "id": "1166200623256051782",
+      "type": "Reply",
+      "timestamp": "2023-10-23T21:24:55.544-05:00",
+      "timestampEdited": null,
+      "callEndedTimestamp": null,
+      "isPinned": false,
+      "content": "This is a horrible boss. Hands down. It’s very hard to imagine that one single meeting is make or break for a client relationship.",
+      "author": {
+        "id": "875901761993461791",
+        "name": "gentlemanviking.",
+        "discriminator": "0000",
+        "nickname": "GentlemanViking",
+        "color": null,
+        "isBot": false,
+        "roles": [],
+        "avatarUrl": "https://cdn.discordapp.com/avatars/875901761993461791/27a8ee8c5c5015dba4af26ad8f8dd74e.png?size=512"
+      },
+      "attachments": [],
+      "embeds": [],
+      "stickers": [],
+      "reactions": [],
+      "mentions": [
+        {
+          "id": "915831135903293451",
+          "name": "dmodemd",
+          "discriminator": "0000",
+          "nickname": "DModeMD",
+          "color": "#DA004E",
+          "isBot": false,
+          "roles": [
+            {
+              "id": "874426797394100234",
+              "name": "Contributer",
+              "color": "#DA004E",
+              "position": 24
+            }
+          ],
+          "avatarUrl": "https://cdn.discordapp.com/avatars/915831135903293451/79a3e3efcc98bcce644f7ba7c66f81b0.png?size=512"
+        }
+      ],
+      "reference": {
+        "type": "Default",
+        "messageId": "1164061566833016842",
+        "channelId": "1134957210452103259",
+        "guildId": "853099205206999050"
+      },
+      "inlineEmojis": []
+    },
+    {
+      "id": "1171171926979391498",
+      "type": "Default",
+      "timestamp": "2023-11-06T13:39:06.714-06:00",
+      "timestampEdited": "2023-11-06T13:39:50.641-06:00",
+      "callEndedTimestamp": null,
+      "isPinned": false,
+      "content": "I once had such a boss when I was in consulting. He was asking me on a short notice to fly across the country to work on a weekend ‘fighting fires’ for a client. That was my kid’s 5th birthday party planned in advance and I said no. He was pushing hard and saying he will ‘make it up for me’. I still said no and offered to support the team remotely as needed. Guess what, few months later he was gone to greener pastures but I still have pictures and memories from my kid’s birthday. If you can afford it, don’t compromise your personal and family time. No one on their death bed ever said ‘I wish I worked more’.",
+      "author": {
+        "id": "1097381780471951380",
+        "name": "sfbaytpm",
+        "discriminator": "0000",
+        "nickname": "SFBayTPM",
+        "color": null,
+        "isBot": false,
+        "roles": [],
+        "avatarUrl": "https://cdn.discordapp.com/embed/avatars/4.png"
+      },
+      "attachments": [],
+      "embeds": [],
+      "stickers": [],
+      "reactions": [
+        {
+          "emoji": {
+            "id": "",
+            "name": "❤️",
+            "code": "heart",
+            "isAnimated": false,
+            "imageUrl": "https://cdn.jsdelivr.net/gh/twitter/twemoji@latest/assets/svg/2764.svg"
+          },
+          "count": 1,
+          "users": [
+            {
+              "id": "150071474063933440",
+              "name": "paytun",
+              "discriminator": "0000",
+              "nickname": "paytun",
+              "color": "#25C059",
+              "isBot": false,
+              "avatarUrl": "https://cdn.discordapp.com/guilds/853099205206999050/users/150071474063933440/avatars/2ab4cd4390ea031d5bc6e498373ef74f.png?size=512"
+            }
+          ]
+        },
+        {
+          "emoji": {
+            "id": "1044734115913678899",
+            "name": "team",
+            "code": "team",
+            "isAnimated": false,
+            "imageUrl": "https://cdn.discordapp.com/emojis/1044734115913678899.png"
+          },
+          "count": 1,
+          "users": [
+            {
+              "id": "150071474063933440",
+              "name": "paytun",
+              "discriminator": "0000",
+              "nickname": "paytun",
+              "color": "#25C059",
+              "isBot": false,
+              "avatarUrl": "https://cdn.discordapp.com/guilds/853099205206999050/users/150071474063933440/avatars/2ab4cd4390ea031d5bc6e498373ef74f.png?size=512"
+            }
+          ]
+        }
+      ],
+      "mentions": [],
+      "inlineEmojis": []
+    },
+    {
+      "id": "1174158780532006963",
+      "type": "Default",
+      "timestamp": "2023-11-14T19:27:48.094-06:00",
+      "timestampEdited": null,
+      "callEndedTimestamp": null,
+      "isPinned": false,
+      "content": "I pretty much expect it now. I rarely take over 2 weeks PTO, but I am used to being able to take PTO whenever I want and not have to worry about it being rejected. I don't take outrageous amounts of PTO so I don't abuse the system, but I I've seen others stretch. They are sales and perhaps after quota's been reached or EOQ they can be gone a month or whatever.",
+      "author": {
+        "id": "594619754229006342",
+        "name": "hion64",
+        "discriminator": "0000",
+        "nickname": "hion",
+        "color": null,
+        "isBot": false,
+        "roles": [],
+        "avatarUrl": "https://cdn.discordapp.com/avatars/594619754229006342/01231d34dbe5fcaed8214bc5e08ca8ad.png?size=512"
+      },
+      "attachments": [],
+      "embeds": [],
+      "stickers": [],
+      "reactions": [
+        {
+          "emoji": {
+            "id": "",
+            "name": "\uD83D\uDC4D",
+            "code": "thumbsup",
+            "isAnimated": false,
+            "imageUrl": "https://cdn.jsdelivr.net/gh/twitter/twemoji@latest/assets/svg/1f44d.svg"
+          },
+          "count": 1,
+          "users": [
+            {
+              "id": "150071474063933440",
+              "name": "paytun",
+              "discriminator": "0000",
+              "nickname": "paytun",
+              "color": "#25C059",
+              "isBot": false,
+              "avatarUrl": "https://cdn.discordapp.com/guilds/853099205206999050/users/150071474063933440/avatars/2ab4cd4390ea031d5bc6e498373ef74f.png?size=512"
+            }
+          ]
+        }
+      ],
+      "mentions": [],
+      "inlineEmojis": []
+    },
+    {
+      "id": "1174159208170672209",
+      "type": "Default",
+      "timestamp": "2023-11-14T19:29:30.051-06:00",
+      "timestampEdited": null,
+      "callEndedTimestamp": null,
+      "isPinned": false,
+      "content": "Reading through the comments, I'm not against taking like 25 days off, I just haven't tried. Perhaps next year lol. I doubt my org would care if I was delivering.",
+      "author": {
+        "id": "594619754229006342",
+        "name": "hion64",
+        "discriminator": "0000",
+        "nickname": "hion",
+        "color": null,
+        "isBot": false,
+        "roles": [],
+        "avatarUrl": "https://cdn.discordapp.com/avatars/594619754229006342/01231d34dbe5fcaed8214bc5e08ca8ad.png?size=512"
+      },
+      "attachments": [],
+      "embeds": [],
+      "stickers": [],
+      "reactions": [
+        {
+          "emoji": {
+            "id": "",
+            "name": "\uD83D\uDC4D",
+            "code": "thumbsup",
+            "isAnimated": false,
+            "imageUrl": "https://cdn.jsdelivr.net/gh/twitter/twemoji@latest/assets/svg/1f44d.svg"
+          },
+          "count": 1,
+          "users": [
+            {
+              "id": "150071474063933440",
+              "name": "paytun",
+              "discriminator": "0000",
+              "nickname": "paytun",
+              "color": "#25C059",
+              "isBot": false,
+              "avatarUrl": "https://cdn.discordapp.com/guilds/853099205206999050/users/150071474063933440/avatars/2ab4cd4390ea031d5bc6e498373ef74f.png?size=512"
+            }
+          ]
+        }
+      ],
+      "mentions": [],
+      "inlineEmojis": []
+    }
+  ],
+  "messageCount": 33
+}

@@ -1,0 +1,878 @@
+{
+  "guild": {
+    "id": "853099205206999050",
+    "name": "TPMs unite",
+    "iconUrl": "https://cdn.discordapp.com/icons/853099205206999050/472b55453e54d59cad3b3fc6215992a5.png?size=512"
+  },
+  "channel": {
+    "id": "1135419311339618364",
+    "type": "GuildPublicThread",
+    "categoryId": "1134690339043692704",
+    "category": "forum-discussion",
+    "name": "leadership panel at tpm summit",
+    "topic": null
+  },
+  "dateRange": {
+    "after": null,
+    "before": null
+  },
+  "exportedAt": "2026-05-29T13:45:43.8733402-05:00",
+  "messages": [
+    {
+      "id": "1135419311339618364",
+      "type": "Default",
+      "timestamp": "2023-07-30T22:50:58.894-05:00",
+      "timestampEdited": null,
+      "callEndedTimestamp": null,
+      "isPinned": false,
+      "content": "What would you like to hear from L8+ folks at the Oct summit? I'll be moderating a 30 min panel.",
+      "author": {
+        "id": "858824476828106772",
+        "name": "arav1nd",
+        "discriminator": "0000",
+        "nickname": "AG",
+        "color": "#25C059",
+        "isBot": false,
+        "roles": [
+          {
+            "id": "864371622231801856",
+            "name": "Moderator",
+            "color": "#25C059",
+            "position": 25
+          },
+          {
+            "id": "888509975440289873",
+            "name": "Server Booster",
+            "color": "#F47FFF",
+            "position": 20
+          },
+          {
+            "id": "893548412081934346",
+            "name": "ReadMe Channel",
+            "color": "#E74C3C",
+            "position": 19
+          },
+          {
+            "id": "1178049214299779092",
+            "name": "Manage Users",
+            "color": "#2ECC71",
+            "position": 6
+          }
+        ],
+        "avatarUrl": "https://cdn.discordapp.com/avatars/858824476828106772/6eac6e7cac939345c3a4149e70f37e86.png?size=512"
+      },
+      "attachments": [],
+      "embeds": [],
+      "stickers": [],
+      "reactions": [
+        {
+          "emoji": {
+            "id": "",
+            "name": "\uD83D\uDE80",
+            "code": "rocket",
+            "isAnimated": false,
+            "imageUrl": "https://cdn.jsdelivr.net/gh/twitter/twemoji@latest/assets/svg/1f680.svg"
+          },
+          "count": 4,
+          "users": [
+            {
+              "id": "150071474063933440",
+              "name": "paytun",
+              "discriminator": "0000",
+              "nickname": "paytun",
+              "color": null,
+              "isBot": false,
+              "avatarUrl": "https://cdn.discordapp.com/avatars/150071474063933440/a34f3e02f25650e71d977484ae580f05.png?size=512"
+            },
+            {
+              "id": "723741382816301136",
+              "name": "saitpm",
+              "discriminator": "0000",
+              "nickname": "SaiB_TPM",
+              "color": null,
+              "isBot": false,
+              "avatarUrl": "https://cdn.discordapp.com/avatars/723741382816301136/6e1d3884c4a8e29eedffa247b63ba457.png?size=512"
+            },
+            {
+              "id": "811787590801424454",
+              "name": "ztpm",
+              "discriminator": "0000",
+              "nickname": "Zhanat",
+              "color": null,
+              "isBot": false,
+              "avatarUrl": "https://cdn.discordapp.com/avatars/811787590801424454/03d2311e5337267dd12770c83f0e6855.png?size=512"
+            },
+            {
+              "id": "922329461683257395",
+              "name": "mindflayer23",
+              "discriminator": "0000",
+              "nickname": "MindFlayer",
+              "color": null,
+              "isBot": false,
+              "avatarUrl": "https://cdn.discordapp.com/avatars/922329461683257395/f7f2e9361e8a54ce6e72580ac7b967af.png?size=512"
+            }
+          ]
+        },
+        {
+          "emoji": {
+            "id": "",
+            "name": "\uD83D\uDCAF",
+            "code": "100",
+            "isAnimated": false,
+            "imageUrl": "https://cdn.jsdelivr.net/gh/twitter/twemoji@latest/assets/svg/1f4af.svg"
+          },
+          "count": 2,
+          "users": [
+            {
+              "id": "150071474063933440",
+              "name": "paytun",
+              "discriminator": "0000",
+              "nickname": "paytun",
+              "color": null,
+              "isBot": false,
+              "avatarUrl": "https://cdn.discordapp.com/avatars/150071474063933440/a34f3e02f25650e71d977484ae580f05.png?size=512"
+            },
+            {
+              "id": "416863614281056268",
+              "name": "borderline88",
+              "discriminator": "0000",
+              "nickname": "Borderline88",
+              "color": null,
+              "isBot": false,
+              "avatarUrl": "https://cdn.discordapp.com/embed/avatars/0.png"
+            }
+          ]
+        }
+      ],
+      "mentions": [],
+      "inlineEmojis": []
+    },
+    {
+      "id": "1135422101017337956",
+      "type": "Default",
+      "timestamp": "2023-07-30T23:02:04.005-05:00",
+      "timestampEdited": null,
+      "callEndedTimestamp": null,
+      "isPinned": false,
+      "content": "Hi folks, started a discussion thread on a topic I'll be moderating at the TPM summit in October. Panelists TBD, but thinking of bringing in L8+ folks to chat through what might be relevant for everyone. Please let me know \uD83D\uDE4F\uD83C\uDFFD",
+      "author": {
+        "id": "858824476828106772",
+        "name": "arav1nd",
+        "discriminator": "0000",
+        "nickname": "AG",
+        "color": "#25C059",
+        "isBot": false,
+        "roles": [
+          {
+            "id": "864371622231801856",
+            "name": "Moderator",
+            "color": "#25C059",
+            "position": 25
+          },
+          {
+            "id": "888509975440289873",
+            "name": "Server Booster",
+            "color": "#F47FFF",
+            "position": 20
+          },
+          {
+            "id": "893548412081934346",
+            "name": "ReadMe Channel",
+            "color": "#E74C3C",
+            "position": 19
+          },
+          {
+            "id": "1178049214299779092",
+            "name": "Manage Users",
+            "color": "#2ECC71",
+            "position": 6
+          }
+        ],
+        "avatarUrl": "https://cdn.discordapp.com/avatars/858824476828106772/6eac6e7cac939345c3a4149e70f37e86.png?size=512"
+      },
+      "attachments": [],
+      "embeds": [],
+      "stickers": [],
+      "reactions": [
+        {
+          "emoji": {
+            "id": "",
+            "name": "\uD83D\uDC4F",
+            "code": "clap",
+            "isAnimated": false,
+            "imageUrl": "https://cdn.jsdelivr.net/gh/twitter/twemoji@latest/assets/svg/1f44f.svg"
+          },
+          "count": 12,
+          "users": [
+            {
+              "id": "150071474063933440",
+              "name": "paytun",
+              "discriminator": "0000",
+              "nickname": "paytun",
+              "color": null,
+              "isBot": false,
+              "avatarUrl": "https://cdn.discordapp.com/avatars/150071474063933440/a34f3e02f25650e71d977484ae580f05.png?size=512"
+            },
+            {
+              "id": "416863614281056268",
+              "name": "borderline88",
+              "discriminator": "0000",
+              "nickname": "Borderline88",
+              "color": null,
+              "isBot": false,
+              "avatarUrl": "https://cdn.discordapp.com/embed/avatars/0.png"
+            },
+            {
+              "id": "689727225712607252",
+              "name": "goldenterry",
+              "discriminator": "0000",
+              "nickname": "terry999",
+              "color": null,
+              "isBot": false,
+              "avatarUrl": "https://cdn.discordapp.com/avatars/689727225712607252/bb7924fe587ee11e6e24a1ac4f0283cf.png?size=512"
+            },
+            {
+              "id": "786451794896093184",
+              "name": "amanbawa",
+              "discriminator": "0000",
+              "nickname": "amanbawa",
+              "color": null,
+              "isBot": false,
+              "avatarUrl": "https://cdn.discordapp.com/avatars/786451794896093184/e507404767fe55732c5538b448348131.png?size=512"
+            },
+            {
+              "id": "811787590801424454",
+              "name": "ztpm",
+              "discriminator": "0000",
+              "nickname": "Zhanat",
+              "color": null,
+              "isBot": false,
+              "avatarUrl": "https://cdn.discordapp.com/avatars/811787590801424454/03d2311e5337267dd12770c83f0e6855.png?size=512"
+            },
+            {
+              "id": "813418044180660294",
+              "name": "benbeinglass",
+              "discriminator": "0000",
+              "nickname": "BenB",
+              "color": null,
+              "isBot": false,
+              "avatarUrl": "https://cdn.discordapp.com/embed/avatars/3.png"
+            },
+            {
+              "id": "822546052514709534",
+              "name": ".17mia",
+              "discriminator": "0000",
+              "nickname": "17MIA",
+              "color": null,
+              "isBot": false,
+              "avatarUrl": "https://cdn.discordapp.com/avatars/822546052514709534/cd1e61701c0bb304ad6774a0376907b4.png?size=512"
+            },
+            {
+              "id": "882869738601074739",
+              "name": "changa0101",
+              "discriminator": "0000",
+              "nickname": "changa",
+              "color": null,
+              "isBot": false,
+              "avatarUrl": "https://cdn.discordapp.com/avatars/882869738601074739/49f2f75d731a26dff71d807bd3085292.png?size=512"
+            },
+            {
+              "id": "911396618270539806",
+              "name": "technerd59",
+              "discriminator": "0000",
+              "nickname": "technerd",
+              "color": null,
+              "isBot": false,
+              "avatarUrl": "https://cdn.discordapp.com/embed/avatars/4.png"
+            },
+            {
+              "id": "922329461683257395",
+              "name": "mindflayer23",
+              "discriminator": "0000",
+              "nickname": "MindFlayer",
+              "color": null,
+              "isBot": false,
+              "avatarUrl": "https://cdn.discordapp.com/avatars/922329461683257395/f7f2e9361e8a54ce6e72580ac7b967af.png?size=512"
+            },
+            {
+              "id": "1067069871185207306",
+              "name": "in4493",
+              "discriminator": "0000",
+              "nickname": "in",
+              "color": null,
+              "isBot": false,
+              "avatarUrl": "https://cdn.discordapp.com/embed/avatars/4.png"
+            },
+            {
+              "id": "1252691007607275633",
+              "name": "rkt29",
+              "discriminator": "0000",
+              "nickname": "RKT",
+              "color": null,
+              "isBot": false,
+              "avatarUrl": "https://cdn.discordapp.com/avatars/1252691007607275633/f7f2e9361e8a54ce6e72580ac7b967af.png?size=512"
+            }
+          ]
+        },
+        {
+          "emoji": {
+            "id": "",
+            "name": "\uD83D\uDD25",
+            "code": "fire",
+            "isAnimated": false,
+            "imageUrl": "https://cdn.jsdelivr.net/gh/twitter/twemoji@latest/assets/svg/1f525.svg"
+          },
+          "count": 6,
+          "users": [
+            {
+              "id": "689727225712607252",
+              "name": "goldenterry",
+              "discriminator": "0000",
+              "nickname": "terry999",
+              "color": null,
+              "isBot": false,
+              "avatarUrl": "https://cdn.discordapp.com/avatars/689727225712607252/bb7924fe587ee11e6e24a1ac4f0283cf.png?size=512"
+            },
+            {
+              "id": "822546052514709534",
+              "name": ".17mia",
+              "discriminator": "0000",
+              "nickname": "17MIA",
+              "color": null,
+              "isBot": false,
+              "avatarUrl": "https://cdn.discordapp.com/avatars/822546052514709534/cd1e61701c0bb304ad6774a0376907b4.png?size=512"
+            },
+            {
+              "id": "922329461683257395",
+              "name": "mindflayer23",
+              "discriminator": "0000",
+              "nickname": "MindFlayer",
+              "color": null,
+              "isBot": false,
+              "avatarUrl": "https://cdn.discordapp.com/avatars/922329461683257395/f7f2e9361e8a54ce6e72580ac7b967af.png?size=512"
+            },
+            {
+              "id": "1067069871185207306",
+              "name": "in4493",
+              "discriminator": "0000",
+              "nickname": "in",
+              "color": null,
+              "isBot": false,
+              "avatarUrl": "https://cdn.discordapp.com/embed/avatars/4.png"
+            },
+            {
+              "id": "1128122742827397130",
+              "name": "geeque80",
+              "discriminator": "0000",
+              "nickname": "GQS",
+              "color": null,
+              "isBot": false,
+              "avatarUrl": "https://cdn.discordapp.com/embed/avatars/5.png"
+            },
+            {
+              "id": "1147289315529994363",
+              "name": "asha_33253",
+              "discriminator": "0000",
+              "nickname": "Asha",
+              "color": null,
+              "isBot": false,
+              "avatarUrl": "https://cdn.discordapp.com/embed/avatars/3.png"
+            }
+          ]
+        }
+      ],
+      "mentions": [],
+      "inlineEmojis": [
+        {
+          "id": "",
+          "name": "\uD83D\uDE4F\uD83C\uDFFD",
+          "code": "pray_tone3",
+          "isAnimated": false,
+          "imageUrl": "https://cdn.jsdelivr.net/gh/twitter/twemoji@latest/assets/svg/1f64f-1f3fd.svg"
+        }
+      ]
+    },
+    {
+      "id": "1136887663174103190",
+      "type": "Default",
+      "timestamp": "2023-08-04T00:05:41.252-05:00",
+      "timestampEdited": null,
+      "callEndedTimestamp": null,
+      "isPinned": false,
+      "content": "All : we had this list of questions in a prev \"Chat with a leader\" session. LMK if this is a good list or if we should discuss something else as well? Obv, we won't be able to go thru all of these with 4-5 leaders, so I might have to prioritize as well. \n\nCan you tell us more about your TPM journey?\n1) Can you talk us through a day in the life of a Director of Product TPM?\n2) How do you keep your technical skills current?\n3) How much weight do you put on Technical Domain Knowledge vs Program Management as a hiring manager for TPM roles?\n4) For senior roles, how do you look at depth vs breath for a TPM?  If you had to pick, which do you find more important?\n5) If I'm joining your organization as a new TPM, what are the top 3 things to focus on in the first 30/60/90 days to create impact?\n6) What makes a great candidate, great?  What are the things you look for in interviews?\n7) If you could time travel, what advice will you give to your younger self, especially when you started your career as a TPM?\n8) What did it take for you to be ready to be promoted from an IC to Manager and Manager to Director?\n9) What's your advice for juggling multiple programs at once?  How do you know when to go deep on one while still balancing the others?\n10) How should TPMs influence technical decisions in a program?  Do you have an example where you did this well?\n11) Could you explain the interview process at LinkedIn?\n12) How does one advance to more senior levels (L7+) as an IC?\n13) How do I determine if I am really feeling an imposter syndrome, or I am struggling in a new job?  Any recommendations on how to overcome imposter syndrome?\n14) How would you describe the culture and work/life balance in your team?  Is there anything you'd want to change about it?\n15) How is your and your team's WLB?  What are signs you look for to help proactively prevent burnout?\n16) What recommendations and strategies can you share on growing a team, could be TPM or other?",
+      "author": {
+        "id": "858824476828106772",
+        "name": "arav1nd",
+        "discriminator": "0000",
+        "nickname": "AG",
+        "color": "#25C059",
+        "isBot": false,
+        "roles": [
+          {
+            "id": "864371622231801856",
+            "name": "Moderator",
+            "color": "#25C059",
+            "position": 25
+          },
+          {
+            "id": "888509975440289873",
+            "name": "Server Booster",
+            "color": "#F47FFF",
+            "position": 20
+          },
+          {
+            "id": "893548412081934346",
+            "name": "ReadMe Channel",
+            "color": "#E74C3C",
+            "position": 19
+          },
+          {
+            "id": "1178049214299779092",
+            "name": "Manage Users",
+            "color": "#2ECC71",
+            "position": 6
+          }
+        ],
+        "avatarUrl": "https://cdn.discordapp.com/avatars/858824476828106772/6eac6e7cac939345c3a4149e70f37e86.png?size=512"
+      },
+      "attachments": [],
+      "embeds": [],
+      "stickers": [],
+      "reactions": [
+        {
+          "emoji": {
+            "id": "",
+            "name": "\uD83D\uDC4F",
+            "code": "clap",
+            "isAnimated": false,
+            "imageUrl": "https://cdn.jsdelivr.net/gh/twitter/twemoji@latest/assets/svg/1f44f.svg"
+          },
+          "count": 5,
+          "users": [
+            {
+              "id": "811787590801424454",
+              "name": "ztpm",
+              "discriminator": "0000",
+              "nickname": "Zhanat",
+              "color": null,
+              "isBot": false,
+              "avatarUrl": "https://cdn.discordapp.com/avatars/811787590801424454/03d2311e5337267dd12770c83f0e6855.png?size=512"
+            },
+            {
+              "id": "845172941485637642",
+              "name": "kt7777",
+              "discriminator": "0000",
+              "nickname": "Kasak",
+              "color": null,
+              "isBot": false,
+              "avatarUrl": "https://cdn.discordapp.com/embed/avatars/4.png"
+            },
+            {
+              "id": "856324731501412362",
+              "name": "a1_007",
+              "discriminator": "0000",
+              "nickname": "A1",
+              "color": null,
+              "isBot": false,
+              "avatarUrl": "https://cdn.discordapp.com/embed/avatars/2.png"
+            },
+            {
+              "id": "905498442263036005",
+              "name": "va0689",
+              "discriminator": "0000",
+              "nickname": "TPM",
+              "color": null,
+              "isBot": false,
+              "avatarUrl": "https://cdn.discordapp.com/avatars/905498442263036005/6c5996770c985bcd6e5b68131ff2ba04.png?size=512"
+            },
+            {
+              "id": "1264606986771759215",
+              "name": "rav808853",
+              "discriminator": "0000",
+              "nickname": "Rav",
+              "color": null,
+              "isBot": false,
+              "avatarUrl": "https://cdn.discordapp.com/embed/avatars/0.png"
+            }
+          ]
+        },
+        {
+          "emoji": {
+            "id": "",
+            "name": "\uD83D\uDD25",
+            "code": "fire",
+            "isAnimated": false,
+            "imageUrl": "https://cdn.jsdelivr.net/gh/twitter/twemoji@latest/assets/svg/1f525.svg"
+          },
+          "count": 3,
+          "users": [
+            {
+              "id": "786451794896093184",
+              "name": "amanbawa",
+              "discriminator": "0000",
+              "nickname": "amanbawa",
+              "color": null,
+              "isBot": false,
+              "avatarUrl": "https://cdn.discordapp.com/avatars/786451794896093184/e507404767fe55732c5538b448348131.png?size=512"
+            },
+            {
+              "id": "795092940724764692",
+              "name": "apurv212",
+              "discriminator": "0000",
+              "nickname": "Apurv Raveshia",
+              "color": null,
+              "isBot": false,
+              "avatarUrl": "https://cdn.discordapp.com/avatars/795092940724764692/fcd0f62e2aa5c8e60d11eb8e113093c1.png?size=512"
+            },
+            {
+              "id": "1040496682225385492",
+              "name": "nv_4455",
+              "discriminator": "0000",
+              "nickname": "nv#4455",
+              "color": null,
+              "isBot": false,
+              "avatarUrl": "https://cdn.discordapp.com/avatars/1040496682225385492/6c5996770c985bcd6e5b68131ff2ba04.png?size=512"
+            }
+          ]
+        },
+        {
+          "emoji": {
+            "id": "",
+            "name": "\uD83D\uDC4D",
+            "code": "thumbsup",
+            "isAnimated": false,
+            "imageUrl": "https://cdn.jsdelivr.net/gh/twitter/twemoji@latest/assets/svg/1f44d.svg"
+          },
+          "count": 2,
+          "users": [
+            {
+              "id": "822546052514709534",
+              "name": ".17mia",
+              "discriminator": "0000",
+              "nickname": "17MIA",
+              "color": null,
+              "isBot": false,
+              "avatarUrl": "https://cdn.discordapp.com/avatars/822546052514709534/cd1e61701c0bb304ad6774a0376907b4.png?size=512"
+            },
+            {
+              "id": "1128122742827397130",
+              "name": "geeque80",
+              "discriminator": "0000",
+              "nickname": "GQS",
+              "color": null,
+              "isBot": false,
+              "avatarUrl": "https://cdn.discordapp.com/embed/avatars/5.png"
+            }
+          ]
+        }
+      ],
+      "mentions": [],
+      "inlineEmojis": []
+    },
+    {
+      "id": "1145810446520176843",
+      "type": "Default",
+      "timestamp": "2023-08-28T15:01:38.579-05:00",
+      "timestampEdited": null,
+      "callEndedTimestamp": null,
+      "isPinned": false,
+      "content": "As AI is everywhere these days, I would like to know following:\n1) How are AI TPM different from any other Product/Infra TPMs? \n2) What key skills a good TPM need to develop to attain a AI TPM job in top tech company?\n3) What unique value to AI TPM bring to ML/AI teams where results are more experiment driven than well defined scope? Where researches are working via adhoc experimentation?\n4) If AI TPM were to be a separate track then what will be core competencies of such TPMs?",
+      "author": {
+        "id": "809151247960506450",
+        "name": "saeeen80",
+        "discriminator": "0000",
+        "nickname": "Saeen",
+        "color": null,
+        "isBot": false,
+        "roles": [],
+        "avatarUrl": "https://cdn.discordapp.com/avatars/809151247960506450/5f7f37b414dff7fb97468d04d467570c.png?size=512"
+      },
+      "attachments": [],
+      "embeds": [],
+      "stickers": [],
+      "reactions": [
+        {
+          "emoji": {
+            "id": "",
+            "name": "\uD83D\uDC4D",
+            "code": "thumbsup",
+            "isAnimated": false,
+            "imageUrl": "https://cdn.jsdelivr.net/gh/twitter/twemoji@latest/assets/svg/1f44d.svg"
+          },
+          "count": 4,
+          "users": [
+            {
+              "id": "757840622022295583",
+              "name": "agentx1600",
+              "discriminator": "0000",
+              "nickname": "Agent X",
+              "color": null,
+              "isBot": false,
+              "avatarUrl": "https://cdn.discordapp.com/embed/avatars/4.png"
+            },
+            {
+              "id": "809151247960506450",
+              "name": "saeeen80",
+              "discriminator": "0000",
+              "nickname": "Saeen",
+              "color": null,
+              "isBot": false,
+              "avatarUrl": "https://cdn.discordapp.com/avatars/809151247960506450/5f7f37b414dff7fb97468d04d467570c.png?size=512"
+            },
+            {
+              "id": "976467136346226718",
+              "name": "charnibp1",
+              "discriminator": "0000",
+              "nickname": "Brian Charniga",
+              "color": null,
+              "isBot": false,
+              "avatarUrl": "https://cdn.discordapp.com/avatars/976467136346226718/9463f9beb5250b91e0068bb9c5088784.png?size=512"
+            },
+            {
+              "id": "1128122742827397130",
+              "name": "geeque80",
+              "discriminator": "0000",
+              "nickname": "GQS",
+              "color": null,
+              "isBot": false,
+              "avatarUrl": "https://cdn.discordapp.com/embed/avatars/5.png"
+            }
+          ]
+        }
+      ],
+      "mentions": [],
+      "inlineEmojis": []
+    },
+    {
+      "id": "1184357749962850366",
+      "type": "Default",
+      "timestamp": "2023-12-12T22:54:51.894-06:00",
+      "timestampEdited": null,
+      "callEndedTimestamp": null,
+      "isPinned": false,
+      "content": "@AG @Saeen - is there a recording of this summit I can listen to?",
+      "author": {
+        "id": "1184349048363286548",
+        "name": "shahfazz.",
+        "discriminator": "0000",
+        "nickname": "Shahfazz",
+        "color": null,
+        "isBot": false,
+        "roles": [],
+        "avatarUrl": "https://cdn.discordapp.com/avatars/1184349048363286548/5445ffd7ffb201a98393cbdf684ea4b1.png?size=512"
+      },
+      "attachments": [],
+      "embeds": [],
+      "stickers": [],
+      "reactions": [],
+      "mentions": [
+        {
+          "id": "809151247960506450",
+          "name": "saeeen80",
+          "discriminator": "0000",
+          "nickname": "Saeen",
+          "color": null,
+          "isBot": false,
+          "roles": [],
+          "avatarUrl": "https://cdn.discordapp.com/avatars/809151247960506450/5f7f37b414dff7fb97468d04d467570c.png?size=512"
+        },
+        {
+          "id": "858824476828106772",
+          "name": "arav1nd",
+          "discriminator": "0000",
+          "nickname": "AG",
+          "color": "#25C059",
+          "isBot": false,
+          "roles": [
+            {
+              "id": "864371622231801856",
+              "name": "Moderator",
+              "color": "#25C059",
+              "position": 25
+            },
+            {
+              "id": "888509975440289873",
+              "name": "Server Booster",
+              "color": "#F47FFF",
+              "position": 20
+            },
+            {
+              "id": "893548412081934346",
+              "name": "ReadMe Channel",
+              "color": "#E74C3C",
+              "position": 19
+            },
+            {
+              "id": "1178049214299779092",
+              "name": "Manage Users",
+              "color": "#2ECC71",
+              "position": 6
+            }
+          ],
+          "avatarUrl": "https://cdn.discordapp.com/avatars/858824476828106772/6eac6e7cac939345c3a4149e70f37e86.png?size=512"
+        }
+      ],
+      "inlineEmojis": []
+    },
+    {
+      "id": "1185382033262915654",
+      "type": "Reply",
+      "timestamp": "2023-12-15T18:45:00.063-06:00",
+      "timestampEdited": null,
+      "callEndedTimestamp": null,
+      "isPinned": false,
+      "content": "There is a recording, but the event organizers are keeping the access exclusive to the ticket holders for now. It'll be made public in about 6 months I think",
+      "author": {
+        "id": "858824476828106772",
+        "name": "arav1nd",
+        "discriminator": "0000",
+        "nickname": "AG",
+        "color": "#25C059",
+        "isBot": false,
+        "roles": [
+          {
+            "id": "864371622231801856",
+            "name": "Moderator",
+            "color": "#25C059",
+            "position": 25
+          },
+          {
+            "id": "888509975440289873",
+            "name": "Server Booster",
+            "color": "#F47FFF",
+            "position": 20
+          },
+          {
+            "id": "893548412081934346",
+            "name": "ReadMe Channel",
+            "color": "#E74C3C",
+            "position": 19
+          },
+          {
+            "id": "1178049214299779092",
+            "name": "Manage Users",
+            "color": "#2ECC71",
+            "position": 6
+          }
+        ],
+        "avatarUrl": "https://cdn.discordapp.com/avatars/858824476828106772/6eac6e7cac939345c3a4149e70f37e86.png?size=512"
+      },
+      "attachments": [],
+      "embeds": [],
+      "stickers": [],
+      "reactions": [],
+      "mentions": [
+        {
+          "id": "1184349048363286548",
+          "name": "shahfazz.",
+          "discriminator": "0000",
+          "nickname": "Shahfazz",
+          "color": null,
+          "isBot": false,
+          "roles": [],
+          "avatarUrl": "https://cdn.discordapp.com/avatars/1184349048363286548/5445ffd7ffb201a98393cbdf684ea4b1.png?size=512"
+        }
+      ],
+      "reference": {
+        "type": "Default",
+        "messageId": "1184357749962850366",
+        "channelId": "1135419311339618364",
+        "guildId": "853099205206999050"
+      },
+      "inlineEmojis": []
+    },
+    {
+      "id": "1185703438714146816",
+      "type": "Default",
+      "timestamp": "2023-12-16T16:02:09.094-06:00",
+      "timestampEdited": null,
+      "callEndedTimestamp": null,
+      "isPinned": false,
+      "content": "I feel that Data Scientists/ Analysts / TPMs are only good as entry points to any FAANG company. These roles are not strategic decision making roles and therefore, all the credit for their work goes to PMs/ EMs, EVEN if they moved the needle in any project. Also, they can easily be made scapegoats in case of wrong decisions.\n\nIts just how it works. Therefore, if one wishes to be a people manager soon and advance to VP levels, Product / Engineering Management are the right tracks. There are plenty of growth opportunities and companies need people to grow in these skillsets",
+      "author": {
+        "id": "456226577798135808",
+        "name": "Deleted User",
+        "discriminator": "0000",
+        "nickname": "Deleted User",
+        "color": null,
+        "isBot": false,
+        "roles": [],
+        "avatarUrl": "https://cdn.discordapp.com/embed/avatars/3.png"
+      },
+      "attachments": [],
+      "embeds": [],
+      "stickers": [],
+      "reactions": [],
+      "mentions": [],
+      "inlineEmojis": []
+    },
+    {
+      "id": "1186482768436277378",
+      "type": "Reply",
+      "timestamp": "2023-12-18T19:38:55.779-06:00",
+      "timestampEdited": null,
+      "callEndedTimestamp": null,
+      "isPinned": false,
+      "content": "Many thanks AG",
+      "author": {
+        "id": "1184349048363286548",
+        "name": "shahfazz.",
+        "discriminator": "0000",
+        "nickname": "Shahfazz",
+        "color": null,
+        "isBot": false,
+        "roles": [],
+        "avatarUrl": "https://cdn.discordapp.com/avatars/1184349048363286548/5445ffd7ffb201a98393cbdf684ea4b1.png?size=512"
+      },
+      "attachments": [],
+      "embeds": [],
+      "stickers": [],
+      "reactions": [],
+      "mentions": [
+        {
+          "id": "858824476828106772",
+          "name": "arav1nd",
+          "discriminator": "0000",
+          "nickname": "AG",
+          "color": "#25C059",
+          "isBot": false,
+          "roles": [
+            {
+              "id": "864371622231801856",
+              "name": "Moderator",
+              "color": "#25C059",
+              "position": 25
+            },
+            {
+              "id": "888509975440289873",
+              "name": "Server Booster",
+              "color": "#F47FFF",
+              "position": 20
+            },
+            {
+              "id": "893548412081934346",
+              "name": "ReadMe Channel",
+              "color": "#E74C3C",
+              "position": 19
+            },
+            {
+              "id": "1178049214299779092",
+              "name": "Manage Users",
+              "color": "#2ECC71",
+              "position": 6
+            }
+          ],
+          "avatarUrl": "https://cdn.discordapp.com/avatars/858824476828106772/6eac6e7cac939345c3a4149e70f37e86.png?size=512"
+        }
+      ],
+      "reference": {
+        "type": "Default",
+        "messageId": "1185382033262915654",
+        "channelId": "1135419311339618364",
+        "guildId": "853099205206999050"
+      },
+      "inlineEmojis": []
+    }
+  ],
+  "messageCount": 8
+}

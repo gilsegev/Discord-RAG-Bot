@@ -1,0 +1,48 @@
+{
+  "guild": {
+    "id": "853099205206999050",
+    "name": "TPMs unite",
+    "iconUrl": "https://cdn.discordapp.com/icons/853099205206999050/472b55453e54d59cad3b3fc6215992a5.png?size=512"
+  },
+  "channel": {
+    "id": "1506452596708085922",
+    "type": "GuildPublicThread",
+    "categoryId": "1134690339043692704",
+    "category": "forum-discussion",
+    "name": "New Post",
+    "topic": null
+  },
+  "dateRange": {
+    "after": null,
+    "before": null
+  },
+  "exportedAt": "2026-05-29T13:44:52.4365043-05:00",
+  "messages": [
+    {
+      "id": "1506453936276639949",
+      "type": "Default",
+      "timestamp": "2026-05-19T19:30:06.969-05:00",
+      "timestampEdited": null,
+      "callEndedTimestamp": null,
+      "isPinned": false,
+      "content": "Person’s account likely hacked. ^^",
+      "author": {
+        "id": "403638107372519426",
+        "name": "modernpicasso",
+        "discriminator": "0000",
+        "nickname": "modernpicasso",
+        "color": null,
+        "isBot": false,
+        "roles": [],
+        "avatarUrl": "https://cdn.discordapp.com/avatars/403638107372519426/e3ceea22be9bb778219490f4c7d0c51e.png?size=512"
+      },
+      "attachments": [],
+      "embeds": [],
+      "stickers": [],
+      "reactions": [],
+      "mentions": [],
+      "inlineEmojis": []
+    }
+  ],
+  "messageCount": 1
+}

@@ -1,0 +1,88 @@
+{
+  "guild": {
+    "id": "853099205206999050",
+    "name": "TPMs unite",
+    "iconUrl": "https://cdn.discordapp.com/icons/853099205206999050/472b55453e54d59cad3b3fc6215992a5.png?size=512"
+  },
+  "channel": {
+    "id": "1372226829951172718",
+    "type": "GuildPublicThread",
+    "categoryId": "1134690339043692704",
+    "category": "forum-discussion",
+    "name": "Testing per CaliMan's request",
+    "topic": null
+  },
+  "dateRange": {
+    "after": null,
+    "before": null
+  },
+  "exportedAt": "2026-05-29T13:45:09.5403114-05:00",
+  "messages": [
+    {
+      "id": "1372226829951172718",
+      "type": "Default",
+      "timestamp": "2025-05-14T09:59:31.002-05:00",
+      "timestampEdited": null,
+      "callEndedTimestamp": null,
+      "isPinned": false,
+      "content": "Looks like regular users can start discussions",
+      "author": {
+        "id": "1228433581919965339",
+        "name": "eodenweller_29382",
+        "discriminator": "0000",
+        "nickname": "ErinO",
+        "color": null,
+        "isBot": false,
+        "roles": [],
+        "avatarUrl": "https://cdn.discordapp.com/avatars/1228433581919965339/2f3c52b1d458877aa15189c2c8443b75.png?size=512"
+      },
+      "attachments": [],
+      "embeds": [],
+      "stickers": [],
+      "reactions": [
+        {
+          "emoji": {
+            "id": "",
+            "name": "\uD83D\uDC4D",
+            "code": "thumbsup",
+            "isAnimated": false,
+            "imageUrl": "https://cdn.jsdelivr.net/gh/twitter/twemoji@latest/assets/svg/1f44d.svg"
+          },
+          "count": 3,
+          "users": [
+            {
+              "id": "915831135903293451",
+              "name": "dmodemd",
+              "discriminator": "0000",
+              "nickname": "DModeMD",
+              "color": null,
+              "isBot": false,
+              "avatarUrl": "https://cdn.discordapp.com/avatars/915831135903293451/79a3e3efcc98bcce644f7ba7c66f81b0.png?size=512"
+            },
+            {
+              "id": "1150595766193238106",
+              "name": "kirstentropy",
+              "discriminator": "0000",
+              "nickname": "kb",
+              "color": null,
+              "isBot": false,
+              "avatarUrl": "https://cdn.discordapp.com/avatars/1150595766193238106/b28712525fb33d774abea6c389852a5e.png?size=512"
+            },
+            {
+              "id": "1377034207297277964",
+              "name": "securiously",
+              "discriminator": "0000",
+              "nickname": "Securiously",
+              "color": null,
+              "isBot": false,
+              "avatarUrl": "https://cdn.discordapp.com/avatars/1377034207297277964/1628fc11e7961d85181295493426b775.png?size=512"
+            }
+          ]
+        }
+      ],
+      "mentions": [],
+      "inlineEmojis": []
+    }
+  ],
+  "messageCount": 1
+}
