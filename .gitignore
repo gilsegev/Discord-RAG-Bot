@@ -1,0 +1,27 @@
+# Virtual environment
+.venv/
+
+# Model cache — large files, don't commit
+.model_cache/
+
+# Logs
+logs/
+
+# Qdrant data
+qdrant_data/
+Qdrant
+store
+
+# Environment variables — never commit
+.env
+
+# Python cache
+__pycache__/
+*.pyc
+*.pyo
+
+# Chat log exports — never commit community data
+chat_logs/*.json
+
+# Test files
+*.test.json
