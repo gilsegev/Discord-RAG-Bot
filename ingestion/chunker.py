@@ -1,10 +1,8 @@
 """
-ingestion/chunker.py — v6 reply-aware chunking
-v6 additions:
-  - thread_name included in chunk text for semantic retrieval
-  - singleton forum thread messages indexed (MIN_MSGS_THREAD=1)
-  - thread_name stored in chunk payload for Qdrant filtering
-  - Fix 3: thread title preserved in every split chunk piece
+ingestion/chunker.py — v7 reply-aware chunking
+v7 fixes:
+  - Fix 1: split_index added to each split piece for unique Qdrant IDs
+  - Prevents 8 vectors being lost due to ID collision on split chunks
 Author: ThinkInSystems (Hemanth Aragonda)
 """
 import tiktoken
@@ -12,10 +10,9 @@ from datetime import datetime
 
 enc             = tiktoken.get_encoding("cl100k_base")
 WINDOW_MINS     = 15
-MIN_MSGS        = 2    # minimum for regular channel chunks
-MIN_MSGS_THREAD = 1    # forum thread singletons are meaningful
+MIN_MSGS        = 2
+MIN_MSGS_THREAD = 1
 MAX_TOKENS      = 700
-# Used only in _window_chunk fallback — not in reply-aware path
 OVERLAP_MSGS    = 2
 
 
@@ -24,13 +21,11 @@ def chunk_records(records: list[dict]) -> list[dict]:
     Main entry point. Returns chunks ready for embedding.
     Pass 1: reply-aware grouping via parent_id chains.
     Pass 2: 15-min time window fallback for standalone messages.
-    Forum thread singletons indexed with MIN_MSGS_THREAD=1.
     """
     id_to_msg = {r["id"]: r for r in records}
 
     by_channel = {}
     for r in records:
-        # Group by channel+thread to keep threads separate
         group_key = (r["channel"], r.get("thread_name"))
         by_channel.setdefault(group_key, []).append(r)
 
@@ -55,9 +50,7 @@ def get_root_id(msg: dict, id_to_msg: dict) -> str:
     """
     Follow parent_id chain to find the root message id.
     Cycle detection via visited set prevents infinite loops.
-    Cross-channel reply references handled gracefully —
-    if parent is in a different channel it won't be in id_to_msg
-    and the loop exits, treating the message as a local root.
+    Cross-channel reply references handled gracefully.
     """
     visited = set()
     current = msg
@@ -76,11 +69,8 @@ def _reply_aware_chunk(msgs: list[dict], id_to_msg: dict,
     Two-pass chunking:
     Pass 1: group reply chains by parent_id.
     Pass 2: time window for standalone + orphaned messages.
-
-    is_thread=True uses MIN_MSGS_THREAD to index singletons.
-    Filtered root handling: if root was bot/system message,
-    replies treated as standalone not context-free chunks.
     Orphans collected BEFORE _window_chunk call (critical ordering).
+    Filtered root handling: bot/system roots make replies standalone.
     """
     min_msgs = MIN_MSGS_THREAD if is_thread else MIN_MSGS
 
@@ -101,7 +91,6 @@ def _reply_aware_chunk(msgs: list[dict], id_to_msg: dict,
     orphans      = []
 
     for root_id, group_msgs in root_groups.items():
-        # If root was filtered (bot/system), treat replies as standalone
         if root_id not in id_to_msg and \
                 not any(m["id"] == root_id for m in group_msgs):
             orphans.extend(group_msgs)
@@ -124,9 +113,7 @@ def _window_chunk(msgs: list[dict],
                   min_msgs: int = MIN_MSGS) -> list[dict]:
     """
     15-min time window chunking — fallback for non-reply messages.
-    min_msgs parameter allows lower threshold for forum threads.
-    start_ts resets to current message timestamp after split —
-    not overlap tail, which would extend the window incorrectly.
+    start_ts resets to current message timestamp after split.
     """
     if not msgs:
         return []
@@ -146,7 +133,6 @@ def _window_chunk(msgs: list[dict],
             prev_tail = current[-OVERLAP_MSGS:]
             chunks.append(_build(current))
             current  = prev_tail + [msg]
-            # Reset to current message — not overlap tail
             start_ts = datetime.fromisoformat(msg["timestamp"])
         else:
             current.append(msg)
@@ -160,8 +146,8 @@ def _window_chunk(msgs: list[dict],
 def _build(msgs: list[dict]) -> dict:
     """
     Format a list of messages into one chunk dict.
-    thread_name prepended to chunk text for semantic retrieval —
-    exposes topic words directly to the embedding model.
+    thread_name prepended to chunk text for semantic retrieval.
+    span_days added for long-span reply chain metadata.
     dict.fromkeys preserves insertion order while deduplicating authors.
     """
     assert msgs, "_build() called with empty message list"
@@ -169,7 +155,6 @@ def _build(msgs: list[dict]) -> dict:
     thread_name = msgs[0].get("thread_name")
     lines       = []
 
-    # Prepend thread title — improves semantic retrieval
     if thread_name:
         lines.append(f"[Thread: {thread_name}]")
 
@@ -180,6 +165,11 @@ def _build(msgs: list[dict]) -> dict:
             line = "  > " + line
         lines.append(line)
 
+    # Calculate span in days for long-span metadata
+    start_dt  = datetime.fromisoformat(msgs[0]["timestamp"])
+    end_dt    = datetime.fromisoformat(msgs[-1]["timestamp"])
+    span_days = (end_dt - start_dt).days
+
     return {
         "text":          "\n".join(lines),
         "start_ts":      msgs[0]["timestamp"],
@@ -189,19 +179,23 @@ def _build(msgs: list[dict]) -> dict:
         "authors":       list(dict.fromkeys(m["author"] for m in msgs)),
         "message_count": len(msgs),
         "message_ids":   [m["id"] for m in msgs],
+        "span_days":     span_days,
     }
 
 
 def _split_if_needed(chunk: dict) -> list[dict]:
     """
     Split chunk at line boundaries if it exceeds MAX_TOKENS.
-    Fix 3: thread title prepended to every split piece so
-    all sub-chunks retain topic context for embedding.
+    Fix 1: each split piece gets a unique split_index so stable IDs
+    don't collide in Qdrant when multiple pieces share same message_ids.
+    Previously: 8 vectors were lost due to ID collision on split chunks.
+    Thread title preserved in every split piece.
     """
     tokens = len(enc.encode(chunk["text"]))
     chunk["token_count"] = tokens
 
     if tokens <= MAX_TOKENS:
+        chunk["split_index"] = 0  # no split — index 0
         return [chunk]
 
     # Extract thread title — prepend to every split piece
@@ -209,7 +203,7 @@ def _split_if_needed(chunk: dict) -> list[dict]:
     thread_header = f"[Thread: {thread_name}]\n" if thread_name else ""
 
     lines = chunk["text"].split("\n")
-    # Skip existing thread header line — we re-add it to each piece
+    # Skip existing thread header — re-added to each piece
     if thread_header and lines and lines[0].startswith("[Thread:"):
         lines = lines[1:]
 
@@ -223,6 +217,7 @@ def _split_if_needed(chunk: dict) -> list[dict]:
                 sub_text = thread_header + "\n".join(current)
                 sub = {**chunk, "text": sub_text}
                 sub["token_count"] = len(enc.encode(sub_text))
+                sub["split_index"] = len(result)  # unique per piece
                 result.append(sub)
             current = [line]
 
@@ -230,6 +225,7 @@ def _split_if_needed(chunk: dict) -> list[dict]:
         sub_text = thread_header + "\n".join(current)
         sub = {**chunk, "text": sub_text}
         sub["token_count"] = len(enc.encode(sub_text))
+        sub["split_index"] = len(result)
         result.append(sub)
 
     return result
@@ -245,9 +241,13 @@ if __name__ == "__main__":
                      if any("  > " in l
                             for l in c["text"].split("\n"))]
     thread_chunks = [c for c in chunks if c.get("thread_name")]
+    split_chunks  = [c for c in chunks if c.get("split_index", 0) > 0]
+    long_span     = [c for c in chunks if c.get("span_days", 0) > 30]
 
     print(f"\nReply-aware chunks:  {len(reply_chunks)}")
     print(f"Thread chunks:       {len(thread_chunks)}")
+    print(f"Split pieces (>0):   {len(split_chunks)}")
+    print(f"Long-span (>30d):    {len(long_span)}")
     print(f"Time-window chunks:  "
           f"{len(chunks) - len(reply_chunks) - len(thread_chunks)}")
     print(f"\nQuality metrics:")
@@ -259,3 +259,5 @@ if __name__ == "__main__":
           f"{max(c['token_count'] for c in chunks)}")
     print(f"  Smallest chunk (tokens):"
           f"{min(c['token_count'] for c in chunks)}")
+    print(f"  Max span (days):        "
+          f"{max(c.get('span_days', 0) for c in chunks)}")
