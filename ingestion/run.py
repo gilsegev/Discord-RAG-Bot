@@ -9,6 +9,8 @@ v7 fixes:
   - Fix 2: CPU time estimate formula corrected
   - Fix 3: span_days stored in Qdrant payload
   - Fix 4: trust_remote_code removed — not needed in ST >= 5.3.0
+  - Fix 5: message_ids, channel_id, first_message_id added to payload
+  - Fix 6: first_message_id sourced from chunk (per-piece) not derived
 Author: ThinkInSystems (Hemanth Aragonda)
 """
 import os
@@ -34,8 +36,6 @@ EMBED_DIM    = 768
 BATCH_EMBED  = 32    # safe for CPU — increase to 128 on GPU
 BATCH_UPSERT = 256
 
-# Fix 4: trust_remote_code no longer needed in sentence-transformers >= 5.3.0
-# Removing it eliminates the need to pin a specific model revision
 NOMIC_MODEL  = "nomic-ai/nomic-embed-text-v1.5"
 
 
@@ -115,8 +115,7 @@ def setup_collection(client, force_recreate: bool = False):
 def load_models():
     """
     Load Nomic Embed v1.5.
-    Fix 4: trust_remote_code removed — not needed in ST >= 5.3.0.
-    This eliminates the need for a pinned revision entirely.
+    trust_remote_code removed — not needed in ST >= 5.3.0.
     Cache-aware message — only shows download warning on first run.
     """
     hf_token = os.getenv("HF_TOKEN")
@@ -154,8 +153,8 @@ def load_models():
 def _stable_id(chunk: dict) -> int:
     """
     Stable 64-bit integer ID from chunk's message IDs + split index.
-    Fix 1: split_index included so split pieces don't overwrite each
-    other in Qdrant. Previously 8 vectors were lost per run.
+    split_index ensures split pieces don't overwrite each other in Qdrant.
+    Previously 8 vectors were lost per run without this fix.
     """
     split_index = chunk.get("split_index", 0)
     key = "-".join(sorted(chunk["message_ids"])) + f":{split_index}"
@@ -218,23 +217,34 @@ def _upsert_batch_with_retry(client, points, max_retries: int = 3):
 
 def _upsert_batch(client, batch_chunks: list,
                   batch_vecs: np.ndarray, offset: int):
-    """Build Qdrant points and upsert with retry."""
+    """
+    Build Qdrant points and upsert with retry.
+    Fix 5: message_ids, channel_id, first_message_id in payload
+    enables Discord link construction and dedupe by n8n.
+    Fix 6: first_message_id sourced from chunk field (set per split
+    piece in chunker) not re-derived here — avoids wrong message
+    for split chunks.
+    """
     from qdrant_client.models import PointStruct
     points = [
         PointStruct(
             id=_stable_id(batch_chunks[j]),
             vector=batch_vecs[j].tolist(),
             payload={
-                "text":          batch_chunks[j]["text"],
-                "start_ts":      batch_chunks[j]["start_ts"],
-                "end_ts":        batch_chunks[j]["end_ts"],
-                "channel":       batch_chunks[j]["channel"],
-                "thread_name":   batch_chunks[j].get("thread_name"),
-                "authors":       batch_chunks[j]["authors"],
-                "message_count": batch_chunks[j]["message_count"],
-                "token_count":   batch_chunks[j].get("token_count", 0),
-                "span_days":     batch_chunks[j].get("span_days", 0),
-                "split_index":   batch_chunks[j].get("split_index", 0),
+                "text":             batch_chunks[j]["text"],
+                "start_ts":         batch_chunks[j]["start_ts"],
+                "end_ts":           batch_chunks[j]["end_ts"],
+                "channel":          batch_chunks[j]["channel"],
+                "channel_id":       batch_chunks[j].get("channel_id"),
+                "thread_name":      batch_chunks[j].get("thread_name"),
+                "authors":          batch_chunks[j]["authors"],
+                "message_count":    batch_chunks[j]["message_count"],
+                "message_ids":      batch_chunks[j].get("message_ids", []),
+                # Fix 6: sourced from chunker per split piece
+                "first_message_id": batch_chunks[j].get("first_message_id", ""),
+                "token_count":      batch_chunks[j].get("token_count", 0),
+                "span_days":        batch_chunks[j].get("span_days", 0),
+                "split_index":      batch_chunks[j].get("split_index", 0),
             }
         )
         for j in range(len(batch_chunks))
@@ -257,8 +267,7 @@ def embed_and_upsert(model, client, chunks: list,
         print("  No new chunks to embed. Collection is up to date.")
         return
 
-    total = len(chunks)
-    # Fix 2: corrected estimate — 0.15 min per batch not per second
+    total    = len(chunks)
     est_mins = round((total / BATCH_EMBED) * 0.15, 1)
     print(f"\n  Embedding and storing {total} chunks "
           f"(estimated ~{max(est_mins, 0.1)} min on CPU)...")

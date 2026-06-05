@@ -34,17 +34,30 @@ This prefix is not optional. Nomic Embed v1.5 was trained with task prefixes —
 | Distance metric | Cosine |
 | Normalization | Required — vectors are L2-normalized at index time |
 
-### 1.3 Retrieval stages
+### 1.3 Retrieval stages and score definitions
 
-Two-stage retrieval — broad recall first, then rerank:
+Two-stage retrieval — broad recall first, then rerank. Two separate scoring systems are in use and must not be confused:
 
-| Stage | Parameter | Value | Rationale |
-|---|---|---|---|
-| Stage 1 | `top_k` initial retrieval | 20 | Wide net to ensure relevant chunks are in the candidate set |
-| Stage 2 | Reranked final context | 5 | CrossEncoder reranker scores Stage 1 results; top 5 passed to LLM |
-| Fallback | Minimum score threshold | 0.55 | Cosine similarity below 0.55 = insufficient context; trigger refusal |
+| Term | System | Scale | Starting threshold | Usage |
+|---|---|---|---|---|
+| `retrieval_score` | Qdrant cosine similarity | 0.0 – 1.0 | 0.55 | Stage 1 — filters weak Qdrant results before reranking |
+| `reranker_score` | CrossEncoder score | unbounded, typically -10 to +10 | > 0 (recalibrate against eval set) | Stage 2 — ranks Stage 1 candidates; top 5 passed to LLM |
 
-If Stage 1 returns fewer than 3 results above the 0.55 threshold, treat as no-context and trigger the refusal path. Do not pass weak results to the LLM.
+For `cross-encoder/ms-marco-MiniLM-L-6-v2`, positive scores indicate relevance and negative scores indicate non-relevance. `reranker_score > 0` is a safe starting gate — recalibrate once the 40–60 question eval set is built.
+
+**Stage 1 — Qdrant retrieval:**
+- Query Qdrant with `top_k=20`
+- Apply `retrieval_score >= 0.55` filter
+- If fewer than 3 results pass the threshold — trigger refusal, do not proceed to reranking
+
+**Stage 2 — CrossEncoder reranking:**
+- Pass Stage 1 candidates to CrossEncoder `cross-encoder/ms-marco-MiniLM-L-6-v2`
+- Rerank by `reranker_score`
+- Select top 5 for context assembly
+- Apply starting threshold `reranker_score > 0` — recalibrate after eval set is built
+
+**What score appears in the context block sent to the LLM:**
+The `reranker_score` is included in the context block (section 2.1), not the `retrieval_score`. The reranker score is the more meaningful signal at the point of context assembly.
 
 ### 1.4 Default search scope
 
@@ -62,20 +75,44 @@ Available metadata filters (applied as Qdrant payload filters):
 
 ### 1.5 Dedupe strategy for overlapping chunks
 
-The ingestion pipeline uses 2-message overlap at chunk boundaries. This means adjacent chunks share messages. To avoid surfacing near-duplicate context to the LLM:
+Two sources of duplication exist in the indexed corpus and both must be handled:
 
-1. After Stage 1 retrieval, compare `message_ids` arrays across results
-2. If two chunks share > 50% of their `message_ids`, keep only the higher-scoring one
-3. Apply deduplication before reranking
+**Source 1 — Boundary overlap:** The ingestion pipeline uses 2-message overlap at chunk boundaries. Adjacent chunks share messages.
 
-### 1.6 Behavior when results are weak
+**Source 2 — Reply-chain root duplication:** Reply-aware chunking causes parent/root messages to appear in multiple chunks. Observed in the 13-file run: 1,014 message IDs appear in multiple chunks, max 5 appearances for a single message, 1,571 extra message memberships from overlap. This means the same high-value answer can appear in multiple top retrieval hits — good for recall but risks the LLM receiving repeated evidence instead of diverse supporting context.
 
-| Condition | Action |
-|---|---|
-| 0 results above 0.55 | Trigger refusal — no context found |
-| 1–2 results above 0.55 | Trigger refusal — insufficient context |
-| 3–20 results above 0.55 | Proceed to reranking |
-| All results have `span_days > 365` | Add `[Note: retrieved context spans a wide time range — may reflect outdated community views]` to the assembled context header |
+**Important: both dedupe rules must be applied AFTER reranking.** The `reranker_score` is required to determine which chunk to keep, and reranking has not yet occurred at Stage 1.
+
+**Dedupe rule 1 — Boundary overlap:**
+
+After reranking, apply the following formula for each pair of candidate chunks. For `top_k=20` Stage 1 results this requires at most 190 pairwise comparisons — acceptable for synchronous n8n execution.
+
+```
+shared        = intersection(chunk_a.message_ids, chunk_b.message_ids)
+overlap_ratio = len(shared) / min(len(chunk_a.message_ids), len(chunk_b.message_ids))
+```
+
+If `overlap_ratio > 0.5` — keep only the higher `reranker_score` chunk.
+
+Using `min()` as the denominator catches cases where a short reply-chain chunk is mostly contained inside a larger chunk — Jaccard similarity would miss these cases.
+
+**Dedupe rule 2 — Reply-chain root duplication:**
+
+If multiple retrieved chunks share the same root/parent message ID:
+- Keep the highest `reranker_score` chunk
+- Only retain an additional chunk if it contains meaningfully different child replies (i.e. `overlap_ratio <= 0.5` against the kept chunk)
+
+**Current implementation note:** `root_message_id` is not yet stored in the Qdrant payload (see Open Question 7). Until it is added, implement rule 2 using `message_ids` overlap only — apply the dedupe rule 1 formula across all candidate pairs. Rule 2 as fully described becomes implementable once the ingestion payload includes `root_message_id`.
+
+### 1.6 Reaction-based ranking boost
+
+CaliMan flagged that replies with reactions should rank higher in retrieval. Proposed boost formula applied after reranking and deduplication:
+
+```
+boosted_score = reranker_score * (1 + 0.1 * min(reaction_count, 5))
+```
+
+This caps the boost at 50% for chunks with 5 or more reactions. `reaction_count` must be added to the Qdrant payload during ingestion — this is a pending ingestion update (see Open Question 3). Until `reaction_count` is available in the payload, skip this step.
 
 ---
 
@@ -83,7 +120,9 @@ The ingestion pipeline uses 2-message overlap at chunk boundaries. This means ad
 
 ### 2.1 What gets sent to the LLM
 
-For each of the top 5 reranked chunks, include the following fields in the assembled context block:
+For each of the top 5 reranked and deduped chunks, include the following fields in the assembled context block.
+
+**Note:** `channel_id`, `first_message_id`, and `message_ids` are stored in the Qdrant payload (added in ingestion v7) and are available to n8n at retrieval time. `first_message_id` refers to the first message in the specific chunk piece — for split chunks this is the first message of that piece, not the first message of the original unsplit chunk.
 
 ```
 --- Context chunk {n} of {total} ---
@@ -91,7 +130,7 @@ Channel:      #{channel}
 Thread:       {thread_name or "N/A"}
 Date range:   {start_ts[:10]} to {end_ts[:10]}
 Authors:      {comma-joined authors}
-Score:        {reranker score, 2 decimal places}
+Score:        {reranker_score, 2 decimal places}
 Message IDs:  {comma-joined message_ids}
 Discord link: https://discord.com/channels/853099205206999050/{channel_id}/{first_message_id}
 
@@ -99,12 +138,12 @@ Discord link: https://discord.com/channels/853099205206999050/{channel_id}/{firs
 ```
 
 Fields rationale:
-- **Channel + Thread** — grounds the LLM in where the conversation happened; helps it frame answers as community-specific
+- **Channel + Thread** — grounds the LLM in where the conversation happened
 - **Date range** — lets the LLM note if context is old; critical for fast-changing topics like hiring
 - **Authors** — preserves community attribution; supports citation style
-- **Score** — gives the LLM signal on confidence; low scores should reduce answer assertiveness
-- **Message IDs** — enables feedback correlation back to source messages in the observability layer
-- **Discord link** — constructible from guild ID + channel ID + first message ID; allows the bot to link users back to the original discussion
+- **Score** — `reranker_score` (not `retrieval_score`) — the more meaningful confidence signal at context assembly time
+- **Message IDs** — enables dedupe detection and feedback correlation back to source messages in the observability layer
+- **Discord link** — constructed from `channel_id` and `first_message_id` stored in Qdrant payload; links users back to the original discussion
 
 ### 2.2 Token budget
 
@@ -112,17 +151,19 @@ Fields rationale:
 |---|---|
 | System prompt | ~300 |
 | Retrieved context (5 chunks × avg 154 tokens per chunk based on current index) | ~770 |
-| Context block metadata overhead (5 chunks × ~30 tokens per header) | ~150 |
+| Context block metadata overhead (5 chunks × ~50 tokens per header) | ~250 |
 | User question | ~100 |
 | Answer generation headroom | ~800 |
-| **Total budget** | **~2,120 tokens** |
+| **Total budget** | **~2,220 tokens** |
 
-The 154 tokens/chunk figure is derived from the current Qdrant index average (153.6 tokens/chunk across 1,232 indexed chunks). If assembled context exceeds 1,200 tokens after 5 chunks, drop the lowest-scoring chunk and note the omission.
+The 154 tokens/chunk figure is derived from the current Qdrant index average (153.6 tokens/chunk across 1,232 indexed chunks). The ~50 tokens/header estimate accounts for channel, thread, date range, authors, score, message IDs (up to ~180 chars for 10 IDs), and Discord link (~80 chars).
 
 ### 2.3 Context overflow handling
 
-If the top 5 reranked chunks exceed the 1,200-token context budget:
-1. Drop the lowest-scoring chunk
+**Single chunk overflow:** The current largest chunk is 692 tokens — well under the 1,200-token context budget for 5 chunks. If a future export produces a chunk exceeding 1,200 tokens on its own, the ingestion pipeline's `_split_if_needed()` function will split it at line boundaries before indexing. n8n does not need to handle single-chunk overflow at retrieval time.
+
+**Multi-chunk overflow:** If the assembled 5 chunks exceed the 1,200-token context budget:
+1. Drop the lowest `reranker_score` chunk
 2. Repeat until under budget
 3. If fewer than 3 chunks remain after dropping, trigger refusal — "insufficient context after token budget constraints"
 4. Log the overflow event to the observability layer with chunk count and token counts
@@ -195,12 +236,16 @@ This exact string is checked by the evaluation rubric in `evaluation-and-feedbac
 
 ### 3.4 Uncertainty handling
 
-| Signal | Handling |
-|---|---|
-| Reranker score < 0.6 for all chunks | Add "Note: retrieved context may not be a strong match for this question." before the answer |
-| All chunks older than 12 months | Add temporal honesty note (Rule 5) |
-| `span_days > 365` on retrieved chunks | Add "Note: this conversation spans a wide time range — context may reflect different community views over time." |
-| Subjective/evolving topic | Add nuance caveat (Rule 6) |
+Two separate score signals apply at different pipeline stages:
+
+| Signal | Score type | Threshold | Handling |
+|---|---|---|---|
+| `retrieval_score < 0.55` for all Stage 1 results | Qdrant cosine similarity | 0.55 | Trigger refusal — no context found |
+| `reranker_score <= 0` for all top 5 chunks | CrossEncoder score | 0 (starting gate) | Trigger refusal — context not relevant |
+| `0 < reranker_score < 2` for all top 5 chunks | CrossEncoder score | 2 (weak signal) | Add "Note: retrieved context may not be a strong match for this question." before the answer |
+| All chunks older than 12 months | Date metadata | — | Add temporal honesty note (Rule 5) |
+| `span_days > 365` on retrieved chunks | Payload field | — | Add "Note: this conversation spans a wide time range — context may reflect different community views over time." |
+| Subjective/evolving topic | Content signal | — | Add nuance caveat (Rule 6) |
 
 ### 3.5 Whether to mention "based on TPM Unite history"
 
@@ -224,14 +269,16 @@ The bot must not answer beyond what is in the retrieved context. This is Rule 1 
 
 1. **Reranker model** — CrossEncoder `cross-encoder/ms-marco-MiniLM-L-6-v2` is the proposed default. Does the team want to evaluate alternatives before locking this in?
 
-2. **Score threshold (0.55)** — this is a starting value based on general RAG practice. It should be calibrated against the 40–60 question eval set once it is built. Who owns calibration?
+2. **Reranker score thresholds** — starting values proposed: `> 0` for refusal gate, `> 2` for weak-signal note. Calibrate both against the 40–60 question eval set. Who owns calibration?
 
-3. **Reaction-based ranking boost** — CaliMan flagged that replies with reactions should rank higher. Proposed: add a `reaction_count` field to the Qdrant payload at index time, and apply a ranking boost of `score * (1 + 0.1 * min(reaction_count, 5))` after reranking. Team to ratify before implementation.
+3. **Reaction-based ranking boost** — formula proposed in section 1.6. Requires `reaction_count` field added to Qdrant payload during ingestion. Team to ratify the formula and confirm ingestion update ownership before implementation.
 
-4. **Discord link construction** — the guild ID `853099205206999050` is hardcoded above. Confirm this is stable and does not change. If the server is ever migrated, all stored Discord links become invalid.
+4. **Discord link construction** — guild ID `853099205206999050` hardcoded. `channel_id` and `first_message_id` now in Qdrant payload (ingestion v7). Confirm guild ID is stable — server migration invalidates all stored links.
 
-5. **LLM selection** — the Arch Overview specifies the Gemini API as the current cognitive engine. This document is written to be model-agnostic — the system prompt rules, refusal text, and citation format apply equally to any LLM. If the model changes, the prompt contract does not need to change but the token budget allocations may require adjustment based on the new model's context window.
+5. **LLM selection** — Arch Overview specifies Gemini API as current cognitive engine. This document is model-agnostic — prompt rules, refusal text, and citation format apply to any LLM. Token budget allocations may need adjustment if model changes.
 
-6. **Passive listener retrieval** — the Arch Overview describes a passive listener path that monitors channel traffic without a direct bot mention. Should the retrieval contract apply equally to passive listener queries, or should passive queries use a higher score threshold (e.g. 0.70) to reduce noise responses?
+6. **Passive listener retrieval** — Arch Overview describes a passive listener path. Should passive queries use a higher `retrieval_score` threshold (e.g. 0.70) to reduce noise responses?
 
-7. **Context token budget recalibration** — the 154 tokens/chunk average is based on the current 13-file dataset. As more channels are exported and indexed, this average may shift. The token budget table should be recalibrated after each major data expansion.
+7. **root_message_id in payload** — dedupe rule 2 falls back to rule 1 formula until `root_message_id` is added to the Qdrant payload. Team to decide if this belongs in the next ingestion PR or a dedicated dedupe PR.
+
+8. **Context token budget recalibration** — 154 tokens/chunk average based on current 13-file dataset. Recalibrate after each major data expansion.

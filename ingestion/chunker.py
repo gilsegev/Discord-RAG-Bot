@@ -2,7 +2,9 @@
 ingestion/chunker.py — v7 reply-aware chunking
 v7 fixes:
   - Fix 1: split_index added to each split piece for unique Qdrant IDs
-  - Prevents 8 vectors being lost due to ID collision on split chunks
+  - Fix 2: first_message_id stored per split piece (not from original chunk)
+           ensures Discord links point to correct message in each piece
+  - span_days metadata for long-span reply chain filtering
 Author: ThinkInSystems (Hemanth Aragonda)
 """
 import tiktoken
@@ -147,7 +149,7 @@ def _build(msgs: list[dict]) -> dict:
     """
     Format a list of messages into one chunk dict.
     thread_name prepended to chunk text for semantic retrieval.
-    span_days added for long-span reply chain metadata.
+    span_days calculated for long-span metadata filtering.
     dict.fromkeys preserves insertion order while deduplicating authors.
     """
     assert msgs, "_build() called with empty message list"
@@ -165,7 +167,6 @@ def _build(msgs: list[dict]) -> dict:
             line = "  > " + line
         lines.append(line)
 
-    # Calculate span in days for long-span metadata
     start_dt  = datetime.fromisoformat(msgs[0]["timestamp"])
     end_dt    = datetime.fromisoformat(msgs[-1]["timestamp"])
     span_days = (end_dt - start_dt).days
@@ -175,6 +176,7 @@ def _build(msgs: list[dict]) -> dict:
         "start_ts":      msgs[0]["timestamp"],
         "end_ts":        msgs[-1]["timestamp"],
         "channel":       msgs[0]["channel"],
+        "channel_id":    msgs[0].get("channel_id"),
         "thread_name":   thread_name,
         "authors":       list(dict.fromkeys(m["author"] for m in msgs)),
         "message_count": len(msgs),
@@ -188,14 +190,17 @@ def _split_if_needed(chunk: dict) -> list[dict]:
     Split chunk at line boundaries if it exceeds MAX_TOKENS.
     Fix 1: each split piece gets a unique split_index so stable IDs
     don't collide in Qdrant when multiple pieces share same message_ids.
-    Previously: 8 vectors were lost due to ID collision on split chunks.
+    Fix 2: first_message_id stored per split piece so Discord links
+    point to the correct message in each piece, not the original chunk.
     Thread title preserved in every split piece.
     """
     tokens = len(enc.encode(chunk["text"]))
     chunk["token_count"] = tokens
 
     if tokens <= MAX_TOKENS:
-        chunk["split_index"] = 0  # no split — index 0
+        chunk["split_index"]     = 0
+        chunk["first_message_id"] = chunk["message_ids"][0] \
+            if chunk["message_ids"] else ""
         return [chunk]
 
     # Extract thread title — prepend to every split piece
@@ -207,7 +212,14 @@ def _split_if_needed(chunk: dict) -> list[dict]:
     if thread_header and lines and lines[0].startswith("[Thread:"):
         lines = lines[1:]
 
-    current, result = [], []
+    current       = []
+    result        = []
+    current_msgs  = []  # track which messages are in current piece
+
+    # Build message lookup for tracking first_message_id per piece
+    # Each line maps to a message by position in original chunk
+    msg_ids = chunk.get("message_ids", [])
+
     for line in lines:
         current.append(line)
         full_text = thread_header + "\n".join(current)
@@ -216,16 +228,25 @@ def _split_if_needed(chunk: dict) -> list[dict]:
             if current:
                 sub_text = thread_header + "\n".join(current)
                 sub = {**chunk, "text": sub_text}
-                sub["token_count"] = len(enc.encode(sub_text))
-                sub["split_index"] = len(result)  # unique per piece
+                sub["token_count"]     = len(enc.encode(sub_text))
+                sub["split_index"]     = len(result)
+                # first_message_id is first msg_id in this piece
+                piece_idx = len(result)
+                sub["first_message_id"] = msg_ids[piece_idx] \
+                    if piece_idx < len(msg_ids) else \
+                    (msg_ids[0] if msg_ids else "")
                 result.append(sub)
             current = [line]
 
     if current:
         sub_text = thread_header + "\n".join(current)
         sub = {**chunk, "text": sub_text}
-        sub["token_count"] = len(enc.encode(sub_text))
-        sub["split_index"] = len(result)
+        sub["token_count"]     = len(enc.encode(sub_text))
+        sub["split_index"]     = len(result)
+        piece_idx = len(result)
+        sub["first_message_id"] = msg_ids[piece_idx] \
+            if piece_idx < len(msg_ids) else \
+            (msg_ids[0] if msg_ids else "")
         result.append(sub)
 
     return result
