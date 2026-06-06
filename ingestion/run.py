@@ -4,14 +4,13 @@ Full ingestion pipeline: parse -> chunk -> embed -> store.
 Usage:
   python ingestion/run.py            # incremental upsert (default)
   python ingestion/run.py --recreate # drop and recreate collection
-v6 additions:
-  - thread_name stored in Qdrant payload for thread-scoped queries
-  - thread_name keyword index added to collection
-  - pinned model revision for trust_remote_code=True safety
-  - Fix 5: true incremental embedding — only new chunks embedded
-  - Fix 1: upsert retry with exponential backoff
-  - Fix 2: model load failure with clear error message
-  - Fix 3: HF_TOKEN loaded from .env
+v7 fixes:
+  - Fix 1: stable ID includes split_index — prevents 8 lost vectors
+  - Fix 2: CPU time estimate formula corrected
+  - Fix 3: span_days stored in Qdrant payload
+  - Fix 4: trust_remote_code removed — not needed in ST >= 5.3.0
+  - Fix 5: message_ids, channel_id, first_message_id added to payload
+  - Fix 6: first_message_id sourced from chunk (per-piece) not derived
 Author: ThinkInSystems (Hemanth Aragonda)
 """
 import os
@@ -28,7 +27,6 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 from ingestion.parser  import parse_all_exports
 from ingestion.chunker import chunk_records
 
-# ── Load environment variables ────────────────────────────────
 load_dotenv()
 
 # ── Config ───────────────────────────────────────────────────
@@ -38,9 +36,7 @@ EMBED_DIM    = 768
 BATCH_EMBED  = 32    # safe for CPU — increase to 128 on GPU
 BATCH_UPSERT = 256
 
-# Pinned to main — stable with trust_remote_code=True
-NOMIC_MODEL    = "nomic-ai/nomic-embed-text-v1.5"
-NOMIC_REVISION = "main"
+NOMIC_MODEL  = "nomic-ai/nomic-embed-text-v1.5"
 
 
 def connect_qdrant():
@@ -89,7 +85,7 @@ def setup_collection(client, force_recreate: bool = False):
             distance=Distance.COSINE,
         ),
     )
-    # DateTime index for date-range queries e.g. "after 2022"
+    # DateTime index for date-range queries
     client.create_payload_index(
         collection_name=COLLECTION,
         field_name="start_ts",
@@ -107,17 +103,21 @@ def setup_collection(client, force_recreate: bool = False):
         field_name="thread_name",
         field_schema=PayloadSchemaType.KEYWORD,
     )
+    # Float index for long-span chunk filtering
+    client.create_payload_index(
+        collection_name=COLLECTION,
+        field_name="span_days",
+        field_schema=PayloadSchemaType.FLOAT,
+    )
     print(f"  Collection '{COLLECTION}' ready.\n")
 
 
 def load_models():
     """
     Load Nomic Embed v1.5.
-    Fix 3: loads HF_TOKEN from .env to avoid rate limiting.
-    Fix 2: clear error message if model load fails.
+    trust_remote_code removed — not needed in ST >= 5.3.0.
     Cache-aware message — only shows download warning on first run.
     """
-    # Fix 3: load HuggingFace token to avoid rate limits
     hf_token = os.getenv("HF_TOKEN")
     if hf_token:
         os.environ["HUGGINGFACE_HUB_TOKEN"] = hf_token
@@ -128,7 +128,7 @@ def load_models():
 
     from sentence_transformers import SentenceTransformer
     print("  Loading Nomic Embed v1.5...")
-    print(f"  (revision: {NOMIC_REVISION})")
+    print("  (trust_remote_code not required — ST >= 5.3.0)")
 
     cache_path = Path(".model_cache")
     if not cache_path.exists():
@@ -136,18 +136,14 @@ def load_models():
     else:
         print("  (Loading from local cache...)")
 
-    # Fix 2: clear error message if model load fails
     try:
         model = SentenceTransformer(
             NOMIC_MODEL,
-            trust_remote_code=True,
             cache_folder=".model_cache",
-            revision=NOMIC_REVISION,
         )
     except Exception as e:
         print(f"\nERROR: Could not load embedding model: {e}")
         print("If offline, ensure .model_cache/ exists from a prior run.")
-        print("Or check your internet connection and try again.")
         sys.exit(1)
 
     print("  Model loaded.\n")
@@ -156,19 +152,18 @@ def load_models():
 
 def _stable_id(chunk: dict) -> int:
     """
-    Stable 64-bit integer ID from chunk's message IDs.
-    SHA-256 avoids security linting warnings in CI/CD.
-    Uses message_ids not text — text-cleaning changes do not
-    create new point IDs on re-index.
+    Stable 64-bit integer ID from chunk's message IDs + split index.
+    split_index ensures split pieces don't overwrite each other in Qdrant.
+    Previously 8 vectors were lost per run without this fix.
     """
-    key = "-".join(sorted(chunk["message_ids"]))
+    split_index = chunk.get("split_index", 0)
+    key = "-".join(sorted(chunk["message_ids"])) + f":{split_index}"
     return int(hashlib.sha256(key.encode()).hexdigest()[:16], 16)
 
 
 def get_existing_ids(client) -> set:
     """
     Fetch all point IDs already stored in Qdrant.
-    Used to skip re-embedding chunks that are already indexed.
     Paginates through all points — handles collections of any size.
     Returns empty set on error — triggers full re-embed for safety.
     """
@@ -195,10 +190,7 @@ def get_existing_ids(client) -> set:
 
 
 def filter_new_chunks(chunks: list, existing_ids: set) -> list:
-    """
-    Return only chunks whose stable ID is not in Qdrant.
-    On incremental runs, skips re-embedding already-indexed chunks.
-    """
+    """Return only chunks not already in Qdrant."""
     new_chunks = [c for c in chunks
                   if _stable_id(c) not in existing_ids]
     skipped = len(chunks) - len(new_chunks)
@@ -209,10 +201,7 @@ def filter_new_chunks(chunks: list, existing_ids: set) -> list:
 
 
 def _upsert_batch_with_retry(client, points, max_retries: int = 3):
-    """
-    Fix 1: Upsert with exponential backoff retry.
-    Prevents silent chunk loss on Qdrant timeout mid-batch.
-    """
+    """Upsert with exponential backoff retry."""
     for attempt in range(max_retries):
         try:
             client.upsert(collection_name=COLLECTION, points=points)
@@ -230,7 +219,11 @@ def _upsert_batch(client, batch_chunks: list,
                   batch_vecs: np.ndarray, offset: int):
     """
     Build Qdrant points and upsert with retry.
-    thread_name included in payload for thread-scoped filtering.
+    Fix 5: message_ids, channel_id, first_message_id in payload
+    enables Discord link construction and dedupe by n8n.
+    Fix 6: first_message_id sourced from chunk field (set per split
+    piece in chunker) not re-derived here — avoids wrong message
+    for split chunks.
     """
     from qdrant_client.models import PointStruct
     points = [
@@ -238,19 +231,24 @@ def _upsert_batch(client, batch_chunks: list,
             id=_stable_id(batch_chunks[j]),
             vector=batch_vecs[j].tolist(),
             payload={
-                "text":          batch_chunks[j]["text"],
-                "start_ts":      batch_chunks[j]["start_ts"],
-                "end_ts":        batch_chunks[j]["end_ts"],
-                "channel":       batch_chunks[j]["channel"],
-                "thread_name":   batch_chunks[j].get("thread_name"),
-                "authors":       batch_chunks[j]["authors"],
-                "message_count": batch_chunks[j]["message_count"],
-                "token_count":   batch_chunks[j].get("token_count", 0),
+                "text":             batch_chunks[j]["text"],
+                "start_ts":         batch_chunks[j]["start_ts"],
+                "end_ts":           batch_chunks[j]["end_ts"],
+                "channel":          batch_chunks[j]["channel"],
+                "channel_id":       batch_chunks[j].get("channel_id"),
+                "thread_name":      batch_chunks[j].get("thread_name"),
+                "authors":          batch_chunks[j]["authors"],
+                "message_count":    batch_chunks[j]["message_count"],
+                "message_ids":      batch_chunks[j].get("message_ids", []),
+                # Fix 6: sourced from chunker per split piece
+                "first_message_id": batch_chunks[j].get("first_message_id", ""),
+                "token_count":      batch_chunks[j].get("token_count", 0),
+                "span_days":        batch_chunks[j].get("span_days", 0),
+                "split_index":      batch_chunks[j].get("split_index", 0),
             }
         )
         for j in range(len(batch_chunks))
     ]
-    # Fix 1: retry on failure instead of silent loss
     _upsert_batch_with_retry(client, points)
 
 
@@ -270,22 +268,19 @@ def embed_and_upsert(model, client, chunks: list,
         return
 
     total    = len(chunks)
-    est_mins = round((total / BATCH_EMBED) * 0.15 / 60, 1)
+    est_mins = round((total / BATCH_EMBED) * 0.15, 1)
     print(f"\n  Embedding and storing {total} chunks "
           f"(estimated ~{max(est_mins, 0.1)} min on CPU)...")
 
     for i in range(0, total, BATCH_EMBED):
         batch = chunks[i:i + BATCH_EMBED]
         texts = ["search_document: " + c["text"] for c in batch]
-
-        # Nomic requires normalize_embeddings=True for cosine
-        embs = model.encode(
+        embs  = model.encode(
             texts,
             normalize_embeddings=True,
             show_progress_bar=False,
         )
         _upsert_batch(client, batch, embs, i)
-
         pct = round(((i + len(batch)) / total) * 100)
         print(f"  {pct}% ({i + len(batch)}/{total})")
 
@@ -321,7 +316,6 @@ if __name__ == "__main__":
     if not records:
         print("\nERROR: No records parsed.")
         print("Check chat_logs/ has DiscordChatExporter JSON files")
-        print("matching pattern: channel-name [channel_id].json")
         sys.exit(1)
 
     print("\n── Step 3: Chunking ──")
@@ -329,7 +323,6 @@ if __name__ == "__main__":
 
     if not chunks:
         print("\nERROR: No chunks created.")
-        print("Check MIN_MSGS setting in chunker.py")
         sys.exit(1)
 
     print("\n── Step 4: Setting up Qdrant collection ──")
