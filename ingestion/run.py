@@ -4,13 +4,19 @@ Full ingestion pipeline: parse -> chunk -> embed -> store.
 Usage:
   python ingestion/run.py            # incremental upsert (default)
   python ingestion/run.py --recreate # drop and recreate collection
-v7 fixes:
-  - Fix 1: stable ID includes split_index — prevents 8 lost vectors
+v8 fixes:
+  - Fix 1: stable ID includes split_index — prevents lost vectors
   - Fix 2: CPU time estimate formula corrected
   - Fix 3: span_days stored in Qdrant payload
   - Fix 4: trust_remote_code removed — not needed in ST >= 5.3.0
   - Fix 5: message_ids, channel_id, first_message_id added to payload
-  - Fix 6: first_message_id sourced from chunk (per-piece) not derived
+  - Fix 6: first_message_id sourced from chunker per split piece
+  - Fix 7: built-in Qdrant point count verification after upsert
+  - Fix 8: dead offset parameter removed from _upsert_batch
+
+Note: v8 chunker stores per-piece message_ids for split chunks.
+Stable IDs for split pieces differ from v7 — run --recreate when
+upgrading from v7 to v8.
 Author: ThinkInSystems (Hemanth Aragonda)
 """
 import os
@@ -154,7 +160,8 @@ def _stable_id(chunk: dict) -> int:
     """
     Stable 64-bit integer ID from chunk's message IDs + split index.
     split_index ensures split pieces don't overwrite each other in Qdrant.
-    Previously 8 vectors were lost per run without this fix.
+    v8: message_ids per split piece reflect actual piece content —
+    stable IDs differ from v7 split pieces. Run --recreate on upgrade.
     """
     split_index = chunk.get("split_index", 0)
     key = "-".join(sorted(chunk["message_ids"])) + f":{split_index}"
@@ -216,14 +223,14 @@ def _upsert_batch_with_retry(client, points, max_retries: int = 3):
 
 
 def _upsert_batch(client, batch_chunks: list,
-                  batch_vecs: np.ndarray, offset: int):
+                  batch_vecs: np.ndarray):
     """
     Build Qdrant points and upsert with retry.
-    Fix 5: message_ids, channel_id, first_message_id in payload
-    enables Discord link construction and dedupe by n8n.
-    Fix 6: first_message_id sourced from chunk field (set per split
-    piece in chunker) not re-derived here — avoids wrong message
-    for split chunks.
+    Fix 8: removed unused offset parameter.
+    message_ids, channel_id, first_message_id in payload enables
+    Discord link construction and dedupe by n8n.
+    first_message_id sourced from chunker per split piece — reflects
+    actual first message in that piece, not the original chunk.
     """
     from qdrant_client.models import PointStruct
     points = [
@@ -240,8 +247,8 @@ def _upsert_batch(client, batch_chunks: list,
                 "authors":          batch_chunks[j]["authors"],
                 "message_count":    batch_chunks[j]["message_count"],
                 "message_ids":      batch_chunks[j].get("message_ids", []),
-                # Fix 6: sourced from chunker per split piece
-                "first_message_id": batch_chunks[j].get("first_message_id", ""),
+                "first_message_id": batch_chunks[j].get(
+                    "first_message_id", ""),
                 "token_count":      batch_chunks[j].get("token_count", 0),
                 "span_days":        batch_chunks[j].get("span_days", 0),
                 "split_index":      batch_chunks[j].get("split_index", 0),
@@ -250,6 +257,29 @@ def _upsert_batch(client, batch_chunks: list,
         for j in range(len(batch_chunks))
     ]
     _upsert_batch_with_retry(client, points)
+
+
+def verify_qdrant_count(client, expected: int) -> bool:
+    """
+    Fix 7: verify Qdrant point count matches chunks indexed.
+    Catches silent data loss without requiring a manual check.
+    Returns True if counts match, False if mismatch detected.
+    """
+    try:
+        info = client.get_collection(COLLECTION)
+        actual = info.points_count
+        if actual != expected:
+            missing = expected - actual
+            print(f"\n  WARN: {expected} chunks created but only "
+                  f"{actual} points in Qdrant — {missing} missing!")
+            print("  Run with --recreate to rebuild the collection.")
+            return False
+        print(f"  Verified: {actual}/{expected} points in Qdrant "
+              f"— 0 missing ✓")
+        return True
+    except Exception as e:
+        print(f"  WARN: Could not verify Qdrant count: {e}")
+        return False
 
 
 def embed_and_upsert(model, client, chunks: list,
@@ -280,7 +310,8 @@ def embed_and_upsert(model, client, chunks: list,
             normalize_embeddings=True,
             show_progress_bar=False,
         )
-        _upsert_batch(client, batch, embs, i)
+        # Fix 8: offset param removed
+        _upsert_batch(client, batch, embs)
         pct = round(((i + len(batch)) / total) * 100)
         print(f"  {pct}% ({i + len(batch)}/{total})")
 
@@ -334,6 +365,9 @@ if __name__ == "__main__":
     print("\n── Step 6: Embedding and storing chunks ──")
     embed_and_upsert(model, client, chunks,
                      force_recreate=args.recreate)
+
+    print("\n── Step 7: Verifying Qdrant point count ──")
+    verify_qdrant_count(client, len(chunks))
 
     mins = round((time.time() - t0) / 60, 1)
     print(f"\n{'=' * 50}")
