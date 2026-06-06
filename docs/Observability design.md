@@ -101,7 +101,7 @@ Discord
 
 Use **Phoenix self-hosted with Postgres** as the AI trace layer.
 
-Also keep a small set of explicit Postgres tables for durable transaction and feedback correlation. Phoenix is excellent for trace inspection; Postgres is better for simple joins, retention controls, and operational reporting.
+Also keep a small set of explicit application-owned Postgres tables for durable transaction, feedback correlation, and weekly reporting. Phoenix is excellent for trace inspection and evaluation. Postgres is better for simple joins, retention controls, and operational rollups.
 
 ### Options
 
@@ -128,9 +128,47 @@ If CPU pressure appears, keep n8n/Qdrant/Postgres running and make Phoenix the f
 
 ## 5. Transaction Trace Schema
 
-Every event gets one `transaction_id`.
+Every event gets one `transaction_id`. Phoenix and Postgres both use this ID, but they serve different purposes:
 
-### `rag_transactions`
+- **Phoenix:** trace-level evidence for debugging and evaluation.
+- **Postgres:** durable transaction, feedback, and weekly reporting records.
+
+### 5a. Phoenix Transaction Trace Schema
+
+Phoenix stores the step-by-step trace of a bot interaction. Each Phoenix trace should include one root span and child spans for routing, retrieval, reranking, dedupe, context assembly, LLM generation, response dispatch, and feedback.
+
+Root trace attributes:
+
+| Attribute | Purpose |
+|---|---|
+| `transaction_id` | Primary correlation key shared with Postgres |
+| `discord_event_id` | Original Discord message/event ID |
+| `route_type` | `active_call`, `passive_candidate`, `ignored` |
+| `channel_id`, `channel_name` | Discord source |
+| `query_hash` | Stable hash for grouping similar queries without exposing full text |
+| `status` | `started`, `answered`, `refused`, `dropped`, `failed` |
+| `refusal_reason` | Why the bot refused, if applicable |
+
+Child span groups:
+
+| Span Group | Required Evidence |
+|---|---|
+| `routing.*` | Route decision and reason |
+| `qdrant.*` | Query text/hash, filters, result count, latency |
+| `rerank.*` | Candidate count, reranker scores, selected chunks |
+| `dedupe.*` | Kept chunks, dropped chunks, dedupe reason |
+| `context.*` | Final chunk IDs, token estimate, overflow handling |
+| `gemini.*` | Model, prompt hash, response status, latency |
+| `discord.*` | Response message ID or dispatch failure |
+| `feedback.*` | Linked or unmatched feedback events |
+
+Phoenix should store enough evidence for review, but not be the source of weekly reporting truth. It is acceptable to sample full prompt/context text after launch while keeping IDs and scores on every trace.
+
+### 5b. Postgres Transaction Schema
+
+Postgres stores durable records that n8n can query directly for correlation, dashboards, and the weekly digest.
+
+#### `rag_transactions`
 
 One row per Discord event considered by the bot.
 
@@ -156,7 +194,7 @@ Allowed `refusal_reason` values:
 - `context_token_budget_insufficient`
 - `safety_or_policy_limit`
 
-### `rag_trace_events`
+#### `rag_trace_events`
 
 Append-only lifecycle events.
 
@@ -169,7 +207,7 @@ Append-only lifecycle events.
 | `payload_json` | Structured details |
 | `created_at` | Event timestamp |
 
-### `rag_retrieval_results`
+#### `rag_retrieval_results`
 
 One row per retrieved chunk candidate.
 
@@ -187,7 +225,7 @@ One row per retrieved chunk candidate.
 | `dedupe_status` | `kept`, `dropped`, `not_applied` |
 | `dedupe_reason` | `overlap`, `same_root`, `low_score`, etc. |
 
-### `rag_feedback`
+#### `rag_feedback`
 
 One row per feedback signal.
 
@@ -200,9 +238,11 @@ One row per feedback signal.
 | `feedback_author_id` | Feedback source |
 | `created_at` | Feedback timestamp |
 
-### `rag_weekly_metrics`
+#### `rag_weekly_metrics`
 
-One precomputed row per reporting week. This prevents the weekly digest from requiring manual query assembly.
+One precomputed row per reporting week in the application-owned Postgres schema. This prevents the weekly digest from requiring manual query assembly.
+
+Phoenix does not own this rollup. Phoenix stores traces, evals, and annotations that explain why a metric moved. Postgres stores the weekly metric row that n8n can publish and query directly.
 
 | Field | Purpose |
 |---|---|
@@ -225,6 +265,11 @@ One precomputed row per reporting week. This prevents the weekly digest from req
 ## 6. Event And Span Taxonomy
 
 Use stable names so traces are easy to filter.
+
+These are logical observability events, not native events emitted directly by Discord, Qdrant, or Gemini. n8n should emit these events as the workflow runs.
+
+- Phoenix stores them as trace spans/events for visual debugging.
+- Postgres stores key events as durable rows in `rag_trace_events` for reporting and weekly metrics.
 
 | Stage | Event / Span |
 |---|---|
@@ -284,24 +329,49 @@ Implementation note:
 | Reviewer | Check whether an answer was grounded and cited correctly |
 | Community lead | Understand feedback trends and recurring failure modes |
 
-Minimum useful views:
+### Minimum Useful Views And Access Paths
 
-- Failed context matches
-- Low-score retrievals
-- Refusals by reason
-- Refusals by channel
-- False refusals and missed refusals from review/eval
-- Answers with negative feedback
-- Most reused chunks
-- Dedupe drops by reason
-- Slowest n8n nodes
-- Weekly `#bot-metrics` digest
+Views should be created where the data is easiest to query. Phoenix is best for trace inspection. Postgres is best for durable reporting views. n8n is best for scheduled summaries and Discord posts.
+
+| View | Source | Access Path |
+|---|---|---|
+| Failed context matches | Phoenix traces + `rag_trace_events` | Phoenix UI filter, Postgres SQL view |
+| Low-score retrievals | `rag_retrieval_results` + Phoenix retrieval spans | Postgres SQL view, Phoenix trace links |
+| Refusals by reason | `rag_transactions.refusal_reason` | Postgres SQL view, weekly digest |
+| Refusals by channel | `rag_transactions` | Postgres SQL view, weekly digest |
+| False refusals and missed refusals | Evaluation labels + Phoenix traces | Phoenix eval view, Postgres reporting view |
+| Answers with negative feedback | `rag_feedback` | Postgres SQL view with Phoenix trace links |
+| Most reused chunks | `rag_retrieval_results.chunk_id` | Postgres SQL view |
+| Dedupe drops by reason | `rag_retrieval_results.dedupe_reason` + Phoenix dedupe spans | Postgres SQL view, Phoenix trace links |
+| Slowest n8n nodes | n8n/OpenTelemetry spans | Phoenix trace view |
+| Weekly `#bot-metrics` digest | `rag_weekly_metrics` | Scheduled n8n post to Discord |
+
+Access expectations:
+
+- Maintainers use the weekly Discord digest first.
+- Developers use Phoenix links to inspect individual failed or surprising traces.
+- Reviewers use Phoenix eval views and Postgres reporting views for groundedness/refusal review.
+- Postgres SQL views should exist for repeat reporting so weekly metrics do not require ad hoc query assembly.
 
 ## 9. Weekly Metrics Digest
 
 The evaluation design defines a weekly `#bot-metrics` digest. Observability owns making that digest easy to produce.
 
-The digest should be generated from `rag_weekly_metrics`, not hand-assembled from multiple ad hoc queries.
+The digest should be generated from Postgres table `rag_weekly_metrics`, not hand-assembled from multiple ad hoc queries.
+
+Phoenix's role:
+
+- Store trace-level evidence.
+- Store human/eval labels where useful.
+- Let reviewers inspect examples behind each metric.
+- Link notable failures from the weekly digest back to traces.
+
+Postgres's role:
+
+- Store transaction and feedback correlation records.
+- Store the precomputed weekly rollup.
+- Provide a stable source for the scheduled digest.
+- Support simple SQL reporting without depending on Phoenix UI exports.
 
 Required weekly fields:
 
@@ -320,10 +390,11 @@ Required weekly fields:
 
 Publishing path:
 
-1. A scheduled n8n workflow computes `rag_weekly_metrics`.
-2. The workflow posts a concise digest to `#bot-metrics`.
-3. The same row stays queryable in Postgres.
-4. Phoenix links should be included only for notable failures or review samples.
+1. A scheduled n8n workflow reads Postgres transaction/feedback rows and Phoenix/eval outputs.
+2. The workflow computes and upserts `rag_weekly_metrics`.
+3. The workflow posts a concise digest to `#bot-metrics`.
+4. The same row stays queryable in Postgres.
+5. Phoenix links should be included only for notable failures or review samples.
 
 The digest must show RRI with its components. RRI alone is not enough because a groundedness drop can be hidden by a refusal-rate increase.
 
