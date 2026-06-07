@@ -1,0 +1,272 @@
+﻿{
+  "name": "RAG Active Call - Smoke Test",
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "0c05f6c3-79e4-4a85-9e9b-7b80d6d30201",
+      "name": "Manual Trigger",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        -900,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "mode": "manual",
+        "duplicateItem": false,
+        "assignments": {
+          "assignments": [
+            {
+              "id": "5dfb660a-b4e7-4725-81f9-099a2123c7f6",
+              "name": "user_query",
+              "value": "Phase 1 smoke test: can n8n create and finalize a RAG transaction?",
+              "type": "string"
+            },
+            {
+              "id": "349c3624-f711-4d24-8441-353059dd69dd",
+              "name": "discord_message_id",
+              "value": "smoke-test-manual",
+              "type": "string"
+            },
+            {
+              "id": "2578498d-646d-4439-91af-b0e8d5133475",
+              "name": "channel_id",
+              "value": "phase-1-smoke-test",
+              "type": "string"
+            },
+            {
+              "id": "eebcf056-c94f-4ac6-b1d8-d6e034582539",
+              "name": "channel_name",
+              "value": "n8n-smoke-test",
+              "type": "string"
+            }
+          ]
+        },
+        "includeOtherFields": true,
+        "options": {}
+      },
+      "id": "2c24555f-607f-4436-90c4-550db40e64b2",
+      "name": "Set Test Query",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -680,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "INSERT INTO rag_transactions (\n  discord_message_id,\n  channel_id,\n  channel_name,\n  route_type,\n  status,\n  retrieval_status,\n  response_status,\n  user_query\n)\nVALUES (\n  '{{ $json.discord_message_id }}',\n  '{{ $json.channel_id }}',\n  '{{ $json.channel_name }}',\n  'active_call',\n  'created',\n  'not_started',\n  'not_started',\n  '{{ $json.user_query }}'\n)\nRETURNING transaction_id, created_at, status, user_query;"
+      },
+      "id": "ad45c8a5-7341-489c-b948-608220ba2819",
+      "name": "Create Transaction",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        -440,
+        0
+      ],
+      "credentials": {
+        "postgres": {
+          "id": "91KXbNmHZPM5D5mO",
+          "name": "Postgres account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "INSERT INTO rag_trace_events (\n  transaction_id,\n  event_name,\n  node_name,\n  status,\n  event_payload\n)\nVALUES (\n  '{{ $json.transaction_id }}',\n  'transaction.created',\n  'Create Transaction',\n  'completed',\n  jsonb_build_object(\n    'workflow', 'RAG Active Call - Smoke Test',\n    'user_query', '{{ $json.user_query }}'\n  )\n)\nRETURNING event_id, transaction_id;"
+      },
+      "id": "1d9511d9-cb0d-4017-9309-95583808fb3f",
+      "name": "Log Transaction Created",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        -200,
+        0
+      ],
+      "credentials": {
+        "postgres": {
+          "id": "91KXbNmHZPM5D5mO",
+          "name": "Postgres account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "url": "http://ragbot-qdrant:6333/collections",
+        "options": {
+          "response": {
+            "response": {
+              "responseFormat": "json"
+            }
+          }
+        }
+      },
+      "id": "6fe5b545-7f61-4495-bac0-332156b40f8c",
+      "name": "Query Qdrant Collections",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        40,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "INSERT INTO rag_trace_events (\n  transaction_id,\n  event_name,\n  node_name,\n  status,\n  event_payload\n)\nVALUES (\n  '{{ $('Create Transaction').item.json.transaction_id }}',\n  'qdrant.health_check_completed',\n  'Query Qdrant Collections',\n  'completed',\n  jsonb_build_object(\n    'qdrant_status', '{{ $json.status }}',\n    'collection_count', {{ $json.result.collections.length || 0 }}\n  )\n)\nRETURNING event_id, transaction_id;"
+      },
+      "id": "82facada-082f-408d-98a1-2bf010777c4c",
+      "name": "Log Qdrant Check",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        280,
+        0
+      ],
+      "credentials": {
+        "postgres": {
+          "id": "91KXbNmHZPM5D5mO",
+          "name": "Postgres account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "UPDATE rag_transactions\nSET\n  status = 'answered',\n  retrieval_status = 'context_found',\n  response_status = 'not_posted',\n  completed_at = now(),\n  latency_ms = GREATEST(1, EXTRACT(EPOCH FROM (now() - created_at))::int * 1000)\nWHERE transaction_id = '{{ $('Create Transaction').item.json.transaction_id }}'\nRETURNING transaction_id, status, retrieval_status, response_status, created_at, completed_at, latency_ms;"
+      },
+      "id": "32507888-316f-4ca6-af6b-d7f98add3a39",
+      "name": "Finalize Transaction",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        520,
+        0
+      ],
+      "credentials": {
+        "postgres": {
+          "id": "91KXbNmHZPM5D5mO",
+          "name": "Postgres account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT\n  transaction_id,\n  route_type,\n  status,\n  retrieval_status,\n  response_status,\n  user_query,\n  created_at,\n  completed_at,\n  latency_ms\nFROM rag_transactions\nWHERE transaction_id = '{{ $json.transaction_id }}';"
+      },
+      "id": "fbe6f6e2-336c-4c10-9a79-c6b3cab5f8ec",
+      "name": "Read Final Transaction",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        760,
+        0
+      ],
+      "credentials": {
+        "postgres": {
+          "id": "91KXbNmHZPM5D5mO",
+          "name": "Postgres account"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Manual Trigger": {
+      "main": [
+        [
+          {
+            "node": "Set Test Query",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Set Test Query": {
+      "main": [
+        [
+          {
+            "node": "Create Transaction",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create Transaction": {
+      "main": [
+        [
+          {
+            "node": "Log Transaction Created",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Log Transaction Created": {
+      "main": [
+        [
+          {
+            "node": "Query Qdrant Collections",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Query Qdrant Collections": {
+      "main": [
+        [
+          {
+            "node": "Log Qdrant Check",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Log Qdrant Check": {
+      "main": [
+        [
+          {
+            "node": "Finalize Transaction",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Finalize Transaction": {
+      "main": [
+        [
+          {
+            "node": "Read Final Transaction",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "2c9323fb-2cb6-4ba7-9a02-72933b03cb2e",
+  "meta": {
+    "templateCredsSetupCompleted": false
+  },
+  "id": "rag-active-call-smoke-test",
+  "tags": []
+}
+
+
