@@ -193,6 +193,7 @@ One row per Discord event considered by the bot.
 |---|---|
 | `transaction_id` | Primary correlation key |
 | `discord_event_id` | Original Discord message/event ID |
+| `discord_response_message_id` | Bot's outgoing message ID — the correlation key for feedback (see *Feedback & Reaction Correlation*); indexed |
 | `route_type` | `active_call`, `passive_candidate`, `ignored` |
 | `channel_id`, `channel_name` | Discord source |
 | `author_id` | Requesting user |
@@ -248,11 +249,14 @@ One row per feedback signal.
 
 | Field | Purpose |
 |---|---|
-| `transaction_id` | Bot answer being evaluated |
+| `transaction_id` | Bot answer being evaluated; NULL if unmatched |
 | `discord_response_message_id` | Bot response message |
-| `feedback_type` | `reaction`, `slash_command`, `form` |
-| `feedback_value` | Positive, negative, or structured value |
-| `feedback_author_id` | Feedback source |
+| `feedback_type` | `reaction`, `context_menu` (slash_command / form deferred) |
+| `feedback_value` | `positive`, `negative` |
+| `feedback_category` | Preset enum, explicit feedback only |
+| `feedback_text` | Free-text critique (explicit only; sensitive — see §10) |
+| `feedback_author_id` | Feedback source (hashed) |
+| `matched` | Whether correlation found a transaction |
 | `created_at` | Feedback timestamp |
 
 #### `rag_weekly_metrics`
@@ -278,6 +282,58 @@ Phoenix does not own this rollup. Phoenix stores traces, evals, and annotations 
 | `negative_feedback_count` | Explicit or reaction-based negative feedback |
 | `p50_latency_ms`, `p95_latency_ms` | End-to-end latency |
 | `generated_at` | When the rollup was produced |
+
+## Feedback & Reaction Correlation
+
+*Resolves the §12 open gap: how Discord reactions and explicit critiques correlate back to a bot transaction. Scope is feedback on the bot's own answers. Reactions on human messages (retrieval boost, Retrieval Contracts §1.6) are a separate pipeline and deliberately excluded.*
+
+### Feedback event flow
+
+| Event | Intent | Purpose |
+|---|---|---|
+| `MESSAGE_REACTION_ADD` | `GUILD_MESSAGE_REACTIONS` | Implicit signal (👍/👎) |
+| `MESSAGE_REACTION_REMOVE` | `GUILD_MESSAGE_REACTIONS` | Retract a prior reaction |
+| `INTERACTION_CREATE` | application commands | Explicit critique (context-menu → modal) |
+
+A reaction counts as feedback only when (1) the reacted message's author is the bot, (2) the reactor is not the bot, and (3) the message ID resolves to a transaction (below). Only 👍/👎 are counted in v1.
+
+Explicit feedback uses a **context-menu command on the bot's message** that opens a **modal** (preset category + optional free text) — context menu rather than slash command because it carries the target message ID for free. Categories: `made_something_up` · `did_not_answer` · `wrong_tone` · `surfaced_personal_info` · `other`. Free-text critique is supported in v1, treated as sensitive per §10.
+
+### Correlation keys
+
+`rag_transactions` previously stored the incoming `discord_event_id` but not the bot's outgoing message ID, so there was nothing to match a reaction against. The `discord_response_message_id` field (added to `rag_transactions` in §5b) closes this: n8n writes it at dispatch and emits `discord.response_sent`.
+
+```
+reacted_message_id
+  → SELECT transaction_id FROM rag_transactions
+    WHERE discord_response_message_id = reacted_message_id
+  → write rag_feedback row keyed by transaction_id
+```
+
+The same key serves explicit critique (the context-menu action carries the target message ID).
+
+### Storage
+
+Schema changes are reflected in §5b: `discord_response_message_id` on `rag_transactions`, and `feedback_category` / `feedback_text` / `matched` on `rag_feedback`.
+
+**Feedback does not write eval labels.** Production feedback is a satisfaction signal and a review trigger, not a label (a 👍 can't verify groundedness — members never see the retrieved context). 👍/👎 feed `thumbs_up_rate`; a 👎 or critique flags the transaction as a **review candidate**, and a human produces the authoritative Pass/Fail labels into `rag_eval_labels` (the eval-labels table; to be added to §5b) with `source = human`. Explicit categories pre-fill the reviewer's suspected dimension but don't set the label.
+
+### n8n integration points (extends §7)
+
+1. **Dispatch node:** capture the returned message `id`; write `rag_transactions.discord_response_message_id`; emit `discord.response_sent`.
+2. **Feedback workflow** (integration point 12): filter (above) → correlate → write `rag_feedback` + Phoenix span (`feedback.received` → `feedback.linked` / `feedback.unmatched`) → unmatched handling → on negative/critique, set the review-candidate flag feeding `rag_eval_labels`.
+
+### Unmatched feedback
+
+A reaction/critique whose message ID resolves to no transaction: emit `feedback.unmatched`, write `rag_feedback` with `transaction_id = NULL`, `matched = false`, retaining the raw message ID for reconciliation; never block the workflow. Feeds the existing Info alert (`> 10 unmatched/week`). Reaction churn: `MESSAGE_REACTION_REMOVE` voids the matching prior row (last-write-wins per user per message).
+
+### Open questions / tradeoffs
+
+1. Multiple response messages per transaction (chunked answers) — which is the feedback target? Proposed: the first/primary message.
+2. Pre-seeding 👍/👎 on bot answers to prompt feedback — raises response rate but adds clutter and requires excluding bot-authored reactions.
+3. Free-text critique retention given PII risk — proposed short, same as full-prompt traces (§10).
+4. Confirm reactions-on-human-messages (retrieval boost) and reactions-on-bot-messages (this path) stay separate pipelines.
+5. Reactors are a non-representative minority; the 👎-built review queue skews toward certain failures — note when reading `thumbs_up_rate`.
 
 ## 6. Event And Span Taxonomy
 
@@ -480,7 +536,7 @@ Suggested retention:
 - What retention period is acceptable for full prompt/context text?
 - Who can access Phoenix traces?
 - Should `root_message_id` be required before final n8n dedupe?
-- Feedback/reaction correlation is referenced in the architecture and evaluation docs, but the concrete implementation is still open. Which Discord events, message IDs, lookup tables, and failure paths should own this?
+- Feedback/reaction correlation: **resolved** — see the *Feedback & Reaction Correlation* section. Residual tradeoffs (multiple response messages per transaction, pre-seeding reactions, free-text retention, reaction-boost separation, reactor selection bias) are listed there.
 - What is the minimum dashboard we need before launch?
 - Should passive listener traces sample more aggressively than active calls?
 
