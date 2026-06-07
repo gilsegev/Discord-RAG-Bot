@@ -255,11 +255,28 @@ One row per feedback signal.
 | `feedback_author_id` | Feedback source |
 | `created_at` | Feedback timestamp |
 
+#### `rag_eval_labels`
+
+One row per evaluation label. This is the source of truth for weekly quality rollups.
+
+Phoenix can display annotations and review context, but weekly metrics should read from this Postgres table so the digest is stable and queryable.
+
+| Field | Purpose |
+|---|---|
+| `transaction_id` | Bot interaction being evaluated |
+| `dimension` | `groundedness`, `answer_relevance`, `tone_refusal`, `safety` |
+| `label` | `pass` or `fail` |
+| `failure_type` | Optional failure category, such as `hallucination`, `false_refusal`, `missed_refusal`, or `pii` |
+| `source` | `human`, `judge`, or `feedback` |
+| `labeler` | Human reviewer or judge identifier |
+| `notes` | Optional short review note |
+| `created_at` | Label timestamp |
+
 #### `rag_weekly_metrics`
 
 One precomputed row per reporting week in the application-owned Postgres schema. This prevents the weekly digest from requiring manual query assembly.
 
-Phoenix does not own this rollup. Phoenix stores traces, evals, and annotations that explain why a metric moved. Postgres stores the weekly metric row that n8n can publish and query directly.
+Phoenix does not own this rollup. Phoenix stores traces and review context that explain why a metric moved. Postgres stores eval labels and the weekly metric row that n8n can publish and query directly.
 
 | Field | Purpose |
 |---|---|
@@ -379,13 +396,14 @@ The digest should be generated from Postgres table `rag_weekly_metrics`, not han
 Phoenix's role:
 
 - Store trace-level evidence.
-- Store human/eval labels where useful.
+- Display annotations and review context where useful.
 - Let reviewers inspect examples behind each metric.
 - Link notable failures from the weekly digest back to traces.
 
 Postgres's role:
 
 - Store transaction and feedback correlation records.
+- Store eval labels in `rag_eval_labels`.
 - Store the precomputed weekly rollup.
 - Provide a stable source for the scheduled digest.
 - Support simple SQL reporting without depending on Phoenix UI exports.
@@ -396,18 +414,18 @@ Required weekly fields:
 |---|---|
 | Sample size `n` | `rag_weekly_metrics.sample_size` |
 | Context-found rate | Retrieval/result traces |
-| Groundedness pass rate | Human or eval labels |
-| Correct-refusal rate | Refusal eval labels |
+| Groundedness pass rate | `rag_eval_labels` |
+| Correct-refusal rate | `rag_eval_labels` |
 | Thumbs-up % | Feedback/reaction correlation |
 | RAG Reliability Index | Precomputed RRI formula |
-| No-context violation count | Refusal/eval traces |
+| No-context violation count | `rag_eval_labels` + refusal traces |
 | Volume | Transaction counts |
 | Latency | Transaction and stage timings |
 | Top failure reasons | Refusal reasons, failed stages, negative feedback |
 
 Publishing path:
 
-1. A scheduled n8n workflow reads Postgres transaction/feedback rows and Phoenix/eval outputs.
+1. A scheduled n8n workflow reads Postgres transaction, feedback, retrieval, and eval-label rows.
 2. The workflow computes and upserts `rag_weekly_metrics`.
 3. The workflow posts a concise digest to `#bot-metrics`.
 4. The same row stays queryable in Postgres.
@@ -470,6 +488,7 @@ Suggested retention:
 ### Phase 5: Evaluation Workflow
 
 - Build a small evaluation set.
+- Add `rag_eval_labels` as the source of truth for pass/fail labels.
 - Track groundedness, refusal correctness, and user feedback.
 - Review false refusals and missed refusals as separate failure classes.
 - Use Phoenix to inspect poor traces and create eval cases.
