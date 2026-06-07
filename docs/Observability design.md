@@ -2,7 +2,8 @@
 
 **Status:** Draft for team review  
 **Target host:** Oracle Cloud VM.Standard.E5.Flex, 1 OCPU, 12 GB memory  
-**Primary goal:** make every RAG answer debuggable from Discord event to final response.
+**Primary goal:** make every RAG answer debuggable from Discord event to final response.  
+**Related:** Alerting design in `docs/Alerting.md`
 
 ## 1. Purpose And Scope
 
@@ -113,18 +114,34 @@ Also keep a small set of explicit application-owned Postgres tables for durable 
 | Phoenix Cloud / Arize hosted | Lowest infra burden, strong UI | Data leaves our infra, possible cost/privacy concerns | Consider later |
 | Qdrant for observability | Already running | Wrong storage model for logs and joins | Do not use |
 
-### Resource Budget
+### Runtime SLO And Concurrency Policy
 
-For a 1 OCPU / 12 GB host, run lean:
+The request path is mostly sequential, so fixed CPU allocation by service is not useful. The practical control is an end-to-end latency SLO, stage-level latency budgets, and a conservative concurrency policy.
 
-| Service | Role | Guidance |
+Target for active bot calls:
+
+- **p95 end-to-end latency:** less than 5 seconds
+
+Starting stage budgets:
+
+| Stage | Target | Notes |
 |---|---|---|
-| n8n | Workflow execution | Keep workflows synchronous and small |
-| Qdrant | Vector retrieval | One collection, local-only |
-| Postgres | Phoenix + correlation tables | Small instance, daily backups |
-| Phoenix | Trace UI and eval workflow | Internal access, short retention |
+| n8n routing and query prep | p95 < 100 ms | Basic workflow logic |
+| Qdrant retrieval | p95 < 300 ms | Includes vector search and payload fetch |
+| CrossEncoder rerank | p95 < 800 ms | Main local CPU-bound step |
+| Dedupe and context assembly | p95 < 150 ms | Array/string logic should stay small |
+| Observability writes | p95 < 200 ms | Keep synchronous payloads small |
+| Gemini generation | p95 < 3,000 ms | External API latency dominates wall clock |
+| Discord response dispatch | p95 < 300 ms | Includes outbound Discord call |
 
-If CPU pressure appears, keep n8n/Qdrant/Postgres running and make Phoenix the first service to move off-host or run only when needed. If memory pressure appears, reduce trace retention before removing Phoenix.
+Concurrency policy:
+
+- Start active-call workflow concurrency at 1.
+- Queue or rate-limit concurrent active calls if p95 latency exceeds target.
+- Rate-limit or sample passive-listener workflows.
+- Do not run embedding/re-indexing jobs during serving windows.
+- Keep observability writes small and avoid blocking the main response path where possible.
+- If CPU pressure appears, reduce passive workload first, then reduce Phoenix trace payload size, then consider moving Phoenix off-host.
 
 ## 5. Transaction Trace Schema
 
