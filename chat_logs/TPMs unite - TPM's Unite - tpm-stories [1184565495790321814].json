@@ -1,0 +1,3478 @@
+{
+  "guild": {
+    "id": "853099205206999050",
+    "name": "TPMs unite",
+    "iconUrl": "https://cdn.discordapp.com/icons/853099205206999050/472b55453e54d59cad3b3fc6215992a5.png?size=512"
+  },
+  "channel": {
+    "id": "1184565495790321814",
+    "type": "GuildTextChat",
+    "categoryId": "938641424629514250",
+    "category": "TPM's Unite",
+    "name": "tpm-stories",
+    "topic": "This channel is to share insights into the various TPM roles and types of work/projects we manage.  Please be considerate and not to share any sensitive information that could you or your organizations at risk, if in doubt, leave it out for here."
+  },
+  "dateRange": {
+    "after": null,
+    "before": null
+  },
+  "exportedAt": "2026-06-06T19:51:55.5398923-05:00",
+  "messages": [
+    {
+      "id": "1185038655895638029",
+      "type": "Default",
+      "timestamp": "2023-12-14T20:00:32.519-06:00",
+      "timestampEdited": "2023-12-14T20:30:55.347-06:00",
+      "callEndedTimestamp": null,
+      "isPinned": false,
+      "content": "**disclaimer: this was written in 30 seconds and is not nearly as comprehensive or nicely written as TPM Stories from medium \uD83D\uDE42 \n\nHi all - I guess I can start this off since I was the one initially inquiring about it.\n\nI'm currently an Engineering Manager (SRE) by title but a lot of what I was doing leading up to this role was TPM work. Most recently I \nspearheaded the transition of five on-premises applications to an integrated SaaS model. I spent a lot of time collaborating with cross-functional teams, gathering requirements, managing budget, timelines, and resources. Outlining risks, challenging assumptions, running sprint reviews, jira reporting, and workflow diagramming. \n\n I'm really interested to hear what everyone is working on and what their responsibilities look like.",
+      "author": {
+        "id": "675411544963547146",
+        "name": "scroc_",
+        "discriminator": "0000",
+        "nickname": "scroc",
+        "color": null,
+        "isBot": false,
+        "roles": [],
+        "avatarUrl": "https://cdn.discordapp.com/embed/avatars/3.png"
+      },
+      "attachments": [],
+      "embeds": [],
+      "stickers": [],
+      "reactions": [
+        {
+          "emoji": {
+            "id": "",
+            "name": "\uD83D\uDC4D",
+            "code": "thumbsup",
+            "isAnimated": false,
+            "imageUrl": "https://cdn.jsdelivr.net/gh/twitter/twemoji@latest/assets/svg/1f44d.svg"
+          },
+          "count": 1,
+          "users": [
+            {
+              "id": "150071474063933440",
+              "name": "paytun",
+              "discriminator": "0000",
+              "nickname": "paytun",
+              "color": null,
+              "isBot": false,
+              "avatarUrl": "https://cdn.discordapp.com/avatars/150071474063933440/a34f3e02f25650e71d977484ae580f05.png?size=512"
+            }
+          ]
+        }
+      ],
+      "mentions": [],
+      "inlineEmojis": [
+        {
+          "id": "",
+          "name": "\uD83D\uDE42",
+          "code": "slight_smile",
+          "isAnimated": false,
+          "imageUrl": "https://cdn.jsdelivr.net/gh/twitter/twemoji@latest/assets/svg/1f642.svg"
+        }
+      ]
+    },
+    {
+      "id": "1185040035645501503",
+      "type": "Default",
+      "timestamp": "2023-12-14T20:06:01.477-06:00",
+      "timestampEdited": null,
+      "callEndedTimestamp": null,
+      "isPinned": false,
+      "content": "Happy to answer any questions or go into details if desired.",
+      "author": {
+        "id": "675411544963547146",
+        "name": "scroc_",
+        "discriminator": "0000",
+        "nickname": "scroc",
+        "color": null,
+        "isBot": false,
+        "roles": [],
+        "avatarUrl": "https://cdn.discordapp.com/embed/avatars/3.png"
+      },
+      "attachments": [],
+      "embeds": [],
+      "stickers": [],
+      "reactions": [],
+      "mentions": [],
+      "inlineEmojis": []
+    },
+    {
+      "id": "1186832652293132379",
+      "type": "Default",
+      "timestamp": "2023-12-19T18:49:14.591-06:00",
+      "timestampEdited": null,
+      "callEndedTimestamp": null,
+      "isPinned": false,
+      "content": "Thanks for the quick 30 sec overview of what you do . Can you elaborate on challenging assumptions and how deep you dive into those .",
+      "author": {
+        "id": "1053771076175405119",
+        "name": "always_learning_2024",
+        "discriminator": "0000",
+        "nickname": "always_learning_2024",
+        "color": null,
+        "isBot": false,
+        "roles": [],
+        "avatarUrl": "https://cdn.discordapp.com/avatars/1053771076175405119/79ee349b6511e2000af8a32fb8a6974e.png?size=512"
+      },
+      "attachments": [],
+      "embeds": [],
+      "stickers": [],
+      "reactions": [],
+      "mentions": [],
+      "inlineEmojis": []
+    },
+    {
+      "id": "1194280276721934407",
+      "type": "Default",
+      "timestamp": "2024-01-09T08:03:26.625-06:00",
+      "timestampEdited": null,
+      "callEndedTimestamp": null,
+      "isPinned": false,
+      "content": "Hey...thanks for starting this channel....I am looking for some stories that I can mention for questions like - \"explain a technical challenge during your tenure and how did you overcome it?\"",
+      "author": {
+        "id": "851837656169054289",
+        "name": "pranjal2911",
+        "discriminator": "0000",
+        "nickname": "pranjal1989",
+        "color": null,
+        "isBot": false,
+        "roles": [],
+        "avatarUrl": "https://cdn.discordapp.com/embed/avatars/1.png"
+      },
+      "attachments": [],
+      "embeds": [],
+      "stickers": [],
+      "reactions": [],
+      "mentions": [],
+      "inlineEmojis": []
+    },
+    {
+      "id": "1194390538888159322",
+      "type": "Reply",
+      "timestamp": "2024-01-09T15:21:35.174-06:00",
+      "timestampEdited": null,
+      "callEndedTimestamp": null,
+      "isPinned": false,
+      "content": "It may differ from company to company, even team to team. Do you have a TPM in your team/org?",
+      "author": {
+        "id": "790413306783334420",
+        "name": "pamomap",
+        "discriminator": "0000",
+        "nickname": "Pamda",
+        "color": null,
+        "isBot": false,
+        "roles": [],
+        "avatarUrl": "https://cdn.discordapp.com/avatars/790413306783334420/b26f54a0ec02f650fe8112b9fe1c40b4.png?size=512"
+      },
+      "attachments": [],
+      "embeds": [],
+      "stickers": [],
+      "reactions": [],
+      "mentions": [
+        {
+          "id": "675411544963547146",
+          "name": "scroc_",
+          "discriminator": "0000",
+          "nickname": "scroc",
+          "color": null,
+          "isBot": false,
+          "roles": [],
+          "avatarUrl": "https://cdn.discordapp.com/embed/avatars/3.png"
+        }
+      ],
+      "reference": {
+        "type": "Default",
+        "messageId": "1185038655895638029",
+        "channelId": "1184565495790321814",
+        "guildId": "853099205206999050"
+      },
+      "inlineEmojis": []
+    },
+    {
+      "id": "1194648347366129775",
+      "type": "Reply",
+      "timestamp": "2024-01-10T08:26:01.505-06:00",
+      "timestampEdited": null,
+      "callEndedTimestamp": null,
+      "isPinned": false,
+      "content": "Sorry for the delayed response, I must have missed the notification. Challenging assumptions (technical design, risks, etc) is an essential part of ensuring the robustness and effectiveness of a solution. \n\nI try to clearly identify and document the assumptions made during the design phase and\nmake sure all stakeholders have a shared understanding of these assumptions. I make sure the team can clearly answer why certain design decisions were made and that sufficient\n  data-supported rationale can be presented behind each assumption to evaluate its validity.\n\nI try to go as deep as my expertise and bandwidth will allow and will also rely on feedback from peers and standard benchmarks",
+      "author": {
+        "id": "675411544963547146",
+        "name": "scroc_",
+        "discriminator": "0000",
+        "nickname": "scroc",
+        "color": null,
+        "isBot": false,
+        "roles": [],
+        "avatarUrl": "https://cdn.discordapp.com/embed/avatars/3.png"
+      },
+      "attachments": [],
+      "embeds": [],
+      "stickers": [],
+      "reactions": [
+        {
+          "emoji": {
+            "id": "",
+            "name": "\uD83D\uDC4D",
+            "code": "thumbsup",
+            "isAnimated": false,
+            "imageUrl": "https://cdn.jsdelivr.net/gh/twitter/twemoji@latest/assets/svg/1f44d.svg"
+          },
+          "count": 1,
+          "users": [
+            {
+              "id": "713410166745202720",
+              "name": "jay274648",
+              "discriminator": "0000",
+              "nickname": "AnotherJay",
+              "color": null,
+              "isBot": false,
+              "avatarUrl": "https://cdn.discordapp.com/embed/avatars/2.png"
+            }
+          ]
+        }
+      ],
+      "mentions": [
+        {
+          "id": "1053771076175405119",
+          "name": "always_learning_2024",
+          "discriminator": "0000",
+          "nickname": "always_learning_2024",
+          "color": null,
+          "isBot": false,
+          "roles": [],
+          "avatarUrl": "https://cdn.discordapp.com/avatars/1053771076175405119/79ee349b6511e2000af8a32fb8a6974e.png?size=512"
+        }
+      ],
+      "reference": {
+        "type": "Default",
+        "messageId": "1186832652293132379",
+        "channelId": "1184565495790321814",
+        "guildId": "853099205206999050"
+      },
+      "inlineEmojis": []
+    },
+    {
+      "id": "1194707106918572122",
+      "type": "Reply",
+      "timestamp": "2024-01-10T12:19:30.874-06:00",
+      "timestampEdited": null,
+      "callEndedTimestamp": null,
+      "isPinned": false,
+      "content": "Thank you for the detailed answer. I learn from such forums. Asking more questions also clears the assumptions.",
+      "author": {
+        "id": "1053771076175405119",
+        "name": "always_learning_2024",
+        "discriminator": "0000",
+        "nickname": "always_learning_2024",
+        "color": null,
+        "isBot": false,
+        "roles": [],
+        "avatarUrl": "https://cdn.discordapp.com/avatars/1053771076175405119/79ee349b6511e2000af8a32fb8a6974e.png?size=512"
+      },
+      "attachments": [],
+      "embeds": [],
+      "stickers": [],
+      "reactions": [],
+      "mentions": [
+        {
+          "id": "675411544963547146",
+          "name": "scroc_",
+          "discriminator": "0000",
+          "nickname": "scroc",
+          "color": null,
+          "isBot": false,
+          "roles": [],
+          "avatarUrl": "https://cdn.discordapp.com/embed/avatars/3.png"
+        }
+      ],
+      "reference": {
+        "type": "Default",
+        "messageId": "1194648347366129775",
+        "channelId": "1184565495790321814",
+        "guildId": "853099205206999050"
+      },
+      "inlineEmojis": []
+    },
+    {
+      "id": "1209437193320267806",
+      "type": "Default",
+      "timestamp": "2024-02-20T03:51:37.144-06:00",
+      "timestampEdited": "2024-02-20T04:06:50.041-06:00",
+      "callEndedTimestamp": null,
+      "isPinned": false,
+      "content": "Hi all! I am so glad I heard about this discord TPM channel and joined. There is so much information here and I no longer feel like the only one trying to navigate my way around. It's been hard getting interviews and I am not sure what's going wrong. I have revised and re-revised my resume but i keep getting automated rejection emails. Is there some advice out there or if anyone can lend their valuable 20-30 mins giving me feedback in dm/call?",
+      "author": {
+        "id": "1209258646895329281",
+        "name": "vns2024",
+        "discriminator": "0000",
+        "nickname": "VA",
+        "color": null,
+        "isBot": false,
+        "roles": [],
+        "avatarUrl": "https://cdn.discordapp.com/avatars/1209258646895329281/9aeccd2a727dc14d26739f0eb97125b8.png?size=512"
+      },
+      "attachments": [],
+      "embeds": [],
+      "stickers": [],
+      "reactions": [],
+      "mentions": [],
+      "inlineEmojis": []
+    },
+    {
+      "id": "1209516773620326420",
+      "type": "Reply",
+      "timestamp": "2024-02-20T09:07:50.566-06:00",
+      "timestampEdited": null,
+      "callEndedTimestamp": null,
+      "isPinned": false,
+      "content": "@VA you can  share your resume in #resume-review  channel for public review or DM to me for a private review .",
+      "author": {
+        "id": "1153118700115873903",
+        "name": "koddy21",
+        "discriminator": "0000",
+        "nickname": "Vaish",
+        "color": null,
+        "isBot": false,
+        "roles": [],
+        "avatarUrl": "https://cdn.discordapp.com/avatars/1153118700115873903/157e517cdbf371a47aaead44675714a3.png?size=512"
+      },
+      "attachments": [],
+      "embeds": [],
+      "stickers": [],
+      "reactions": [],
+      "mentions": [
+        {
+          "id": "1209258646895329281",
+          "name": "vns2024",
+          "discriminator": "0000",
+          "nickname": "VA",
+          "color": null,
+          "isBot": false,
+          "roles": [],
+          "avatarUrl": "https://cdn.discordapp.com/avatars/1209258646895329281/9aeccd2a727dc14d26739f0eb97125b8.png?size=512"
+        }
+      ],
+      "reference": {
+        "type": "Default",
+        "messageId": "1209437193320267806",
+        "channelId": "1184565495790321814",
+        "guildId": "853099205206999050"
+      },
+      "inlineEmojis": []
+    },
+    {
+      "id": "1209606578865709116",
+      "type": "Default",
+      "timestamp": "2024-02-20T15:04:41.805-06:00",
+      "timestampEdited": null,
+      "callEndedTimestamp": null,
+      "isPinned": false,
+      "content": "Thankyou @Vaish. Will DM you",
+      "author": {
+        "id": "1209258646895329281",
+        "name": "vns2024",
+        "discriminator": "0000",
+        "nickname": "VA",
+        "color": null,
+        "isBot": false,
+        "roles": [],
+        "avatarUrl": "https://cdn.discordapp.com/avatars/1209258646895329281/9aeccd2a727dc14d26739f0eb97125b8.png?size=512"
+      },
+      "attachments": [],
+      "embeds": [],
+      "stickers": [],
+      "reactions": [],
+      "mentions": [],
+      "inlineEmojis": []
+    },
+    {
+      "id": "1213003447452962839",
+      "type": "Default",
+      "timestamp": "2024-03-01T00:02:38.387-06:00",
+      "timestampEdited": null,
+      "callEndedTimestamp": null,
+      "isPinned": false,
+      "content": "would anyone know tpms who transitioned into a pm role? usually in a small company if you are good at product roles they give you a path and hr opens that role. my company politics is pretty blocked on this. they have apm opening and i was wondering if anyone took that leap?",
+      "author": {
+        "id": "978287546100494336",
+        "name": "tulopopo",
+        "discriminator": "0000",
+        "nickname": "tulopopo",
+        "color": null,
+        "isBot": false,
+        "roles": [],
+        "avatarUrl": "https://cdn.discordapp.com/avatars/978287546100494336/edaa55b27dcc4369e13dae56378cd965.png?size=512"
+      },
+      "attachments": [],
+      "embeds": [],
+      "stickers": [],
+      "reactions": [],
+      "mentions": [],
+      "inlineEmojis": []
+    },
+    {
+      "id": "1216213824055677058",
+      "type": "Reply",
+      "timestamp": "2024-03-09T20:39:31.815-06:00",
+      "timestampEdited": null,
+      "callEndedTimestamp": null,
+      "isPinned": false,
+      "content": "@Ultra Instinct has posted about his experience in other channels on this server.",
+      "author": {
+        "id": "858824476828106772",
+        "name": "arav1nd",
+        "discriminator": "0000",
+        "nickname": "AG",
+        "color": "#25C059",
+        "isBot": false,
+        "roles": [
+          {
+            "id": "864371622231801856",
+            "name": "Moderator",
+            "color": "#25C059",
+            "position": 25
+          },
+          {
+            "id": "888509975440289873",
+            "name": "Server Booster",
+            "color": "#F47FFF",
+            "position": 20
+          },
+          {
+            "id": "893548412081934346",
+            "name": "ReadMe Channel",
+            "color": "#E74C3C",
+            "position": 19
+          },
+          {
+            "id": "1178049214299779092",
+            "name": "Manage Users",
+            "color": "#2ECC71",
+            "position": 6
+          }
+        ],
+        "avatarUrl": "https://cdn.discordapp.com/avatars/858824476828106772/6eac6e7cac939345c3a4149e70f37e86.png?size=512"
+      },
+      "attachments": [],
+      "embeds": [],
+      "stickers": [],
+      "reactions": [],
+      "mentions": [
+        {
+          "id": "878475475759034368",
+          "name": "ultra.instinct_",
+          "discriminator": "0000",
+          "nickname": "Ultra Instinct",
+          "color": "#E74C3C",
+          "isBot": false,
+          "roles": [
+            {
+              "id": "893548412081934346",
+              "name": "ReadMe Channel",
+              "color": "#E74C3C",
+              "position": 19
+            }
+          ],
+          "avatarUrl": "https://cdn.discordapp.com/avatars/878475475759034368/a5f16d9be039f2b5f7f7095ce07036da.png?size=512"
+        },
+        {
+          "id": "978287546100494336",
+          "name": "tulopopo",
+          "discriminator": "0000",
+          "nickname": "tulopopo",
+          "color": null,
+          "isBot": false,
+          "roles": [],
+          "avatarUrl": "https://cdn.discordapp.com/avatars/978287546100494336/edaa55b27dcc4369e13dae56378cd965.png?size=512"
+        }
+      ],
+      "reference": {
+        "type": "Default",
+        "messageId": "1213003447452962839",
+        "channelId": "1184565495790321814",
+        "guildId": "853099205206999050"
+      },
+      "inlineEmojis": []
+    },
+    {
+      "id": "1216215115620286595",
+      "type": "Default",
+      "timestamp": "2024-03-09T20:44:39.748-06:00",
+      "timestampEdited": null,
+      "callEndedTimestamp": null,
+      "isPinned": false,
+      "content": "\uD83D\uDC40",
+      "author": {
+        "id": "878475475759034368",
+        "name": "ultra.instinct_",
+        "discriminator": "0000",
+        "nickname": "Ultra Instinct",
+        "color": "#E74C3C",
+        "isBot": false,
+        "roles": [
+          {
+            "id": "893548412081934346",
+            "name": "ReadMe Channel",
+            "color": "#E74C3C",
+            "position": 19
+          }
+        ],
+        "avatarUrl": "https://cdn.discordapp.com/avatars/878475475759034368/a5f16d9be039f2b5f7f7095ce07036da.png?size=512"
+      },
+      "attachments": [],
+      "embeds": [],
+      "stickers": [],
+      "reactions": [],
+      "mentions": [],
+      "inlineEmojis": [
+        {
+          "id": "",
+          "name": "\uD83D\uDC40",
+          "code": "eyes",
+          "isAnimated": false,
+          "imageUrl": "https://cdn.jsdelivr.net/gh/twitter/twemoji@latest/assets/svg/1f440.svg"
+        }
+      ]
+    },
+    {
+      "id": "1216215171400339537",
+      "type": "Reply",
+      "timestamp": "2024-03-09T20:44:53.047-06:00",
+      "timestampEdited": null,
+      "callEndedTimestamp": null,
+      "isPinned": false,
+      "content": "Happy to help answer questions",
+      "author": {
+        "id": "878475475759034368",
+        "name": "ultra.instinct_",
+        "discriminator": "0000",
+        "nickname": "Ultra Instinct",
+        "color": "#E74C3C",
+        "isBot": false,
+        "roles": [
+          {
+            "id": "893548412081934346",
+            "name": "ReadMe Channel",
+            "color": "#E74C3C",
+            "position": 19
+          }
+        ],
+        "avatarUrl": "https://cdn.discordapp.com/avatars/878475475759034368/a5f16d9be039f2b5f7f7095ce07036da.png?size=512"
+      },
+      "attachments": [],
+      "embeds": [],
+      "stickers": [],
+      "reactions": [],
+      "mentions": [
+        {
+          "id": "978287546100494336",
+          "name": "tulopopo",
+          "discriminator": "0000",
+          "nickname": "tulopopo",
+          "color": null,
+          "isBot": false,
+          "roles": [],
+          "avatarUrl": "https://cdn.discordapp.com/avatars/978287546100494336/edaa55b27dcc4369e13dae56378cd965.png?size=512"
+        }
+      ],
+      "reference": {
+        "type": "Default",
+        "messageId": "1213003447452962839",
+        "channelId": "1184565495790321814",
+        "guildId": "853099205206999050"
+      },
+      "inlineEmojis": []
+    },
+    {
+      "id": "1217794514249449484",
+      "type": "Reply",
+      "timestamp": "2024-03-14T06:20:37.725-05:00",
+      "timestampEdited": null,
+      "callEndedTimestamp": null,
+      "isPinned": false,
+      "content": "thank you thank you!! will dm!",
+      "author": {
+        "id": "978287546100494336",
+        "name": "tulopopo",
+        "discriminator": "0000",
+        "nickname": "tulopopo",
+        "color": null,
+        "isBot": false,
+        "roles": [],
+        "avatarUrl": "https://cdn.discordapp.com/avatars/978287546100494336/edaa55b27dcc4369e13dae56378cd965.png?size=512"
+      },
+      "attachments": [],
+      "embeds": [],
+      "stickers": [],
+      "reactions": [],
+      "mentions": [
+        {
+          "id": "878475475759034368",
+          "name": "ultra.instinct_",
+          "discriminator": "0000",
+          "nickname": "Ultra Instinct",
+          "color": "#E74C3C",
+          "isBot": false,
+          "roles": [
+            {
+              "id": "893548412081934346",
+              "name": "ReadMe Channel",
+              "color": "#E74C3C",
+              "position": 19
+            }
+          ],
+          "avatarUrl": "https://cdn.discordapp.com/avatars/878475475759034368/a5f16d9be039f2b5f7f7095ce07036da.png?size=512"
+        }
+      ],
+      "reference": {
+        "type": "Default",
+        "messageId": "1216215171400339537",
+        "channelId": "1184565495790321814",
+        "guildId": "853099205206999050"
+      },
+      "inlineEmojis": []
+    },
+    {
+      "id": "1217908449246056489",
+      "type": "Default",
+      "timestamp": "2024-03-14T13:53:21.945-05:00",
+      "timestampEdited": null,
+      "callEndedTimestamp": null,
+      "isPinned": false,
+      "content": "Hi, I’m looking for someone who has transitioned from a software engineer role to a TPM in a different company. I would love to chat and get some insights.",
+      "author": {
+        "id": "802101890744844359",
+        "name": "angel7234730",
+        "discriminator": "0000",
+        "nickname": "angel7234730",
+        "color": null,
+        "isBot": false,
+        "roles": [],
+        "avatarUrl": "https://cdn.discordapp.com/embed/avatars/2.png"
+      },
+      "attachments": [],
+      "embeds": [],
+      "stickers": [],
+      "reactions": [],
+      "mentions": [],
+      "inlineEmojis": []
+    },
+    {
+      "id": "1219871033373233153",
+      "type": "Reply",
+      "timestamp": "2024-03-19T23:51:58.464-05:00",
+      "timestampEdited": null,
+      "callEndedTimestamp": null,
+      "isPinned": false,
+      "content": "the strategies that worked a few years ago are unlikely to work in this market. best bet is to find an opportunity in your existing company, work for a year or two and then transition",
+      "author": {
+        "id": "858824476828106772",
+        "name": "arav1nd",
+        "discriminator": "0000",
+        "nickname": "AG",
+        "color": "#25C059",
+        "isBot": false,
+        "roles": [
+          {
+            "id": "864371622231801856",
+            "name": "Moderator",
+            "color": "#25C059",
+            "position": 25
+          },
+          {
+            "id": "888509975440289873",
+            "name": "Server Booster",
+            "color": "#F47FFF",
+            "position": 20
+          },
+          {
+            "id": "893548412081934346",
+            "name": "ReadMe Channel",
+            "color": "#E74C3C",
+            "position": 19
+          },
+          {
+            "id": "1178049214299779092",
+            "name": "Manage Users",
+            "color": "#2ECC71",
+            "position": 6
+          }
+        ],
+        "avatarUrl": "https://cdn.discordapp.com/avatars/858824476828106772/6eac6e7cac939345c3a4149e70f37e86.png?size=512"
+      },
+      "attachments": [],
+      "embeds": [],
+      "stickers": [],
+      "reactions": [
+        {
+          "emoji": {
+            "id": "",
+            "name": "\uD83D\uDC46",
+            "code": "point_up_2",
+            "isAnimated": false,
+            "imageUrl": "https://cdn.jsdelivr.net/gh/twitter/twemoji@latest/assets/svg/1f446.svg"
+          },
+          "count": 2,
+          "users": [
+            {
+              "id": "689727225712607252",
+              "name": "goldenterry",
+              "discriminator": "0000",
+              "nickname": "terry999",
+              "color": null,
+              "isBot": false,
+              "avatarUrl": "https://cdn.discordapp.com/avatars/689727225712607252/bb7924fe587ee11e6e24a1ac4f0283cf.png?size=512"
+            },
+            {
+              "id": "713410166745202720",
+              "name": "jay274648",
+              "discriminator": "0000",
+              "nickname": "AnotherJay",
+              "color": null,
+              "isBot": false,
+              "avatarUrl": "https://cdn.discordapp.com/embed/avatars/2.png"
+            }
+          ]
+        }
+      ],
+      "mentions": [
+        {
+          "id": "802101890744844359",
+          "name": "angel7234730",
+          "discriminator": "0000",
+          "nickname": "angel7234730",
+          "color": null,
+          "isBot": false,
+          "roles": [],
+          "avatarUrl": "https://cdn.discordapp.com/embed/avatars/2.png"
+        }
+      ],
+      "reference": {
+        "type": "Default",
+        "messageId": "1217908449246056489",
+        "channelId": "1184565495790321814",
+        "guildId": "853099205206999050"
+      },
+      "inlineEmojis": []
+    },
+    {
+      "id": "1228782420971749396",
+      "type": "Reply",
+      "timestamp": "2024-04-13T14:02:38.833-05:00",
+      "timestampEdited": null,
+      "callEndedTimestamp": null,
+      "isPinned": false,
+      "content": "I also thought the same. After coming from engineering background, I felt that I may add more value in product. I talked to few product managers. Product mindset is little different. Product management course or few books related to product management is a good start to switch into product.",
+      "author": {
+        "id": "1008126999023333446",
+        "name": "immaculate_quail_25315",
+        "discriminator": "0000",
+        "nickname": "Mickey",
+        "color": null,
+        "isBot": false,
+        "roles": [],
+        "avatarUrl": "https://cdn.discordapp.com/embed/avatars/5.png"
+      },
+      "attachments": [],
+      "embeds": [],
+      "stickers": [],
+      "reactions": [],
+      "mentions": [
+        {
+          "id": "978287546100494336",
+          "name": "tulopopo",
+          "discriminator": "0000",
+          "nickname": "tulopopo",
+          "color": null,
+          "isBot": false,
+          "roles": [],
+          "avatarUrl": "https://cdn.discordapp.com/avatars/978287546100494336/edaa55b27dcc4369e13dae56378cd965.png?size=512"
+        }
+      ],
+      "reference": {
+        "type": "Default",
+        "messageId": "1213003447452962839",
+        "channelId": "1184565495790321814",
+        "guildId": "853099205206999050"
+      },
+      "inlineEmojis": []
+    },
+    {
+      "id": "1231798640041791570",
+      "type": "Reply",
+      "timestamp": "2024-04-21T21:48:01.498-05:00",
+      "timestampEdited": null,
+      "callEndedTimestamp": null,
+      "isPinned": false,
+      "content": "Not sure if you’re still looking for help, but I’d also be willing to offer some assistance.",
+      "author": {
+        "id": "795088011950817316",
+        "name": "sullied2915",
+        "discriminator": "0000",
+        "nickname": "sullied",
+        "color": null,
+        "isBot": false,
+        "roles": [],
+        "avatarUrl": "https://cdn.discordapp.com/avatars/795088011950817316/26143c16a879444334b736e53f5276da.png?size=512"
+      },
+      "attachments": [],
+      "embeds": [],
+      "stickers": [],
+      "reactions": [],
+      "mentions": [
+        {
+          "id": "1209258646895329281",
+          "name": "vns2024",
+          "discriminator": "0000",
+          "nickname": "VA",
+          "color": null,
+          "isBot": false,
+          "roles": [],
+          "avatarUrl": "https://cdn.discordapp.com/avatars/1209258646895329281/9aeccd2a727dc14d26739f0eb97125b8.png?size=512"
+        }
+      ],
+      "reference": {
+        "type": "Default",
+        "messageId": "1209437193320267806",
+        "channelId": "1184565495790321814",
+        "guildId": "853099205206999050"
+      },
+      "inlineEmojis": []
+    },
+    {
+      "id": "1231858550788063242",
+      "type": "Reply",
+      "timestamp": "2024-04-22T01:46:05.333-05:00",
+      "timestampEdited": null,
+      "callEndedTimestamp": null,
+      "isPinned": false,
+      "content": "Thanks for offering to help out @sullied . I got some good feedback. Will reach out in DM if I need more help.",
+      "author": {
+        "id": "1209258646895329281",
+        "name": "vns2024",
+        "discriminator": "0000",
+        "nickname": "VA",
+        "color": null,
+        "isBot": false,
+        "roles": [],
+        "avatarUrl": "https://cdn.discordapp.com/avatars/1209258646895329281/9aeccd2a727dc14d26739f0eb97125b8.png?size=512"
+      },
+      "attachments": [],
+      "embeds": [],
+      "stickers": [],
+      "reactions": [],
+      "mentions": [
+        {
+          "id": "795088011950817316",
+          "name": "sullied2915",
+          "discriminator": "0000",
+          "nickname": "sullied",
+          "color": null,
+          "isBot": false,
+          "roles": [],
+          "avatarUrl": "https://cdn.discordapp.com/avatars/795088011950817316/26143c16a879444334b736e53f5276da.png?size=512"
+        }
+      ],
+      "reference": {
+        "type": "Default",
+        "messageId": "1231798640041791570",
+        "channelId": "1184565495790321814",
+        "guildId": "853099205206999050"
+      },
+      "inlineEmojis": []
+    },
+    {
+      "id": "1235439361730936893",
+      "type": "Default",
+      "timestamp": "2024-05-01T22:54:57.19-05:00",
+      "timestampEdited": null,
+      "callEndedTimestamp": null,
+      "isPinned": false,
+      "content": "Hi , how do you guys generally answer this question : as a tpm tell me about a time you helped solve a technical challenge",
+      "author": {
+        "id": "802966804799684678",
+        "name": "srinidhi8255",
+        "discriminator": "0000",
+        "nickname": "whatever1234",
+        "color": null,
+        "isBot": false,
+        "roles": [],
+        "avatarUrl": "https://cdn.discordapp.com/embed/avatars/0.png"
+      },
+      "attachments": [],
+      "embeds": [],
+      "stickers": [],
+      "reactions": [],
+      "mentions": [],
+      "inlineEmojis": []
+    },
+    {
+      "id": "1235439383973204008",
+      "type": "Default",
+      "timestamp": "2024-05-01T22:55:02.493-05:00",
+      "timestampEdited": null,
+      "callEndedTimestamp": null,
+      "isPinned": false,
+      "content": "Can someone help with any example",
+      "author": {
+        "id": "802966804799684678",
+        "name": "srinidhi8255",
+        "discriminator": "0000",
+        "nickname": "whatever1234",
+        "color": null,
+        "isBot": false,
+        "roles": [],
+        "avatarUrl": "https://cdn.discordapp.com/embed/avatars/0.png"
+      },
+      "attachments": [],
+      "embeds": [],
+      "stickers": [],
+      "reactions": [],
+      "mentions": [],
+      "inlineEmojis": []
+    },
+    {
+      "id": "1235634344064716850",
+      "type": "Reply",
+      "timestamp": "2024-05-02T11:49:44.601-05:00",
+      "timestampEdited": null,
+      "callEndedTimestamp": null,
+      "isPinned": false,
+      "content": "I would generally find a technical problem I have worked with in the past and helped resolve! Break that larger story down into STAR format if that is your preference \uD83D\uDE42",
+      "author": {
+        "id": "689727225712607252",
+        "name": "goldenterry",
+        "discriminator": "0000",
+        "nickname": "terry.",
+        "color": null,
+        "isBot": false,
+        "roles": [],
+        "avatarUrl": "https://cdn.discordapp.com/avatars/689727225712607252/bb7924fe587ee11e6e24a1ac4f0283cf.png?size=512"
+      },
+      "attachments": [],
+      "embeds": [],
+      "stickers": [],
+      "reactions": [],
+      "mentions": [
+        {
+          "id": "802966804799684678",
+          "name": "srinidhi8255",
+          "discriminator": "0000",
+          "nickname": "whatever1234",
+          "color": null,
+          "isBot": false,
+          "roles": [],
+          "avatarUrl": "https://cdn.discordapp.com/embed/avatars/0.png"
+        }
+      ],
+      "reference": {
+        "type": "Default",
+        "messageId": "1235439361730936893",
+        "channelId": "1184565495790321814",
+        "guildId": "853099205206999050"
+      },
+      "inlineEmojis": [
+        {
+          "id": "",
+          "name": "\uD83D\uDE42",
+          "code": "slight_smile",
+          "isAnimated": false,
+          "imageUrl": "https://cdn.jsdelivr.net/gh/twitter/twemoji@latest/assets/svg/1f642.svg"
+        }
+      ]
+    },
+    {
+      "id": "1235634460356251678",
+      "type": "Default",
+      "timestamp": "2024-05-02T11:50:12.327-05:00",
+      "timestampEdited": null,
+      "callEndedTimestamp": null,
+      "isPinned": false,
+      "content": "I look for stories where I made great impact so using \"I\" instead of \"we\"",
+      "author": {
+        "id": "689727225712607252",
+        "name": "goldenterry",
+        "discriminator": "0000",
+        "nickname": "terry.",
+        "color": null,
+        "isBot": false,
+        "roles": [],
+        "avatarUrl": "https://cdn.discordapp.com/avatars/689727225712607252/bb7924fe587ee11e6e24a1ac4f0283cf.png?size=512"
+      },
+      "attachments": [],
+      "embeds": [],
+      "stickers": [],
+      "reactions": [],
+      "mentions": [],
+      "inlineEmojis": []
+    },
+    {
+      "id": "1235740604130918460",
+      "type": "Reply",
+      "timestamp": "2024-05-02T18:51:58.975-05:00",
+      "timestampEdited": null,
+      "callEndedTimestamp": null,
+      "isPinned": false,
+      "content": "Yeah so I am looking for an actual example if possible",
+      "author": {
+        "id": "802966804799684678",
+        "name": "srinidhi8255",
+        "discriminator": "0000",
+        "nickname": "whatever1234",
+        "color": null,
+        "isBot": false,
+        "roles": [],
+        "avatarUrl": "https://cdn.discordapp.com/embed/avatars/0.png"
+      },
+      "attachments": [],
+      "embeds": [],
+      "stickers": [],
+      "reactions": [],
+      "mentions": [
+        {
+          "id": "689727225712607252",
+          "name": "goldenterry",
+          "discriminator": "0000",
+          "nickname": "terry.",
+          "color": null,
+          "isBot": false,
+          "roles": [],
+          "avatarUrl": "https://cdn.discordapp.com/avatars/689727225712607252/bb7924fe587ee11e6e24a1ac4f0283cf.png?size=512"
+        }
+      ],
+      "reference": {
+        "type": "Default",
+        "messageId": "1235634344064716850",
+        "channelId": "1184565495790321814",
+        "guildId": "853099205206999050"
+      },
+      "inlineEmojis": []
+    },
+    {
+      "id": "1235965760598446240",
+      "type": "Default",
+      "timestamp": "2024-05-03T09:46:40.46-05:00",
+      "timestampEdited": null,
+      "callEndedTimestamp": null,
+      "isPinned": false,
+      "content": "usually it is about technical dependencies & risks with other teams/systems, using your prior experience with a tech to evaluate its pros/cons and make recommendations, vendor/partner selection by evaluating their APIs, helping make tradeoff decisions (go to market quickly OR invest in doing things the right way and hence launch later).  \nFor products that are in the scale phase, it can be about quality, reliability, perf as well as better engineering investments (incident management process, code refactor) \nand for products in hyperscale phases, it is usually about some major refactor (monolith to microservices, micro back to monolith, etc.)",
+      "author": {
+        "id": "858824476828106772",
+        "name": "arav1nd",
+        "discriminator": "0000",
+        "nickname": "AG",
+        "color": "#25C059",
+        "isBot": false,
+        "roles": [
+          {
+            "id": "864371622231801856",
+            "name": "Moderator",
+            "color": "#25C059",
+            "position": 25
+          },
+          {
+            "id": "888509975440289873",
+            "name": "Server Booster",
+            "color": "#F47FFF",
+            "position": 20
+          },
+          {
+            "id": "893548412081934346",
+            "name": "ReadMe Channel",
+            "color": "#E74C3C",
+            "position": 19
+          },
+          {
+            "id": "1178049214299779092",
+            "name": "Manage Users",
+            "color": "#2ECC71",
+            "position": 6
+          }
+        ],
+        "avatarUrl": "https://cdn.discordapp.com/avatars/858824476828106772/6eac6e7cac939345c3a4149e70f37e86.png?size=512"
+      },
+      "attachments": [],
+      "embeds": [],
+      "stickers": [],
+      "reactions": [
+        {
+          "emoji": {
+            "id": "",
+            "name": "\uD83D\uDC46",
+            "code": "point_up_2",
+            "isAnimated": false,
+            "imageUrl": "https://cdn.jsdelivr.net/gh/twitter/twemoji@latest/assets/svg/1f446.svg"
+          },
+          "count": 3,
+          "users": [
+            {
+              "id": "689727225712607252",
+              "name": "goldenterry",
+              "discriminator": "0000",
+              "nickname": "terry.",
+              "color": null,
+              "isBot": false,
+              "avatarUrl": "https://cdn.discordapp.com/avatars/689727225712607252/bb7924fe587ee11e6e24a1ac4f0283cf.png?size=512"
+            },
+            {
+              "id": "802966804799684678",
+              "name": "srinidhi8255",
+              "discriminator": "0000",
+              "nickname": "whatever1234",
+              "color": null,
+              "isBot": false,
+              "avatarUrl": "https://cdn.discordapp.com/embed/avatars/0.png"
+            },
+            {
+              "id": "947726996065116171",
+              "name": "jacker2011",
+              "discriminator": "0000",
+              "nickname": "jacker2011",
+              "color": null,
+              "isBot": false,
+              "avatarUrl": "https://cdn.discordapp.com/avatars/947726996065116171/5445ffd7ffb201a98393cbdf684ea4b1.png?size=512"
+            }
+          ]
+        },
+        {
+          "emoji": {
+            "id": "",
+            "name": "\uD83D\uDC4D\uD83C\uDFFB",
+            "code": "thumbsup_tone1",
+            "isAnimated": false,
+            "imageUrl": "https://cdn.jsdelivr.net/gh/twitter/twemoji@latest/assets/svg/1f44d-1f3fb.svg"
+          },
+          "count": 2,
+          "users": [
+            {
+              "id": "689106260456767598",
+              "name": "bram02573",
+              "discriminator": "0000",
+              "nickname": "Astron77",
+              "color": null,
+              "isBot": false,
+              "avatarUrl": "https://cdn.discordapp.com/embed/avatars/0.png"
+            },
+            {
+              "id": "1147289315529994363",
+              "name": "asha_33253",
+              "discriminator": "0000",
+              "nickname": "Asha",
+              "color": null,
+              "isBot": false,
+              "avatarUrl": "https://cdn.discordapp.com/embed/avatars/3.png"
+            }
+          ]
+        },
+        {
+          "emoji": {
+            "id": "",
+            "name": "\uD83D\uDC4D",
+            "code": "thumbsup",
+            "isAnimated": false,
+            "imageUrl": "https://cdn.jsdelivr.net/gh/twitter/twemoji@latest/assets/svg/1f44d.svg"
+          },
+          "count": 2,
+          "users": [
+            {
+              "id": "767380764148105266",
+              "name": "michaels04596",
+              "discriminator": "0000",
+              "nickname": "Michaels",
+              "color": null,
+              "isBot": false,
+              "avatarUrl": "https://cdn.discordapp.com/embed/avatars/0.png"
+            },
+            {
+              "id": "1006952273483673761",
+              "name": "shba99",
+              "discriminator": "0000",
+              "nickname": "ShPr",
+              "color": null,
+              "isBot": false,
+              "avatarUrl": "https://cdn.discordapp.com/embed/avatars/5.png"
+            }
+          ]
+        },
+        {
+          "emoji": {
+            "id": "",
+            "name": "❤️",
+            "code": "heart",
+            "isAnimated": false,
+            "imageUrl": "https://cdn.jsdelivr.net/gh/twitter/twemoji@latest/assets/svg/2764.svg"
+          },
+          "count": 2,
+          "users": [
+            {
+              "id": "795092940724764692",
+              "name": "apurv212",
+              "discriminator": "0000",
+              "nickname": "Apurv Raveshia",
+              "color": null,
+              "isBot": false,
+              "avatarUrl": "https://cdn.discordapp.com/avatars/795092940724764692/fcd0f62e2aa5c8e60d11eb8e113093c1.png?size=512"
+            },
+            {
+              "id": "1269137027656581341",
+              "name": "785285.",
+              "discriminator": "0000",
+              "nickname": "A_C",
+              "color": null,
+              "isBot": false,
+              "avatarUrl": "https://cdn.discordapp.com/embed/avatars/5.png"
+            }
+          ]
+        }
+      ],
+      "mentions": [],
+      "inlineEmojis": []
+    },
+    {
+      "id": "1237815061930573844",
+      "type": "Reply",
+      "timestamp": "2024-05-08T12:15:08.256-05:00",
+      "timestampEdited": null,
+      "callEndedTimestamp": null,
+      "isPinned": false,
+      "content": "A technical challenge, in this case, would be a problem that was generally solved using a technical solution.  For example, say you needed to stream video over high-latency areas.  Or maybe you needed to do a textual search across terabytes of data, but the data was too large to efficiently search and return relevant results.  Technical challenges are in software development all over the place so they're not hard to find or think of if you've had even a small amount of experience.  If you're a student who is just graduating, your coursework was FILLED with technical challenges!  \n\nJust take some time to identify SEVERAL of these and KNOW the decisions you made and be able to describe how you moved through that process to arrive at those decisions.  Then, when asked, describe the problem, describe the process of how you broke it down, describe the decisions you made and why, then describe the outcome of each decision - good or bad (it helps to show you also learned from failure so go over bad as well).\n\nFor real world examples, you should be able to find MANY here in this discord (see #system-design or #mock-interviews for starters).  Diving into any system design interview prep video should also be very helpful.",
+      "author": {
+        "id": "176184283109523476",
+        "name": "cekis",
+        "discriminator": "0000",
+        "nickname": "Cekis",
+        "color": "#DA004E",
+        "isBot": false,
+        "roles": [
+          {
+            "id": "874426797394100234",
+            "name": "Contributer",
+            "color": "#DA004E",
+            "position": 24
+          }
+        ],
+        "avatarUrl": "https://cdn.discordapp.com/avatars/176184283109523476/68428b386986623a02f17b1b2d9c491c.png?size=512"
+      },
+      "attachments": [],
+      "embeds": [],
+      "stickers": [],
+      "reactions": [
+        {
+          "emoji": {
+            "id": "",
+            "name": "❤️",
+            "code": "heart",
+            "isAnimated": false,
+            "imageUrl": "https://cdn.jsdelivr.net/gh/twitter/twemoji@latest/assets/svg/2764.svg"
+          },
+          "count": 2,
+          "users": [
+            {
+              "id": "795092940724764692",
+              "name": "apurv212",
+              "discriminator": "0000",
+              "nickname": "Apurv Raveshia",
+              "color": null,
+              "isBot": false,
+              "avatarUrl": "https://cdn.discordapp.com/avatars/795092940724764692/fcd0f62e2aa5c8e60d11eb8e113093c1.png?size=512"
+            },
+            {
+              "id": "1063635137344053338",
+              "name": "mougli_nw",
+              "discriminator": "0000",
+              "nickname": "Mougli",
+              "color": null,
+              "isBot": false,
+              "avatarUrl": "https://cdn.discordapp.com/avatars/1063635137344053338/0c160bb77b6d96df26cdffd3e2457045.png?size=512"
+            }
+          ]
+        }
+      ],
+      "mentions": [
+        {
+          "id": "802966804799684678",
+          "name": "srinidhi8255",
+          "discriminator": "0000",
+          "nickname": "whatever1234",
+          "color": null,
+          "isBot": false,
+          "roles": [],
+          "avatarUrl": "https://cdn.discordapp.com/embed/avatars/0.png"
+        }
+      ],
+      "reference": {
+        "type": "Default",
+        "messageId": "1235439361730936893",
+        "channelId": "1184565495790321814",
+        "guildId": "853099205206999050"
+      },
+      "inlineEmojis": []
+    },
+    {
+      "id": "1255904371112148992",
+      "type": "Reply",
+      "timestamp": "2024-06-27T10:15:35.648-05:00",
+      "timestampEdited": null,
+      "callEndedTimestamp": null,
+      "isPinned": false,
+      "content": "Snippet from the answer I gave in one of the interview. You can think about pointers I included after those \".....\"\n\n\" When I was leading Claims modernization initiative at XXXXX. We were at very early stage of the program and design was in approval process.\n\nAs a TPM, it’s my responsibility to make sure system being implemented is meeting program goals and objectives, Company long term strategy, and requirements. Keeping these in mind, I suggested a few improvements to make system more scalable to meet future expansion requirements.....\"",
+      "author": {
+        "id": "795092940724764692",
+        "name": "apurv212",
+        "discriminator": "0000",
+        "nickname": "Apurv Raveshia",
+        "color": null,
+        "isBot": false,
+        "roles": [],
+        "avatarUrl": "https://cdn.discordapp.com/avatars/795092940724764692/fcd0f62e2aa5c8e60d11eb8e113093c1.png?size=512"
+      },
+      "attachments": [],
+      "embeds": [],
+      "stickers": [],
+      "reactions": [
+        {
+          "emoji": {
+            "id": "",
+            "name": "\uD83D\uDC4D",
+            "code": "thumbsup",
+            "isAnimated": false,
+            "imageUrl": "https://cdn.jsdelivr.net/gh/twitter/twemoji@latest/assets/svg/1f44d.svg"
+          },
+          "count": 1,
+          "users": [
+            {
+              "id": "814342227110527000",
+              "name": "sovyb",
+              "discriminator": "0000",
+              "nickname": "sobie",
+              "color": null,
+              "isBot": false,
+              "avatarUrl": "https://cdn.discordapp.com/embed/avatars/4.png"
+            }
+          ]
+        }
+      ],
+      "mentions": [
+        {
+          "id": "802966804799684678",
+          "name": "srinidhi8255",
+          "discriminator": "0000",
+          "nickname": "whatever1234",
+          "color": null,
+          "isBot": false,
+          "roles": [],
+          "avatarUrl": "https://cdn.discordapp.com/embed/avatars/0.png"
+        }
+      ],
+      "reference": {
+        "type": "Default",
+        "messageId": "1235439361730936893",
+        "channelId": "1184565495790321814",
+        "guildId": "853099205206999050"
+      },
+      "inlineEmojis": []
+    },
+    {
+      "id": "1265819965299228793",
+      "type": "Default",
+      "timestamp": "2024-07-24T18:56:37.525-05:00",
+      "timestampEdited": null,
+      "callEndedTimestamp": null,
+      "isPinned": false,
+      "content": "hey guys, how would you answer questions around how you've driven organizational change?",
+      "author": {
+        "id": "1087162762062463027",
+        "name": "tpminginla",
+        "discriminator": "0000",
+        "nickname": "TPMing",
+        "color": null,
+        "isBot": false,
+        "roles": [],
+        "avatarUrl": "https://cdn.discordapp.com/embed/avatars/3.png"
+      },
+      "attachments": [],
+      "embeds": [],
+      "stickers": [],
+      "reactions": [],
+      "mentions": [],
+      "inlineEmojis": []
+    },
+    {
+      "id": "1265851736149725345",
+      "type": "Default",
+      "timestamp": "2024-07-24T21:02:52.286-05:00",
+      "timestampEdited": "2024-07-24T21:04:24.518-05:00",
+      "callEndedTimestamp": null,
+      "isPinned": false,
+      "content": "IMO, the best stories for organizational change are when you introduce or improve a process or system to uplevel the org that lives on after you stop actively driving it. (i.e. you're influencing the org as a whole as opposed to just carrying the load as a one-TPM army)\n\nThe most common examples are systems for cross-team planning or driving campaigns/migrations. \n\ne.g. before I joined, teams were doing quarterly planning in silos and getting frustrated that they couldn't implement programs that needed partner help. After I joined, teams had a couple cross-org planning inputs that output a clear stack ranked list of cross-team requests for the next quarter that got clear commitment or de-commitment. \n\ne.g. I built a template for reporting on our most complex programs that included some Jira dashboards and wiki pages that other teams copy for their own programs that don't have active TPM involvement.\n\nFollow the standard STAR format with an emphasis on Results that demonstrate influence beyond the TPM doing all the heavy lifting themself",
+      "author": {
+        "id": "221701464832081920",
+        "name": "jayama",
+        "discriminator": "0000",
+        "nickname": "LeverageCoach",
+        "color": "#DA004E",
+        "isBot": false,
+        "roles": [
+          {
+            "id": "874426797394100234",
+            "name": "Contributer",
+            "color": "#DA004E",
+            "position": 24
+          }
+        ],
+        "avatarUrl": "https://cdn.discordapp.com/avatars/221701464832081920/3179b193b0942afc8bd9771192cedef2.png?size=512"
+      },
+      "attachments": [],
+      "embeds": [],
+      "stickers": [],
+      "reactions": [
+        {
+          "emoji": {
+            "id": "",
+            "name": "\uD83D\uDE4F",
+            "code": "pray",
+            "isAnimated": false,
+            "imageUrl": "https://cdn.jsdelivr.net/gh/twitter/twemoji@latest/assets/svg/1f64f.svg"
+          },
+          "count": 1,
+          "users": [
+            {
+              "id": "1087162762062463027",
+              "name": "tpminginla",
+              "discriminator": "0000",
+              "nickname": "TPMing",
+              "color": null,
+              "isBot": false,
+              "avatarUrl": "https://cdn.discordapp.com/embed/avatars/3.png"
+            }
+          ]
+        },
+        {
+          "emoji": {
+            "id": "",
+            "name": "\uD83D\uDCA1",
+            "code": "bulb",
+            "isAnimated": false,
+            "imageUrl": "https://cdn.jsdelivr.net/gh/twitter/twemoji@latest/assets/svg/1f4a1.svg"
+          },
+          "count": 1,
+          "users": [
+            {
+              "id": "1070216136936923197",
+              "name": "travelbug5215",
+              "discriminator": "0000",
+              "nickname": "travelbug5215",
+              "color": null,
+              "isBot": false,
+              "avatarUrl": "https://cdn.discordapp.com/embed/avatars/0.png"
+            }
+          ]
+        },
+        {
+          "emoji": {
+            "id": "",
+            "name": "\uD83D\uDC4D",
+            "code": "thumbsup",
+            "isAnimated": false,
+            "imageUrl": "https://cdn.jsdelivr.net/gh/twitter/twemoji@latest/assets/svg/1f44d.svg"
+          },
+          "count": 2,
+          "users": [
+            {
+              "id": "813418044180660294",
+              "name": "benbeinglass",
+              "discriminator": "0000",
+              "nickname": "BenB",
+              "color": null,
+              "isBot": false,
+              "avatarUrl": "https://cdn.discordapp.com/embed/avatars/3.png"
+            },
+            {
+              "id": "986008458442727524",
+              "name": "iriso3308",
+              "discriminator": "0000",
+              "nickname": "iriso3308",
+              "color": null,
+              "isBot": false,
+              "avatarUrl": "https://cdn.discordapp.com/avatars/986008458442727524/fdef99fd671ea515026cbd364f04db1c.png?size=512"
+            }
+          ]
+        }
+      ],
+      "mentions": [],
+      "inlineEmojis": []
+    },
+    {
+      "id": "1267958388902330369",
+      "type": "Default",
+      "timestamp": "2024-07-30T16:33:57.442-05:00",
+      "timestampEdited": null,
+      "callEndedTimestamp": null,
+      "isPinned": false,
+      "content": "how would you answer questions around how you've mentored and coached others?",
+      "author": {
+        "id": "1087162762062463027",
+        "name": "tpminginla",
+        "discriminator": "0000",
+        "nickname": "TPMing",
+        "color": null,
+        "isBot": false,
+        "roles": [],
+        "avatarUrl": "https://cdn.discordapp.com/embed/avatars/3.png"
+      },
+      "attachments": [],
+      "embeds": [],
+      "stickers": [],
+      "reactions": [],
+      "mentions": [],
+      "inlineEmojis": []
+    },
+    {
+      "id": "1268014464733548695",
+      "type": "Reply",
+      "timestamp": "2024-07-30T20:16:46.962-05:00",
+      "timestampEdited": null,
+      "callEndedTimestamp": null,
+      "isPinned": false,
+      "content": "You can always pick up the scenarios where you helped new hire onboard, peer member onboarding to new projects and how you facilitated it or how you helped someone ramp up on the program or project that you own. Helping interns with the internship projects.",
+      "author": {
+        "id": "907836348986191922",
+        "name": "pa3_p",
+        "discriminator": "0000",
+        "nickname": "Pwin",
+        "color": null,
+        "isBot": false,
+        "roles": [],
+        "avatarUrl": "https://cdn.discordapp.com/embed/avatars/0.png"
+      },
+      "attachments": [],
+      "embeds": [],
+      "stickers": [],
+      "reactions": [
+        {
+          "emoji": {
+            "id": "",
+            "name": "\uD83D\uDE4F",
+            "code": "pray",
+            "isAnimated": false,
+            "imageUrl": "https://cdn.jsdelivr.net/gh/twitter/twemoji@latest/assets/svg/1f64f.svg"
+          },
+          "count": 2,
+          "users": [
+            {
+              "id": "1087162762062463027",
+              "name": "tpminginla",
+              "discriminator": "0000",
+              "nickname": "TPMing",
+              "color": null,
+              "isBot": false,
+              "avatarUrl": "https://cdn.discordapp.com/embed/avatars/3.png"
+            },
+            {
+              "id": "1241184103672578098",
+              "name": "nchakerwarti",
+              "discriminator": "0000",
+              "nickname": "NRC",
+              "color": null,
+              "isBot": false,
+              "avatarUrl": "https://cdn.discordapp.com/avatars/1241184103672578098/157e517cdbf371a47aaead44675714a3.png?size=512"
+            }
+          ]
+        }
+      ],
+      "mentions": [
+        {
+          "id": "1087162762062463027",
+          "name": "tpminginla",
+          "discriminator": "0000",
+          "nickname": "TPMing",
+          "color": null,
+          "isBot": false,
+          "roles": [],
+          "avatarUrl": "https://cdn.discordapp.com/embed/avatars/3.png"
+        }
+      ],
+      "reference": {
+        "type": "Default",
+        "messageId": "1267958388902330369",
+        "channelId": "1184565495790321814",
+        "guildId": "853099205206999050"
+      },
+      "inlineEmojis": []
+    },
+    {
+      "id": "1273145209517113364",
+      "type": "Default",
+      "timestamp": "2024-08-14T00:04:31.843-05:00",
+      "timestampEdited": null,
+      "callEndedTimestamp": null,
+      "isPinned": false,
+      "content": "Hello all! Can we discuss metrics which you are capturing for your programs? Personal as well as team based metrics assuming both are different? Thank you!",
+      "author": {
+        "id": "981790952278601758",
+        "name": "rahuljoshi1675",
+        "discriminator": "0000",
+        "nickname": "RJ",
+        "color": null,
+        "isBot": false,
+        "roles": [],
+        "avatarUrl": "https://cdn.discordapp.com/embed/avatars/5.png"
+      },
+      "attachments": [],
+      "embeds": [],
+      "stickers": [],
+      "reactions": [],
+      "mentions": [],
+      "inlineEmojis": []
+    },
+    {
+      "id": "1273368183348138108",
+      "type": "Reply",
+      "timestamp": "2024-08-14T14:50:32.947-05:00",
+      "timestampEdited": null,
+      "callEndedTimestamp": null,
+      "isPinned": false,
+      "content": "A few that I have used in past, generic list to cover the basis, but depending on the program (Product or platform focused), you can derive from these high levle metrics. Apologies for the screenshot paste, copying a table is a pain in discord.",
+      "author": {
+        "id": "440008759406755850",
+        "name": "gyaanitourist",
+        "discriminator": "0000",
+        "nickname": "MB",
+        "color": "#DA004E",
+        "isBot": false,
+        "roles": [
+          {
+            "id": "874426797394100234",
+            "name": "Contributer",
+            "color": "#DA004E",
+            "position": 24
+          }
+        ],
+        "avatarUrl": "https://cdn.discordapp.com/embed/avatars/4.png"
+      },
+      "attachments": [
+        {
+          "id": "1273368183365042186",
+          "url": "https://cdn.discordapp.com/attachments/1184565495790321814/1273368183365042186/Screenshot_2024-08-14_154857.png?ex=6a25cb88&is=6a247a08&hm=57e0821c70e20ab49e04269812573b0c7b63f956945e39caa2c549962d731bcf&",
+          "fileName": "Screenshot_2024-08-14_154857.png",
+          "fileSizeBytes": 124410
+        }
+      ],
+      "embeds": [],
+      "stickers": [],
+      "reactions": [
+        {
+          "emoji": {
+            "id": "",
+            "name": "\uD83D\uDC4D",
+            "code": "thumbsup",
+            "isAnimated": false,
+            "imageUrl": "https://cdn.jsdelivr.net/gh/twitter/twemoji@latest/assets/svg/1f44d.svg"
+          },
+          "count": 6,
+          "users": [
+            {
+              "id": "350859563291115520",
+              "name": "m007averick",
+              "discriminator": "0000",
+              "nickname": "m007averick",
+              "color": null,
+              "isBot": false,
+              "avatarUrl": "https://cdn.discordapp.com/embed/avatars/0.png"
+            },
+            {
+              "id": "713410166745202720",
+              "name": "jay274648",
+              "discriminator": "0000",
+              "nickname": "AnotherJay",
+              "color": null,
+              "isBot": false,
+              "avatarUrl": "https://cdn.discordapp.com/embed/avatars/2.png"
+            },
+            {
+              "id": "774785740517015604",
+              "name": ".rahulc",
+              "discriminator": "0000",
+              "nickname": "RC",
+              "color": null,
+              "isBot": false,
+              "avatarUrl": "https://cdn.discordapp.com/embed/avatars/0.png"
+            },
+            {
+              "id": "957656262164750427",
+              "name": "mega_mist",
+              "discriminator": "0000",
+              "nickname": "megatron5000",
+              "color": null,
+              "isBot": false,
+              "avatarUrl": "https://cdn.discordapp.com/avatars/957656262164750427/5afd67591ae13055cc0e2d0995a25c29.png?size=512"
+            },
+            {
+              "id": "1006952273483673761",
+              "name": "shba99",
+              "discriminator": "0000",
+              "nickname": "ShPr",
+              "color": null,
+              "isBot": false,
+              "avatarUrl": "https://cdn.discordapp.com/embed/avatars/5.png"
+            },
+            {
+              "id": "1153118700115873903",
+              "name": "koddy21",
+              "discriminator": "0000",
+              "nickname": "Vaish",
+              "color": null,
+              "isBot": false,
+              "avatarUrl": "https://cdn.discordapp.com/avatars/1153118700115873903/157e517cdbf371a47aaead44675714a3.png?size=512"
+            }
+          ]
+        },
+        {
+          "emoji": {
+            "id": "",
+            "name": "❤️",
+            "code": "heart",
+            "isAnimated": false,
+            "imageUrl": "https://cdn.jsdelivr.net/gh/twitter/twemoji@latest/assets/svg/2764.svg"
+          },
+          "count": 3,
+          "users": [
+            {
+              "id": "742454591878332426",
+              "name": "dbhat",
+              "discriminator": "0000",
+              "nickname": "BanjoBowl",
+              "color": null,
+              "isBot": false,
+              "avatarUrl": "https://cdn.discordapp.com/embed/avatars/1.png"
+            },
+            {
+              "id": "986008458442727524",
+              "name": "iriso3308",
+              "discriminator": "0000",
+              "nickname": "iriso3308",
+              "color": null,
+              "isBot": false,
+              "avatarUrl": "https://cdn.discordapp.com/avatars/986008458442727524/fdef99fd671ea515026cbd364f04db1c.png?size=512"
+            },
+            {
+              "id": "1269137027656581341",
+              "name": "785285.",
+              "discriminator": "0000",
+              "nickname": "A_C",
+              "color": null,
+              "isBot": false,
+              "avatarUrl": "https://cdn.discordapp.com/embed/avatars/5.png"
+            }
+          ]
+        }
+      ],
+      "mentions": [
+        {
+          "id": "981790952278601758",
+          "name": "rahuljoshi1675",
+          "discriminator": "0000",
+          "nickname": "RJ",
+          "color": null,
+          "isBot": false,
+          "roles": [],
+          "avatarUrl": "https://cdn.discordapp.com/embed/avatars/5.png"
+        }
+      ],
+      "reference": {
+        "type": "Default",
+        "messageId": "1273145209517113364",
+        "channelId": "1184565495790321814",
+        "guildId": "853099205206999050"
+      },
+      "inlineEmojis": []
+    },
+    {
+      "id": "1273708932648538137",
+      "type": "Reply",
+      "timestamp": "2024-08-15T13:24:33.911-05:00",
+      "timestampEdited": null,
+      "callEndedTimestamp": null,
+      "isPinned": false,
+      "content": "Thanks @MB",
+      "author": {
+        "id": "981790952278601758",
+        "name": "rahuljoshi1675",
+        "discriminator": "0000",
+        "nickname": "RJ",
+        "color": null,
+        "isBot": false,
+        "roles": [],
+        "avatarUrl": "https://cdn.discordapp.com/embed/avatars/5.png"
+      },
+      "attachments": [],
+      "embeds": [],
+      "stickers": [],
+      "reactions": [],
+      "mentions": [
+        {
+          "id": "440008759406755850",
+          "name": "gyaanitourist",
+          "discriminator": "0000",
+          "nickname": "MB",
+          "color": "#DA004E",
+          "isBot": false,
+          "roles": [
+            {
+              "id": "874426797394100234",
+              "name": "Contributer",
+              "color": "#DA004E",
+              "position": 24
+            }
+          ],
+          "avatarUrl": "https://cdn.discordapp.com/embed/avatars/4.png"
+        }
+      ],
+      "reference": {
+        "type": "Default",
+        "messageId": "1273368183348138108",
+        "channelId": "1184565495790321814",
+        "guildId": "853099205206999050"
+      },
+      "inlineEmojis": []
+    },
+    {
+      "id": "1304692405223690261",
+      "type": "Default",
+      "timestamp": "2024-11-09T00:21:49.418-06:00",
+      "timestampEdited": null,
+      "callEndedTimestamp": null,
+      "isPinned": false,
+      "content": "Hi, how can we answer this question as senior TPM:\n\ntell me about time you managed complex program",
+      "author": {
+        "id": "1292242088364085269",
+        "name": "mk096436",
+        "discriminator": "0000",
+        "nickname": "Mk",
+        "color": null,
+        "isBot": false,
+        "roles": [],
+        "avatarUrl": "https://cdn.discordapp.com/embed/avatars/5.png"
+      },
+      "attachments": [],
+      "embeds": [],
+      "stickers": [],
+      "reactions": [],
+      "mentions": [],
+      "inlineEmojis": []
+    },
+    {
+      "id": "1308675196932329583",
+      "type": "Reply",
+      "timestamp": "2024-11-20T00:08:00.958-06:00",
+      "timestampEdited": null,
+      "callEndedTimestamp": null,
+      "isPinned": false,
+      "content": "there's some good resources here : https://docs.google.com/document/d/1uxgGCwXNYsxmCyJ4QXsnKnOpgmSVnl2eJ9HlBE0ylkc/edit?tab=t.0#heading=h.mrrgzze0gjn7 \nbut like someone said in another channel, you have to use your own experiences to answer that. at a very high level, complexities are around technical (tradeoffs, tech stacks, goals, etc.) , program management (time, scope, budget, resources) , or leadership (influencing, decision making, conflicts, etc.)",
+      "author": {
+        "id": "858824476828106772",
+        "name": "arav1nd",
+        "discriminator": "0000",
+        "nickname": "AG",
+        "color": "#25C059",
+        "isBot": false,
+        "roles": [
+          {
+            "id": "864371622231801856",
+            "name": "Moderator",
+            "color": "#25C059",
+            "position": 25
+          },
+          {
+            "id": "888509975440289873",
+            "name": "Server Booster",
+            "color": "#F47FFF",
+            "position": 20
+          },
+          {
+            "id": "893548412081934346",
+            "name": "ReadMe Channel",
+            "color": "#E74C3C",
+            "position": 19
+          },
+          {
+            "id": "1178049214299779092",
+            "name": "Manage Users",
+            "color": "#2ECC71",
+            "position": 6
+          }
+        ],
+        "avatarUrl": "https://cdn.discordapp.com/avatars/858824476828106772/6eac6e7cac939345c3a4149e70f37e86.png?size=512"
+      },
+      "attachments": [],
+      "embeds": [
+        {
+          "title": "TPM Interview - Program Management Concepts",
+          "url": "https://docs.google.com/document/d/1uxgGCwXNYsxmCyJ4QXsnKnOpgmSVnl2eJ9HlBE0ylkc/edit?tab=t.0",
+          "timestamp": null,
+          "description": "TPM Interview: PgM/RRK Concepts Author’s note- Content in this document is sourced from several sources and part of it generated using content summarizers and LLMs. Please use your best judgment while referring to the accuracy of the content.  \uD83D\uDC48Please enable document outline to help navigate the...",
+          "thumbnail": {
+            "url": "https://images-ext-1.discordapp.net/external/uMbZBMzg0up2dx1FxUNfxgPr4fGevKy6O2uyNl9Bkss/https/lh7-us.googleusercontent.com/docs/AHkbwyIn0f4T6FTFdc91_usXmKrvtWH_JSRqWVgsP002MT-6kfCxkhJbYCmtLkluz2FdI6WLIBVr3QKj1KKbsn6yW89IwhU66P36oCBPOOsJbbTr7iCCZdtw%3Dw1200-h630-p",
+            "canonicalUrl": "https://lh7-us.googleusercontent.com/docs/AHkbwyIn0f4T6FTFdc91_usXmKrvtWH_JSRqWVgsP002MT-6kfCxkhJbYCmtLkluz2FdI6WLIBVr3QKj1KKbsn6yW89IwhU66P36oCBPOOsJbbTr7iCCZdtw=w1200-h630-p",
+            "width": 1200,
+            "height": 630
+          },
+          "images": [],
+          "fields": [],
+          "inlineEmojis": [
+            {
+              "id": "",
+              "name": "\uD83D\uDC48",
+              "code": "point_left",
+              "isAnimated": false,
+              "imageUrl": "https://cdn.jsdelivr.net/gh/twitter/twemoji@latest/assets/svg/1f448.svg"
+            }
+          ]
+        }
+      ],
+      "stickers": [],
+      "reactions": [
+        {
+          "emoji": {
+            "id": "",
+            "name": "\uD83D\uDC4D",
+            "code": "thumbsup",
+            "isAnimated": false,
+            "imageUrl": "https://cdn.jsdelivr.net/gh/twitter/twemoji@latest/assets/svg/1f44d.svg"
+          },
+          "count": 11,
+          "users": [
+            {
+              "id": "410546508069470208",
+              "name": "vivek2616",
+              "discriminator": "0000",
+              "nickname": "Vivek",
+              "color": null,
+              "isBot": false,
+              "avatarUrl": "https://cdn.discordapp.com/avatars/410546508069470208/bc60e2746142e9233618001f4ec09a6b.png?size=512"
+            },
+            {
+              "id": "676617448761327624",
+              "name": "skrrrrrrtreynolds",
+              "discriminator": "0000",
+              "nickname": "SkrrtReynolds",
+              "color": null,
+              "isBot": false,
+              "avatarUrl": "https://cdn.discordapp.com/avatars/676617448761327624/a445808a273d3965c089e68e10f9ee12.png?size=512"
+            },
+            {
+              "id": "861788899588309023",
+              "name": "satya0279",
+              "discriminator": "0000",
+              "nickname": "Optireq#9",
+              "color": null,
+              "isBot": false,
+              "avatarUrl": "https://cdn.discordapp.com/avatars/861788899588309023/6a135b9c4c7e5b5e9a6761235f1c607c.png?size=512"
+            },
+            {
+              "id": "1007702233032446033",
+              "name": "antoinesf",
+              "discriminator": "0000",
+              "nickname": "Antoine",
+              "color": null,
+              "isBot": false,
+              "avatarUrl": "https://cdn.discordapp.com/embed/avatars/5.png"
+            },
+            {
+              "id": "1040329240194842646",
+              "name": "senthil49",
+              "discriminator": "0000",
+              "nickname": "wanderer49",
+              "color": null,
+              "isBot": false,
+              "avatarUrl": "https://cdn.discordapp.com/avatars/1040329240194842646/f7f2e9361e8a54ce6e72580ac7b967af.png?size=512"
+            },
+            {
+              "id": "1093198353107537970",
+              "name": "alexanderfiletkin",
+              "discriminator": "0000",
+              "nickname": "alexanderfiletkin",
+              "color": null,
+              "isBot": false,
+              "avatarUrl": "https://cdn.discordapp.com/avatars/1093198353107537970/f4642f58b9f52d977c43b5d8abd2495a.png?size=512"
+            },
+            {
+              "id": "1128880147844571237",
+              "name": "lalueur.",
+              "discriminator": "0000",
+              "nickname": "lalueur.",
+              "color": null,
+              "isBot": false,
+              "avatarUrl": "https://cdn.discordapp.com/avatars/1128880147844571237/c338cd19239f7ba43aa5506037d8b798.png?size=512"
+            },
+            {
+              "id": "1267179339229954069",
+              "name": "s_aka",
+              "discriminator": "0000",
+              "nickname": "s_aka",
+              "color": null,
+              "isBot": false,
+              "avatarUrl": "https://cdn.discordapp.com/embed/avatars/0.png"
+            },
+            {
+              "id": "1292242088364085269",
+              "name": "mk096436",
+              "discriminator": "0000",
+              "nickname": "Mk",
+              "color": null,
+              "isBot": false,
+              "avatarUrl": "https://cdn.discordapp.com/embed/avatars/5.png"
+            },
+            {
+              "id": "1322618358042071061",
+              "name": "zar27039",
+              "discriminator": "0000",
+              "nickname": "Zookeeper",
+              "color": null,
+              "isBot": false,
+              "avatarUrl": "https://cdn.discordapp.com/avatars/1322618358042071061/5445ffd7ffb201a98393cbdf684ea4b1.png?size=512"
+            },
+            {
+              "id": "1466138451391807530",
+              "name": "amritasingh_54160",
+              "discriminator": "0000",
+              "nickname": "Amrita Singh",
+              "color": null,
+              "isBot": false,
+              "avatarUrl": "https://cdn.discordapp.com/embed/avatars/3.png"
+            }
+          ]
+        }
+      ],
+      "mentions": [
+        {
+          "id": "1292242088364085269",
+          "name": "mk096436",
+          "discriminator": "0000",
+          "nickname": "Mk",
+          "color": null,
+          "isBot": false,
+          "roles": [],
+          "avatarUrl": "https://cdn.discordapp.com/embed/avatars/5.png"
+        }
+      ],
+      "reference": {
+        "type": "Default",
+        "messageId": "1304692405223690261",
+        "channelId": "1184565495790321814",
+        "guildId": "853099205206999050"
+      },
+      "inlineEmojis": []
+    },
+    {
+      "id": "1325161890594295930",
+      "type": "Default",
+      "timestamp": "2025-01-04T12:00:15.035-06:00",
+      "timestampEdited": "2025-01-04T12:00:48.537-06:00",
+      "callEndedTimestamp": null,
+      "isPinned": false,
+      "content": "Seeing this now. \nAlso in our org we strictly collect and monitor the below.\n\nPredictability - is completed percentage of the work committed for the quarter. (Planned to done ratio). It measures how well agile teams deliver on their commitments and align with the business goals and customer expectations. \n\nDev cycle time - is the duration (in days) from feature started to feature completed. It measures development productivity.\n\nAlso Team Persistency. Scrum team should be 5-10.",
+      "author": {
+        "id": "719068067807625296",
+        "name": "pkp2043",
+        "discriminator": "0000",
+        "nickname": "pkp",
+        "color": null,
+        "isBot": false,
+        "roles": [],
+        "avatarUrl": "https://cdn.discordapp.com/embed/avatars/0.png"
+      },
+      "attachments": [],
+      "embeds": [],
+      "stickers": [],
+      "reactions": [],
+      "mentions": [],
+      "inlineEmojis": []
+    },
+    {
+      "id": "1325597090981871687",
+      "type": "Default",
+      "timestamp": "2025-01-05T16:49:34.893-06:00",
+      "timestampEdited": null,
+      "callEndedTimestamp": null,
+      "isPinned": false,
+      "content": "Personally, I hate the idea of \"predictability\" as a measure. It encourages either sandbagging or constant deathmarches to make the metric. I know it's an industry standard to try and improve predictability, but it can easily fall prey to Goodhart's Law (when you make a measure a target, it ceases to become a good measure)",
+      "author": {
+        "id": "221701464832081920",
+        "name": "jayama",
+        "discriminator": "0000",
+        "nickname": "LeverageCoach",
+        "color": "#DA004E",
+        "isBot": false,
+        "roles": [
+          {
+            "id": "874426797394100234",
+            "name": "Contributer",
+            "color": "#DA004E",
+            "position": 24
+          }
+        ],
+        "avatarUrl": "https://cdn.discordapp.com/avatars/221701464832081920/3179b193b0942afc8bd9771192cedef2.png?size=512"
+      },
+      "attachments": [],
+      "embeds": [],
+      "stickers": [],
+      "reactions": [
+        {
+          "emoji": {
+            "id": "",
+            "name": "\uD83D\uDC4D",
+            "code": "thumbsup",
+            "isAnimated": false,
+            "imageUrl": "https://cdn.jsdelivr.net/gh/twitter/twemoji@latest/assets/svg/1f44d.svg"
+          },
+          "count": 3,
+          "users": [
+            {
+              "id": "114488201183363073",
+              "name": ".shadowhand",
+              "discriminator": "0000",
+              "nickname": "Shadowhand",
+              "color": null,
+              "isBot": false,
+              "avatarUrl": "https://cdn.discordapp.com/avatars/114488201183363073/4be59d72699b4befcaef076f016bb5df.png?size=512"
+            },
+            {
+              "id": "916557445889945650",
+              "name": "mikejones33.",
+              "discriminator": "0000",
+              "nickname": "mikejones33.",
+              "color": null,
+              "isBot": false,
+              "avatarUrl": "https://cdn.discordapp.com/embed/avatars/2.png"
+            },
+            {
+              "id": "1153118700115873903",
+              "name": "koddy21",
+              "discriminator": "0000",
+              "nickname": "Vaish",
+              "color": null,
+              "isBot": false,
+              "avatarUrl": "https://cdn.discordapp.com/avatars/1153118700115873903/157e517cdbf371a47aaead44675714a3.png?size=512"
+            }
+          ]
+        }
+      ],
+      "mentions": [],
+      "inlineEmojis": []
+    },
+    {
+      "id": "1326289602759098470",
+      "type": "Reply",
+      "timestamp": "2025-01-07T14:41:22.567-06:00",
+      "timestampEdited": null,
+      "callEndedTimestamp": null,
+      "isPinned": false,
+      "content": "Just curious how did you use this metric? In our team we used this and had visibility till product head level. The number of features we committed/planned in our QEP and how many completed. We had an executive dash for all metrics and closedly monitored and questioned end of the quarter.",
+      "author": {
+        "id": "719068067807625296",
+        "name": "pkp2043",
+        "discriminator": "0000",
+        "nickname": "pkp",
+        "color": null,
+        "isBot": false,
+        "roles": [],
+        "avatarUrl": "https://cdn.discordapp.com/embed/avatars/0.png"
+      },
+      "attachments": [],
+      "embeds": [],
+      "stickers": [],
+      "reactions": [],
+      "mentions": [
+        {
+          "id": "221701464832081920",
+          "name": "jayama",
+          "discriminator": "0000",
+          "nickname": "LeverageCoach",
+          "color": "#DA004E",
+          "isBot": false,
+          "roles": [
+            {
+              "id": "874426797394100234",
+              "name": "Contributer",
+              "color": "#DA004E",
+              "position": 24
+            }
+          ],
+          "avatarUrl": "https://cdn.discordapp.com/avatars/221701464832081920/3179b193b0942afc8bd9771192cedef2.png?size=512"
+        }
+      ],
+      "reference": {
+        "type": "Default",
+        "messageId": "1325597090981871687",
+        "channelId": "1184565495790321814",
+        "guildId": "853099205206999050"
+      },
+      "inlineEmojis": []
+    },
+    {
+      "id": "1326357435522351196",
+      "type": "Reply",
+      "timestamp": "2025-01-07T19:10:55.158-06:00",
+      "timestampEdited": null,
+      "callEndedTimestamp": null,
+      "isPinned": false,
+      "content": "We never formally adopted it on my teams, but it was discussed and roughly kept track of.",
+      "author": {
+        "id": "221701464832081920",
+        "name": "jayama",
+        "discriminator": "0000",
+        "nickname": "LeverageCoach",
+        "color": "#DA004E",
+        "isBot": false,
+        "roles": [
+          {
+            "id": "874426797394100234",
+            "name": "Contributer",
+            "color": "#DA004E",
+            "position": 24
+          }
+        ],
+        "avatarUrl": "https://cdn.discordapp.com/avatars/221701464832081920/3179b193b0942afc8bd9771192cedef2.png?size=512"
+      },
+      "attachments": [],
+      "embeds": [],
+      "stickers": [],
+      "reactions": [],
+      "mentions": [
+        {
+          "id": "719068067807625296",
+          "name": "pkp2043",
+          "discriminator": "0000",
+          "nickname": "pkp",
+          "color": null,
+          "isBot": false,
+          "roles": [],
+          "avatarUrl": "https://cdn.discordapp.com/embed/avatars/0.png"
+        }
+      ],
+      "reference": {
+        "type": "Default",
+        "messageId": "1326289602759098470",
+        "channelId": "1184565495790321814",
+        "guildId": "853099205206999050"
+      },
+      "inlineEmojis": []
+    },
+    {
+      "id": "1332236981752561695",
+      "type": "Default",
+      "timestamp": "2025-01-24T00:34:08.216-06:00",
+      "timestampEdited": null,
+      "callEndedTimestamp": null,
+      "isPinned": false,
+      "content": "Hi All,  Can anyone help with a real life story to answer \"A time you influenced technical decision (architecture/design) of a program you are responsible as a TPM?\" TIA.",
+      "author": {
+        "id": "1048241744652804106",
+        "name": "lucky03134404",
+        "discriminator": "0000",
+        "nickname": "0313",
+        "color": null,
+        "isBot": false,
+        "roles": [],
+        "avatarUrl": "https://cdn.discordapp.com/embed/avatars/3.png"
+      },
+      "attachments": [],
+      "embeds": [],
+      "stickers": [],
+      "reactions": [],
+      "mentions": [],
+      "inlineEmojis": []
+    },
+    {
+      "id": "1333869021350727760",
+      "type": "Default",
+      "timestamp": "2025-01-28T12:39:16.778-06:00",
+      "timestampEdited": null,
+      "callEndedTimestamp": null,
+      "isPinned": false,
+      "content": "Can someone help me connect to Meta Technical Program Manager recruiters?",
+      "author": {
+        "id": "1012884341019394109",
+        "name": "priya084228",
+        "discriminator": "0000",
+        "nickname": "PS",
+        "color": null,
+        "isBot": false,
+        "roles": [],
+        "avatarUrl": "https://cdn.discordapp.com/avatars/1012884341019394109/4277f3c1df9a37b64a5405acf323c212.png?size=512"
+      },
+      "attachments": [],
+      "embeds": [],
+      "stickers": [],
+      "reactions": [],
+      "mentions": [],
+      "inlineEmojis": []
+    },
+    {
+      "id": "1336029038929772555",
+      "type": "Reply",
+      "timestamp": "2025-02-03T11:42:25.1-06:00",
+      "timestampEdited": null,
+      "callEndedTimestamp": null,
+      "isPinned": false,
+      "content": "Message me",
+      "author": {
+        "id": "719068067807625296",
+        "name": "pkp2043",
+        "discriminator": "0000",
+        "nickname": "pkp",
+        "color": null,
+        "isBot": false,
+        "roles": [],
+        "avatarUrl": "https://cdn.discordapp.com/embed/avatars/0.png"
+      },
+      "attachments": [],
+      "embeds": [],
+      "stickers": [],
+      "reactions": [],
+      "mentions": [
+        {
+          "id": "1048241744652804106",
+          "name": "lucky03134404",
+          "discriminator": "0000",
+          "nickname": "0313",
+          "color": null,
+          "isBot": false,
+          "roles": [],
+          "avatarUrl": "https://cdn.discordapp.com/embed/avatars/3.png"
+        }
+      ],
+      "reference": {
+        "type": "Default",
+        "messageId": "1332236981752561695",
+        "channelId": "1184565495790321814",
+        "guildId": "853099205206999050"
+      },
+      "inlineEmojis": []
+    },
+    {
+      "id": "1337995207215550597",
+      "type": "Default",
+      "timestamp": "2025-02-08T21:55:16.149-06:00",
+      "timestampEdited": null,
+      "callEndedTimestamp": null,
+      "isPinned": false,
+      "content": "Can someone help me with this? \nHow can we answer the questions which start with “How” (I.e: how do you manage changes). \nShould we still use the STAR format based on previous example? Or just say the answer directly",
+      "author": {
+        "id": "1292242088364085269",
+        "name": "mk096436",
+        "discriminator": "0000",
+        "nickname": "Mk",
+        "color": null,
+        "isBot": false,
+        "roles": [],
+        "avatarUrl": "https://cdn.discordapp.com/embed/avatars/5.png"
+      },
+      "attachments": [],
+      "embeds": [],
+      "stickers": [],
+      "reactions": [],
+      "mentions": [],
+      "inlineEmojis": []
+    },
+    {
+      "id": "1338012593926836254",
+      "type": "Default",
+      "timestamp": "2025-02-08T23:04:21.464-06:00",
+      "timestampEdited": null,
+      "callEndedTimestamp": null,
+      "isPinned": false,
+      "content": "As with most prompts, you can ask clarifying questions like \"Do you want me to walk you through an example of a time I did this or just review the general how?\"\n\nPersonally, I err toward giving a grounded example with STAR format. \"One time that I really struggled to manage changes was this project where we had a lot of conflicting products guidance. The situation was ...\"",
+      "author": {
+        "id": "221701464832081920",
+        "name": "jayama",
+        "discriminator": "0000",
+        "nickname": "LeverageCoach",
+        "color": "#DA004E",
+        "isBot": false,
+        "roles": [
+          {
+            "id": "874426797394100234",
+            "name": "Contributer",
+            "color": "#DA004E",
+            "position": 24
+          }
+        ],
+        "avatarUrl": "https://cdn.discordapp.com/avatars/221701464832081920/3179b193b0942afc8bd9771192cedef2.png?size=512"
+      },
+      "attachments": [],
+      "embeds": [],
+      "stickers": [],
+      "reactions": [
+        {
+          "emoji": {
+            "id": "",
+            "name": "\uD83D\uDC4D",
+            "code": "thumbsup",
+            "isAnimated": false,
+            "imageUrl": "https://cdn.jsdelivr.net/gh/twitter/twemoji@latest/assets/svg/1f44d.svg"
+          },
+          "count": 2,
+          "users": [
+            {
+              "id": "1070868669372059729",
+              "name": "studentoflife9653",
+              "discriminator": "0000",
+              "nickname": "studentoflife2023",
+              "color": null,
+              "isBot": false,
+              "avatarUrl": "https://cdn.discordapp.com/embed/avatars/2.png"
+            },
+            {
+              "id": "1292242088364085269",
+              "name": "mk096436",
+              "discriminator": "0000",
+              "nickname": "Mk",
+              "color": null,
+              "isBot": false,
+              "avatarUrl": "https://cdn.discordapp.com/embed/avatars/5.png"
+            }
+          ]
+        }
+      ],
+      "mentions": [],
+      "inlineEmojis": []
+    },
+    {
+      "id": "1339093597932359721",
+      "type": "Reply",
+      "timestamp": "2025-02-11T22:39:52.903-06:00",
+      "timestampEdited": null,
+      "callEndedTimestamp": null,
+      "isPinned": false,
+      "content": "Could I DM as well?",
+      "author": {
+        "id": "946929440124993617",
+        "name": "arty7398",
+        "discriminator": "0000",
+        "nickname": "arty",
+        "color": null,
+        "isBot": false,
+        "roles": [],
+        "avatarUrl": "https://cdn.discordapp.com/avatars/946929440124993617/6c5996770c985bcd6e5b68131ff2ba04.png?size=512"
+      },
+      "attachments": [],
+      "embeds": [],
+      "stickers": [],
+      "reactions": [],
+      "mentions": [
+        {
+          "id": "719068067807625296",
+          "name": "pkp2043",
+          "discriminator": "0000",
+          "nickname": "pkp",
+          "color": null,
+          "isBot": false,
+          "roles": [],
+          "avatarUrl": "https://cdn.discordapp.com/embed/avatars/0.png"
+        }
+      ],
+      "reference": {
+        "type": "Default",
+        "messageId": "1336029038929772555",
+        "channelId": "1184565495790321814",
+        "guildId": "853099205206999050"
+      },
+      "inlineEmojis": []
+    },
+    {
+      "id": "1339272352306954280",
+      "type": "Reply",
+      "timestamp": "2025-02-12T10:30:11.267-06:00",
+      "timestampEdited": null,
+      "callEndedTimestamp": null,
+      "isPinned": false,
+      "content": "Sure",
+      "author": {
+        "id": "719068067807625296",
+        "name": "pkp2043",
+        "discriminator": "0000",
+        "nickname": "pkp",
+        "color": null,
+        "isBot": false,
+        "roles": [],
+        "avatarUrl": "https://cdn.discordapp.com/embed/avatars/0.png"
+      },
+      "attachments": [],
+      "embeds": [],
+      "stickers": [],
+      "reactions": [],
+      "mentions": [
+        {
+          "id": "946929440124993617",
+          "name": "arty7398",
+          "discriminator": "0000",
+          "nickname": "arty",
+          "color": null,
+          "isBot": false,
+          "roles": [],
+          "avatarUrl": "https://cdn.discordapp.com/avatars/946929440124993617/6c5996770c985bcd6e5b68131ff2ba04.png?size=512"
+        }
+      ],
+      "reference": {
+        "type": "Default",
+        "messageId": "1339093597932359721",
+        "channelId": "1184565495790321814",
+        "guildId": "853099205206999050"
+      },
+      "inlineEmojis": []
+    },
+    {
+      "id": "1369877122855862282",
+      "type": "Default",
+      "timestamp": "2025-05-07T22:22:37.175-05:00",
+      "timestampEdited": null,
+      "callEndedTimestamp": null,
+      "isPinned": false,
+      "content": "Hi all, does anyone have experience interviewing for TPM at eBay and/or Uber?",
+      "author": {
+        "id": "1343082536431255564",
+        "name": "tldr2025",
+        "discriminator": "0000",
+        "nickname": "Tldr",
+        "color": null,
+        "isBot": false,
+        "roles": [],
+        "avatarUrl": "https://cdn.discordapp.com/avatars/1343082536431255564/5445ffd7ffb201a98393cbdf684ea4b1.png?size=512"
+      },
+      "attachments": [],
+      "embeds": [],
+      "stickers": [],
+      "reactions": [],
+      "mentions": [],
+      "inlineEmojis": []
+    },
+    {
+      "id": "1391866901423984660",
+      "type": "Default",
+      "timestamp": "2025-07-07T14:42:08.936-05:00",
+      "timestampEdited": null,
+      "callEndedTimestamp": null,
+      "isPinned": false,
+      "content": "Hi, I have struggle to prepare stories to take maximum 3 mins. it always takes more time if I want to talk about situation, solution, problem,... do you have any suggestion?",
+      "author": {
+        "id": "1292242088364085269",
+        "name": "mk096436",
+        "discriminator": "0000",
+        "nickname": "Mk",
+        "color": null,
+        "isBot": false,
+        "roles": [],
+        "avatarUrl": "https://cdn.discordapp.com/embed/avatars/5.png"
+      },
+      "attachments": [],
+      "embeds": [],
+      "stickers": [],
+      "reactions": [],
+      "mentions": [],
+      "inlineEmojis": []
+    },
+    {
+      "id": "1391996577295372389",
+      "type": "Reply",
+      "timestamp": "2025-07-07T23:17:26.073-05:00",
+      "timestampEdited": null,
+      "callEndedTimestamp": null,
+      "isPinned": false,
+      "content": "use chatgpt's voice mode and ask it to record your response and time it and ask chatgpt to optimize your response within 3 minutes",
+      "author": {
+        "id": "1325681051061846067",
+        "name": "bladetheslayer1",
+        "discriminator": "0000",
+        "nickname": "Blade",
+        "color": null,
+        "isBot": false,
+        "roles": [],
+        "avatarUrl": "https://cdn.discordapp.com/avatars/1325681051061846067/f7f2e9361e8a54ce6e72580ac7b967af.png?size=512"
+      },
+      "attachments": [],
+      "embeds": [],
+      "stickers": [],
+      "reactions": [
+        {
+          "emoji": {
+            "id": "",
+            "name": "\uD83D\uDC4D",
+            "code": "thumbsup",
+            "isAnimated": false,
+            "imageUrl": "https://cdn.jsdelivr.net/gh/twitter/twemoji@latest/assets/svg/1f44d.svg"
+          },
+          "count": 2,
+          "users": [
+            {
+              "id": "1292242088364085269",
+              "name": "mk096436",
+              "discriminator": "0000",
+              "nickname": "Mk",
+              "color": null,
+              "isBot": false,
+              "avatarUrl": "https://cdn.discordapp.com/embed/avatars/5.png"
+            },
+            {
+              "id": "1317550295756177518",
+              "name": "sheens0067",
+              "discriminator": "0000",
+              "nickname": "Sheens",
+              "color": null,
+              "isBot": false,
+              "avatarUrl": "https://cdn.discordapp.com/embed/avatars/3.png"
+            }
+          ]
+        }
+      ],
+      "mentions": [
+        {
+          "id": "1292242088364085269",
+          "name": "mk096436",
+          "discriminator": "0000",
+          "nickname": "Mk",
+          "color": null,
+          "isBot": false,
+          "roles": [],
+          "avatarUrl": "https://cdn.discordapp.com/embed/avatars/5.png"
+        }
+      ],
+      "reference": {
+        "type": "Default",
+        "messageId": "1391866901423984660",
+        "channelId": "1184565495790321814",
+        "guildId": "853099205206999050"
+      },
+      "inlineEmojis": []
+    },
+    {
+      "id": "1395888336719187970",
+      "type": "Default",
+      "timestamp": "2025-07-18T17:01:53.825-05:00",
+      "timestampEdited": null,
+      "callEndedTimestamp": null,
+      "isPinned": false,
+      "content": "Did anyone transition from TPM -> EM? Or have any stories of anyone who has done so?",
+      "author": {
+        "id": "689727225712607252",
+        "name": "goldenterry",
+        "discriminator": "0000",
+        "nickname": "terry.",
+        "color": null,
+        "isBot": false,
+        "roles": [],
+        "avatarUrl": "https://cdn.discordapp.com/avatars/689727225712607252/bb7924fe587ee11e6e24a1ac4f0283cf.png?size=512"
+      },
+      "attachments": [],
+      "embeds": [],
+      "stickers": [],
+      "reactions": [],
+      "mentions": [],
+      "inlineEmojis": []
+    },
+    {
+      "id": "1395899853011292321",
+      "type": "Reply",
+      "timestamp": "2025-07-18T17:47:39.523-05:00",
+      "timestampEdited": null,
+      "callEndedTimestamp": null,
+      "isPinned": false,
+      "content": "i know a few people in amazon that did it, but most of them struggled and ultimately moved back to TPM or left amazon. Are you looking to do the transition?",
+      "author": {
+        "id": "1325681051061846067",
+        "name": "bladetheslayer1",
+        "discriminator": "0000",
+        "nickname": "Blade",
+        "color": null,
+        "isBot": false,
+        "roles": [],
+        "avatarUrl": "https://cdn.discordapp.com/avatars/1325681051061846067/f7f2e9361e8a54ce6e72580ac7b967af.png?size=512"
+      },
+      "attachments": [],
+      "embeds": [],
+      "stickers": [],
+      "reactions": [],
+      "mentions": [
+        {
+          "id": "689727225712607252",
+          "name": "goldenterry",
+          "discriminator": "0000",
+          "nickname": "terry.",
+          "color": null,
+          "isBot": false,
+          "roles": [],
+          "avatarUrl": "https://cdn.discordapp.com/avatars/689727225712607252/bb7924fe587ee11e6e24a1ac4f0283cf.png?size=512"
+        }
+      ],
+      "reference": {
+        "type": "Default",
+        "messageId": "1395888336719187970",
+        "channelId": "1184565495790321814",
+        "guildId": "853099205206999050"
+      },
+      "inlineEmojis": []
+    },
+    {
+      "id": "1395902136839049350",
+      "type": "Reply",
+      "timestamp": "2025-07-18T17:56:44.03-05:00",
+      "timestampEdited": null,
+      "callEndedTimestamp": null,
+      "isPinned": false,
+      "content": "Actually - I have done just that transition recently actually so I'm curious if there were others who have made that change and share exps haha \uD83D\uDE05",
+      "author": {
+        "id": "689727225712607252",
+        "name": "goldenterry",
+        "discriminator": "0000",
+        "nickname": "terry.",
+        "color": null,
+        "isBot": false,
+        "roles": [],
+        "avatarUrl": "https://cdn.discordapp.com/avatars/689727225712607252/bb7924fe587ee11e6e24a1ac4f0283cf.png?size=512"
+      },
+      "attachments": [],
+      "embeds": [],
+      "stickers": [],
+      "reactions": [],
+      "mentions": [
+        {
+          "id": "1325681051061846067",
+          "name": "bladetheslayer1",
+          "discriminator": "0000",
+          "nickname": "Blade",
+          "color": null,
+          "isBot": false,
+          "roles": [],
+          "avatarUrl": "https://cdn.discordapp.com/avatars/1325681051061846067/f7f2e9361e8a54ce6e72580ac7b967af.png?size=512"
+        }
+      ],
+      "reference": {
+        "type": "Default",
+        "messageId": "1395899853011292321",
+        "channelId": "1184565495790321814",
+        "guildId": "853099205206999050"
+      },
+      "inlineEmojis": [
+        {
+          "id": "",
+          "name": "\uD83D\uDE05",
+          "code": "sweat_smile",
+          "isAnimated": false,
+          "imageUrl": "https://cdn.jsdelivr.net/gh/twitter/twemoji@latest/assets/svg/1f605.svg"
+        }
+      ]
+    },
+    {
+      "id": "1395903946853453835",
+      "type": "Default",
+      "timestamp": "2025-07-18T18:03:55.571-05:00",
+      "timestampEdited": null,
+      "callEndedTimestamp": null,
+      "isPinned": false,
+      "content": "from what I gather the biggest resistance is the team itself. Most folks on the team are gunning for the EM job. The other part is perception - team, Xfn stakeholders view TPMs as paper pushers so there may be some trust building needed there. Last part is babysitting - most folks will come up to you with very small and mundane problems .. my 0.02$",
+      "author": {
+        "id": "1325681051061846067",
+        "name": "bladetheslayer1",
+        "discriminator": "0000",
+        "nickname": "Blade",
+        "color": null,
+        "isBot": false,
+        "roles": [],
+        "avatarUrl": "https://cdn.discordapp.com/avatars/1325681051061846067/f7f2e9361e8a54ce6e72580ac7b967af.png?size=512"
+      },
+      "attachments": [],
+      "embeds": [],
+      "stickers": [],
+      "reactions": [
+        {
+          "emoji": {
+            "id": "",
+            "name": "\uD83D\uDC4D",
+            "code": "thumbsup",
+            "isAnimated": false,
+            "imageUrl": "https://cdn.jsdelivr.net/gh/twitter/twemoji@latest/assets/svg/1f44d.svg"
+          },
+          "count": 1,
+          "users": [
+            {
+              "id": "689727225712607252",
+              "name": "goldenterry",
+              "discriminator": "0000",
+              "nickname": "terry.",
+              "color": null,
+              "isBot": false,
+              "avatarUrl": "https://cdn.discordapp.com/avatars/689727225712607252/bb7924fe587ee11e6e24a1ac4f0283cf.png?size=512"
+            }
+          ]
+        },
+        {
+          "emoji": {
+            "id": "",
+            "name": "\uD83D\uDCAF",
+            "code": "100",
+            "isAnimated": false,
+            "imageUrl": "https://cdn.jsdelivr.net/gh/twitter/twemoji@latest/assets/svg/1f4af.svg"
+          },
+          "count": 1,
+          "users": [
+            {
+              "id": "1056782110578442250",
+              "name": "catchyourstars",
+              "discriminator": "0000",
+              "nickname": "RisenShine",
+              "color": null,
+              "isBot": false,
+              "avatarUrl": "https://cdn.discordapp.com/embed/avatars/0.png"
+            }
+          ]
+        }
+      ],
+      "mentions": [],
+      "inlineEmojis": []
+    },
+    {
+      "id": "1397209310454616094",
+      "type": "Default",
+      "timestamp": "2025-07-22T08:30:58.506-05:00",
+      "timestampEdited": "2025-07-22T08:34:29.852-05:00",
+      "callEndedTimestamp": null,
+      "isPinned": false,
+      "content": "Sharing an actual story - \n\nMy startup is going through an interesting shift where TPM org which was centralized and very critical to get anything done has been broken up and pushed under various Eng orgs. The TPM director has been fired (imo they were a good leader but if anything lacked actual technical depth and tended to nag). CEO thinks that as long as Eng leads connect everything on Smartsheet, we’ll be fine, but the reality is that we’re not. Nothing is getting done. When eng leads disagree they kick the can down the road lol. I can see a disaster coming 5 months down the road.\n\nI’ve been here for 4 years already  and gonna continue analyzing the situation and learn \uD83D\uDE06.perhaps share periodically !",
+      "author": {
+        "id": "637697850897072158",
+        "name": "xatriya",
+        "discriminator": "0000",
+        "nickname": "Solenya",
+        "color": null,
+        "isBot": false,
+        "roles": [],
+        "avatarUrl": "https://cdn.discordapp.com/avatars/637697850897072158/f20b324aea4602f29bfc31fae2f36921.png?size=512"
+      },
+      "attachments": [],
+      "embeds": [],
+      "stickers": [],
+      "reactions": [
+        {
+          "emoji": {
+            "id": "",
+            "name": "\uD83D\uDC4D",
+            "code": "thumbsup",
+            "isAnimated": false,
+            "imageUrl": "https://cdn.jsdelivr.net/gh/twitter/twemoji@latest/assets/svg/1f44d.svg"
+          },
+          "count": 2,
+          "users": [
+            {
+              "id": "1070868669372059729",
+              "name": "studentoflife9653",
+              "discriminator": "0000",
+              "nickname": "studentoflife2023",
+              "color": null,
+              "isBot": false,
+              "avatarUrl": "https://cdn.discordapp.com/embed/avatars/2.png"
+            },
+            {
+              "id": "1409829277557461043",
+              "name": "rrvaluecreator",
+              "discriminator": "0000",
+              "nickname": "RR",
+              "color": null,
+              "isBot": false,
+              "avatarUrl": "https://cdn.discordapp.com/embed/avatars/3.png"
+            }
+          ]
+        }
+      ],
+      "mentions": [],
+      "inlineEmojis": [
+        {
+          "id": "",
+          "name": "\uD83D\uDE06",
+          "code": "laughing",
+          "isAnimated": false,
+          "imageUrl": "https://cdn.jsdelivr.net/gh/twitter/twemoji@latest/assets/svg/1f606.svg"
+        }
+      ]
+    },
+    {
+      "id": "1397267669123600475",
+      "type": "Reply",
+      "timestamp": "2025-07-22T12:22:52.297-05:00",
+      "timestampEdited": null,
+      "callEndedTimestamp": null,
+      "isPinned": false,
+      "content": "I've seen TPM org centralized and decentralized dozens of times. There are pros and cons for both options and none of them is perfect. Looking at the bright side, it's a great opportunity for new TPM leaders to challenge whatever is the current state and drive change \uD83D\uDE42",
+      "author": {
+        "id": "790967144778956851",
+        "name": "caliman9853",
+        "discriminator": "0000",
+        "nickname": "CaliMan",
+        "color": "#E74C3C",
+        "isBot": false,
+        "roles": [
+          {
+            "id": "893548412081934346",
+            "name": "ReadMe Channel",
+            "color": "#E74C3C",
+            "position": 19
+          },
+          {
+            "id": "938561503127285771",
+            "name": "new role",
+            "color": null,
+            "position": 18
+          },
+          {
+            "id": "1508892214699491610",
+            "name": "Unanswered questions notifications",
+            "color": null,
+            "position": 4
+          },
+          {
+            "id": "1508892737242665101",
+            "name": "spam alerts",
+            "color": "#E91E63",
+            "position": 3
+          },
+          {
+            "id": "1508892852074057900",
+            "name": "general notifications",
+            "color": null,
+            "position": 2
+          },
+          {
+            "id": "1509585200739254362",
+            "name": "rag project member",
+            "color": null,
+            "position": 1
+          }
+        ],
+        "avatarUrl": "https://cdn.discordapp.com/embed/avatars/2.png"
+      },
+      "attachments": [],
+      "embeds": [],
+      "stickers": [],
+      "reactions": [],
+      "mentions": [
+        {
+          "id": "637697850897072158",
+          "name": "xatriya",
+          "discriminator": "0000",
+          "nickname": "Solenya",
+          "color": null,
+          "isBot": false,
+          "roles": [],
+          "avatarUrl": "https://cdn.discordapp.com/avatars/637697850897072158/f20b324aea4602f29bfc31fae2f36921.png?size=512"
+        }
+      ],
+      "reference": {
+        "type": "Default",
+        "messageId": "1397209310454616094",
+        "channelId": "1184565495790321814",
+        "guildId": "853099205206999050"
+      },
+      "inlineEmojis": [
+        {
+          "id": "",
+          "name": "\uD83D\uDE42",
+          "code": "slight_smile",
+          "isAnimated": false,
+          "imageUrl": "https://cdn.jsdelivr.net/gh/twitter/twemoji@latest/assets/svg/1f642.svg"
+        }
+      ]
+    },
+    {
+      "id": "1397587944977469561",
+      "type": "Reply",
+      "timestamp": "2025-07-23T09:35:32.011-05:00",
+      "timestampEdited": null,
+      "callEndedTimestamp": null,
+      "isPinned": false,
+      "content": "Yeah before this job I used to be in a decentralized TPM company. I specifically took this job to experience centralized TPM, which as you said has its own pros and cons. \n\nAfter doing this for 10 years I’ve lost the “I know better” attitude and have more of a “see around the corners” and “fill the gaps” attitude. I do see a power struggle happening amongst the TPM managers to be relevant/influence, I leave them to their devices and help keep my Eng orgs functional and happy.",
+      "author": {
+        "id": "637697850897072158",
+        "name": "xatriya",
+        "discriminator": "0000",
+        "nickname": "Solenya",
+        "color": null,
+        "isBot": false,
+        "roles": [],
+        "avatarUrl": "https://cdn.discordapp.com/avatars/637697850897072158/f20b324aea4602f29bfc31fae2f36921.png?size=512"
+      },
+      "attachments": [],
+      "embeds": [],
+      "stickers": [],
+      "reactions": [],
+      "mentions": [
+        {
+          "id": "790967144778956851",
+          "name": "caliman9853",
+          "discriminator": "0000",
+          "nickname": "CaliMan",
+          "color": "#E74C3C",
+          "isBot": false,
+          "roles": [
+            {
+              "id": "893548412081934346",
+              "name": "ReadMe Channel",
+              "color": "#E74C3C",
+              "position": 19
+            },
+            {
+              "id": "938561503127285771",
+              "name": "new role",
+              "color": null,
+              "position": 18
+            },
+            {
+              "id": "1508892214699491610",
+              "name": "Unanswered questions notifications",
+              "color": null,
+              "position": 4
+            },
+            {
+              "id": "1508892737242665101",
+              "name": "spam alerts",
+              "color": "#E91E63",
+              "position": 3
+            },
+            {
+              "id": "1508892852074057900",
+              "name": "general notifications",
+              "color": null,
+              "position": 2
+            },
+            {
+              "id": "1509585200739254362",
+              "name": "rag project member",
+              "color": null,
+              "position": 1
+            }
+          ],
+          "avatarUrl": "https://cdn.discordapp.com/embed/avatars/2.png"
+        }
+      ],
+      "reference": {
+        "type": "Default",
+        "messageId": "1397267669123600475",
+        "channelId": "1184565495790321814",
+        "guildId": "853099205206999050"
+      },
+      "inlineEmojis": []
+    },
+    {
+      "id": "1397599562667003914",
+      "type": "Reply",
+      "timestamp": "2025-07-23T10:21:41.884-05:00",
+      "timestampEdited": null,
+      "callEndedTimestamp": null,
+      "isPinned": false,
+      "content": "In my experience it's a byproduct of the TPM leadership strength. If you have a strong TPM leader with vast influence and ability to make decisions then centralizing often works well. If TPM leadership is more of a supporting role then decentralizing is the way to go.",
+      "author": {
+        "id": "790967144778956851",
+        "name": "caliman9853",
+        "discriminator": "0000",
+        "nickname": "CaliMan",
+        "color": "#E74C3C",
+        "isBot": false,
+        "roles": [
+          {
+            "id": "893548412081934346",
+            "name": "ReadMe Channel",
+            "color": "#E74C3C",
+            "position": 19
+          },
+          {
+            "id": "938561503127285771",
+            "name": "new role",
+            "color": null,
+            "position": 18
+          },
+          {
+            "id": "1508892214699491610",
+            "name": "Unanswered questions notifications",
+            "color": null,
+            "position": 4
+          },
+          {
+            "id": "1508892737242665101",
+            "name": "spam alerts",
+            "color": "#E91E63",
+            "position": 3
+          },
+          {
+            "id": "1508892852074057900",
+            "name": "general notifications",
+            "color": null,
+            "position": 2
+          },
+          {
+            "id": "1509585200739254362",
+            "name": "rag project member",
+            "color": null,
+            "position": 1
+          }
+        ],
+        "avatarUrl": "https://cdn.discordapp.com/embed/avatars/2.png"
+      },
+      "attachments": [],
+      "embeds": [],
+      "stickers": [],
+      "reactions": [
+        {
+          "emoji": {
+            "id": "",
+            "name": "\uD83D\uDCAF",
+            "code": "100",
+            "isAnimated": false,
+            "imageUrl": "https://cdn.jsdelivr.net/gh/twitter/twemoji@latest/assets/svg/1f4af.svg"
+          },
+          "count": 3,
+          "users": [
+            {
+              "id": "637697850897072158",
+              "name": "xatriya",
+              "discriminator": "0000",
+              "nickname": "Solenya",
+              "color": null,
+              "isBot": false,
+              "avatarUrl": "https://cdn.discordapp.com/avatars/637697850897072158/f20b324aea4602f29bfc31fae2f36921.png?size=512"
+            },
+            {
+              "id": "726504903123665046",
+              "name": "ntc10",
+              "discriminator": "0000",
+              "nickname": "ntc",
+              "color": null,
+              "isBot": false,
+              "avatarUrl": "https://cdn.discordapp.com/embed/avatars/5.png"
+            },
+            {
+              "id": "1075586123520290888",
+              "name": "dbymr",
+              "discriminator": "0000",
+              "nickname": "DBYMR",
+              "color": null,
+              "isBot": false,
+              "avatarUrl": "https://cdn.discordapp.com/embed/avatars/1.png"
+            }
+          ]
+        }
+      ],
+      "mentions": [
+        {
+          "id": "637697850897072158",
+          "name": "xatriya",
+          "discriminator": "0000",
+          "nickname": "Solenya",
+          "color": null,
+          "isBot": false,
+          "roles": [],
+          "avatarUrl": "https://cdn.discordapp.com/avatars/637697850897072158/f20b324aea4602f29bfc31fae2f36921.png?size=512"
+        }
+      ],
+      "reference": {
+        "type": "Default",
+        "messageId": "1397587944977469561",
+        "channelId": "1184565495790321814",
+        "guildId": "853099205206999050"
+      },
+      "inlineEmojis": []
+    },
+    {
+      "id": "1397611583768629261",
+      "type": "Reply",
+      "timestamp": "2025-07-23T11:09:27.938-05:00",
+      "timestampEdited": null,
+      "callEndedTimestamp": null,
+      "isPinned": false,
+      "content": "I don’t know the full story, but afaik - the TPM director was seen as someone who wanted to take power away from the Eng leaders. They’d openly ask their reports to not attend TPM mtgs in the events leading upto the TPM directors firing. Eventually the CEO called upon them to justify what value TPM provides and was unimpressed. After they were fired We’ve been split and rolled up into infra, ML, platform orgs. Our day to day stays the same, we’re not held directly accountable anymore. So I guess the TPM leader tried to create influence but failed and the company wants us to be more of “advisors” and “planners” and not single threaded leaders.",
+      "author": {
+        "id": "637697850897072158",
+        "name": "xatriya",
+        "discriminator": "0000",
+        "nickname": "Solenya",
+        "color": null,
+        "isBot": false,
+        "roles": [],
+        "avatarUrl": "https://cdn.discordapp.com/avatars/637697850897072158/f20b324aea4602f29bfc31fae2f36921.png?size=512"
+      },
+      "attachments": [],
+      "embeds": [],
+      "stickers": [],
+      "reactions": [
+        {
+          "emoji": {
+            "id": "",
+            "name": "\uD83D\uDC4D\uD83C\uDFFB",
+            "code": "thumbsup_tone1",
+            "isAnimated": false,
+            "imageUrl": "https://cdn.jsdelivr.net/gh/twitter/twemoji@latest/assets/svg/1f44d-1f3fb.svg"
+          },
+          "count": 3,
+          "users": [
+            {
+              "id": "790967144778956851",
+              "name": "caliman9853",
+              "discriminator": "0000",
+              "nickname": "CaliMan",
+              "color": "#E74C3C",
+              "isBot": false,
+              "avatarUrl": "https://cdn.discordapp.com/embed/avatars/2.png"
+            },
+            {
+              "id": "873815768268148808",
+              "name": "jeevs7558",
+              "discriminator": "0000",
+              "nickname": "jeevs",
+              "color": null,
+              "isBot": false,
+              "avatarUrl": "https://cdn.discordapp.com/embed/avatars/5.png"
+            },
+            {
+              "id": "1144168471727460383",
+              "name": "misterrightnow.",
+              "discriminator": "0000",
+              "nickname": "StrangerThings007",
+              "color": null,
+              "isBot": false,
+              "avatarUrl": "https://cdn.discordapp.com/embed/avatars/4.png"
+            }
+          ]
+        },
+        {
+          "emoji": {
+            "id": "",
+            "name": "❤️",
+            "code": "heart",
+            "isAnimated": false,
+            "imageUrl": "https://cdn.jsdelivr.net/gh/twitter/twemoji@latest/assets/svg/2764.svg"
+          },
+          "count": 2,
+          "users": [
+            {
+              "id": "137999663352643584",
+              "name": "hawt17",
+              "discriminator": "0000",
+              "nickname": "hawt",
+              "color": null,
+              "isBot": false,
+              "avatarUrl": "https://cdn.discordapp.com/avatars/137999663352643584/ee6894c0113db09b96ffd1d848025d46.png?size=512"
+            },
+            {
+              "id": "1070868669372059729",
+              "name": "studentoflife9653",
+              "discriminator": "0000",
+              "nickname": "studentoflife2023",
+              "color": null,
+              "isBot": false,
+              "avatarUrl": "https://cdn.discordapp.com/embed/avatars/2.png"
+            }
+          ]
+        }
+      ],
+      "mentions": [
+        {
+          "id": "790967144778956851",
+          "name": "caliman9853",
+          "discriminator": "0000",
+          "nickname": "CaliMan",
+          "color": "#E74C3C",
+          "isBot": false,
+          "roles": [
+            {
+              "id": "893548412081934346",
+              "name": "ReadMe Channel",
+              "color": "#E74C3C",
+              "position": 19
+            },
+            {
+              "id": "938561503127285771",
+              "name": "new role",
+              "color": null,
+              "position": 18
+            },
+            {
+              "id": "1508892214699491610",
+              "name": "Unanswered questions notifications",
+              "color": null,
+              "position": 4
+            },
+            {
+              "id": "1508892737242665101",
+              "name": "spam alerts",
+              "color": "#E91E63",
+              "position": 3
+            },
+            {
+              "id": "1508892852074057900",
+              "name": "general notifications",
+              "color": null,
+              "position": 2
+            },
+            {
+              "id": "1509585200739254362",
+              "name": "rag project member",
+              "color": null,
+              "position": 1
+            }
+          ],
+          "avatarUrl": "https://cdn.discordapp.com/embed/avatars/2.png"
+        }
+      ],
+      "reference": {
+        "type": "Default",
+        "messageId": "1397599562667003914",
+        "channelId": "1184565495790321814",
+        "guildId": "853099205206999050"
+      },
+      "inlineEmojis": []
+    },
+    {
+      "id": "1400541872019079278",
+      "type": "Default",
+      "timestamp": "2025-07-31T13:13:23.099-05:00",
+      "timestampEdited": null,
+      "callEndedTimestamp": null,
+      "isPinned": false,
+      "content": "Curious what particular format interviewers prefer candidates to answer Core PgM questions. For example, a common one is \"how do you kickoff a program\", the [TPM prep guide](https://docs.google.com/document/d/19ZWAHjWFbib07IkDFWgjgn_oJy5DmCjuXXPCg3aaNwE/edit?tab=t.0#heading=h.3ez87aop8u5m) focus a lot on the tactical elements like a recipe but in my case I tend to cover high-level area: why this program, biz problem, goals, success criteria, stakeholder management, planning, comms, risks and the challenges faced on each of them, including how I solve them through some tactical elements. Overall, I try to create a narrative around the strategic areas and how it landed to a successful launch but I'm not sure if that may be too difficult to digest (too much narration) and maybe I should focus more on the recipe so it will tick all the mental boxes faster",
+      "author": {
+        "id": "695837578439688263",
+        "name": "windshearsurfer",
+        "discriminator": "0000",
+        "nickname": "windshearsurfer",
+        "color": null,
+        "isBot": false,
+        "roles": [],
+        "avatarUrl": "https://cdn.discordapp.com/embed/avatars/5.png"
+      },
+      "attachments": [],
+      "embeds": [
+        {
+          "title": "TPM - Interview Prep",
+          "url": "https://docs.google.com/document/d/19ZWAHjWFbib07IkDFWgjgn_oJy5DmCjuXXPCg3aaNwE/edit?tab=t.0",
+          "timestamp": null,
+          "description": "Content moved to more organized docs for better readability      Technical Program Manager Interview Questions    Interview Round Rubrics Sample Questions Resources   Product Sense + System design  You will be provided an ambiguous technical problem (likely outside of your historical ...",
+          "thumbnail": {
+            "url": "https://images-ext-1.discordapp.net/external/AAd6e5aPzwMY3KYklaZqKiEto4X5Ua3BPyvpApR9jPo/https/lh7-us.googleusercontent.com/docs/AHkbwyLfMW0tCIZ9DEApPe6gUxJVCBWheDsuhP7lPxbk51u4ERM7VP5FLBQDlnmAFXV3czkxBmORQnFlCkV2utOwynVMyUdwgQ3XZz5pzCkAKVRhdc_m9_r4%3Dw1200-h630-p",
+            "canonicalUrl": "https://lh7-us.googleusercontent.com/docs/AHkbwyLfMW0tCIZ9DEApPe6gUxJVCBWheDsuhP7lPxbk51u4ERM7VP5FLBQDlnmAFXV3czkxBmORQnFlCkV2utOwynVMyUdwgQ3XZz5pzCkAKVRhdc_m9_r4=w1200-h630-p",
+            "width": 1200,
+            "height": 630
+          },
+          "images": [],
+          "fields": [],
+          "inlineEmojis": []
+        }
+      ],
+      "stickers": [],
+      "reactions": [
+        {
+          "emoji": {
+            "id": "",
+            "name": "\uD83D\uDE4C",
+            "code": "raised_hands",
+            "isAnimated": false,
+            "imageUrl": "https://cdn.jsdelivr.net/gh/twitter/twemoji@latest/assets/svg/1f64c.svg"
+          },
+          "count": 5,
+          "users": [
+            {
+              "id": "525016354563293196",
+              "name": "as6087",
+              "discriminator": "0000",
+              "nickname": "Billy",
+              "color": null,
+              "isBot": false,
+              "avatarUrl": "https://cdn.discordapp.com/embed/avatars/2.png"
+            },
+            {
+              "id": "689727225712607252",
+              "name": "goldenterry",
+              "discriminator": "0000",
+              "nickname": "terry.",
+              "color": null,
+              "isBot": false,
+              "avatarUrl": "https://cdn.discordapp.com/avatars/689727225712607252/bb7924fe587ee11e6e24a1ac4f0283cf.png?size=512"
+            },
+            {
+              "id": "711412926036181062",
+              "name": "mcawuptfkd",
+              "discriminator": "0000",
+              "nickname": "Bfkwqfifncnal",
+              "color": null,
+              "isBot": false,
+              "avatarUrl": "https://cdn.discordapp.com/embed/avatars/0.png"
+            },
+            {
+              "id": "930336844015611965",
+              "name": "scalability1",
+              "discriminator": "0000",
+              "nickname": "scalability1",
+              "color": null,
+              "isBot": false,
+              "avatarUrl": "https://cdn.discordapp.com/embed/avatars/2.png"
+            },
+            {
+              "id": "1150595766193238106",
+              "name": "kirstentropy",
+              "discriminator": "0000",
+              "nickname": "kb",
+              "color": null,
+              "isBot": false,
+              "avatarUrl": "https://cdn.discordapp.com/avatars/1150595766193238106/b28712525fb33d774abea6c389852a5e.png?size=512"
+            }
+          ]
+        }
+      ],
+      "mentions": [],
+      "inlineEmojis": []
+    },
+    {
+      "id": "1467011867036618844",
+      "type": "Reply",
+      "timestamp": "2026-01-30T22:21:24.864-06:00",
+      "timestampEdited": null,
+      "callEndedTimestamp": null,
+      "isPinned": false,
+      "content": "Hi @Mk I'm guessing the 3 mins is a rule of thumb - I wonder if the disttibution is 30 sec each towards Situation and Task and about 90 sec towards Action and 30 sec towards Results/Metrics - I do spend sometime setting context at start and learnings at end",
+      "author": {
+        "id": "1070868669372059729",
+        "name": "studentoflife9653",
+        "discriminator": "0000",
+        "nickname": "studentoflife2023",
+        "color": null,
+        "isBot": false,
+        "roles": [],
+        "avatarUrl": "https://cdn.discordapp.com/embed/avatars/2.png"
+      },
+      "attachments": [],
+      "embeds": [],
+      "stickers": [],
+      "reactions": [],
+      "mentions": [
+        {
+          "id": "1292242088364085269",
+          "name": "mk096436",
+          "discriminator": "0000",
+          "nickname": "Mk",
+          "color": null,
+          "isBot": false,
+          "roles": [],
+          "avatarUrl": "https://cdn.discordapp.com/embed/avatars/5.png"
+        }
+      ],
+      "reference": {
+        "type": "Default",
+        "messageId": "1391866901423984660",
+        "channelId": "1184565495790321814",
+        "guildId": "853099205206999050"
+      },
+      "inlineEmojis": []
+    }
+  ],
+  "messageCount": 62
+}
