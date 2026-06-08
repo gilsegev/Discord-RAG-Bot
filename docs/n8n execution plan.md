@@ -114,6 +114,19 @@ Expected outcome:
 
 One known question can produce one grounded response or one refusal, with a transaction row and trace evidence.
 
+Implementation artifact for the first Phase 2 gate:
+
+```text
+workflows/n8n/rag-active-call-phase-2-retrieval-gate.json
+```
+
+Implementation notes:
+
+- This workflow checks whether Qdrant has the target collection and whether the collection has points.
+- It does not yet embed the query or execute vector search.
+- It fails/refuses cleanly when retrieval prerequisites are missing.
+- It marks the transaction as ready for embedding and vector search when Qdrant is populated.
+
 ## Phase 3: Node-Level Observability
 Instrument each active-call node.
 
