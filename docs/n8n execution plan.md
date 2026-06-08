@@ -67,6 +67,19 @@ Expected outcome:
 
 Every workflow run has one durable transaction row that can be inspected outside n8n.
 
+Implementation artifact:
+
+```text
+workflows/n8n/rag-active-call-phase-1-transaction-spine.json
+```
+
+Implementation notes:
+
+- This workflow simulates an active call with a manual trigger.
+- It writes transaction and trace rows to Postgres.
+- It checks whether the Qdrant collection exists.
+- It does not perform real embedding, vector search, Gemini generation, or Discord dispatch.
+
 ## Phase 2: One Active-Call Happy Path
 Build only the direct bot mention path first.
 
