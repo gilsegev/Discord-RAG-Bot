@@ -33,7 +33,7 @@ Groundedness ≥ 90%; **zero** ungrounded answers on no-context questions (non-n
 ## Decisions (agreed with Gil)
 - **Relevance kept** as a third manual dimension — *answer* relevance, judged from question + answer (distinct from retrieval quality, which is dropped).
 - **Refusal vocabulary:** `correct_refusal`, `false_refusal`, `missed_refusal`, `no_context_violation`. Stored in `rag_eval_labels.failure_type`.
-- **Gates and RRI weights ratified** (above). Weights are hardcoded in both this doc and `rag_weekly_metrics` — change them together.
+- **Gates and RRI weights ratified** (above). Weights are hardcoded in both this doc and `rag_weekly_metrics.rag_reliability_index` — change them together.
 - **Judge:** Gemini, validated against human labels before reliance; Gil's API key for now.
 - **Calibration:** this workstream delivers the labeled set; Hemanth recalibrates reranker thresholds against it.
 - **Adjudication of expected-behavior labels:** crowdsource in Discord or review with Gil.
