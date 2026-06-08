@@ -127,6 +127,18 @@ Implementation notes:
 - It fails/refuses cleanly when retrieval prerequisites are missing.
 - It marks the transaction as ready for embedding and vector search when Qdrant is populated.
 
+Implementation artifact for the full Phase 2 active-call path:
+
+```text
+workflows/n8n/rag-active-call-phase-2-full-happy-path.json
+```
+
+Implementation notes:
+
+- This workflow performs query embedding, Qdrant vector search, simple retrieval thresholding, context assembly, Gemini generation, Discord posting, and final transaction logging.
+- It requires a query embedding service, Gemini API key, and Discord webhook before it can execute end to end.
+- It still excludes passive listener behavior, reranking, dedupe, reaction boost, feedback correlation, weekly metrics, and advanced alerting.
+
 ## Phase 3: Node-Level Observability
 Instrument each active-call node.
 
