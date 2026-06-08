@@ -111,8 +111,14 @@ Supporting workflows:
                      |
                      v
           [17 Gemini Generation]
-                     |
-                     v
+             |                  |
+          success             API/model failure
+             |                  v
+             |          [17a Generation Failure]
+             |                  |
+             |                  v
+             |          [21 Finalize Transaction]
+             v
           [19 Response Policy Check]
                      |
                      v
@@ -386,7 +392,8 @@ Calls Gemini to generate the response.
 What it does:
 - sends the prompt and context
 - captures model latency
-- returns either a grounded answer or refusal text
+- returns either a grounded answer or refusal text when the API call succeeds
+- treats Gemini API, authentication, model, timeout, and malformed-response failures as operational failures, not retrieval refusals
 Interfaces:
 - Gemini API
 - Phoenix
@@ -395,6 +402,24 @@ References:
 - [Arch Overview: Gemini API](Arch%20overview.md#gemini-api)
 - [Retrieval Contracts: Prompt / Response Contract](retrieval-context-prompt-contracts.md#3-prompt--response-contract)
 - [Observability: Runtime SLO And Concurrency Policy](Observability%20design.md#runtime-slo-and-concurrency-policy)
+
+### 17a Generation Failure
+Description:
+Handles Gemini API or response failures before Discord dispatch.
+What it does:
+- catches non-2xx Gemini responses, unsupported model errors, authentication errors, timeouts, and missing response text
+- records `status = failed`, `response_status = failed`, and a failure reason such as `gemini_api_failed`, `gemini_model_not_found`, or `gemini_malformed_response`
+- logs the Gemini status code and sanitized error summary to observability
+- does not post the standard retrieval-refusal text, because the system did find context but failed during generation
+Interfaces:
+- Gemini API
+- Phoenix
+- Postgres
+- Alerting
+References:
+- [Observability: Event And Span Taxonomy](Observability%20design.md#6-event-and-span-taxonomy)
+- [Observability: n8n Integration Points](Observability%20design.md#7-n8n-integration-points)
+- [Alerting: Critical Alerts](Alerting.md#critical-alerts)
 
 ### 18 Refusal Response
 Description:
