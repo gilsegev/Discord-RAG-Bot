@@ -160,6 +160,19 @@ Expected outcome:
 
 When the workflow fails, the failure point is obvious without manually stepping through the entire n8n canvas.
 
+Implementation artifact:
+
+```text
+workflows/n8n/rag-active-call-phase-3-node-observability.json
+```
+
+Implementation notes:
+
+- This workflow keeps the Phase 2 active-call happy path and adds durable trace events for each major node.
+- It records stage-level latency, key input/output summaries, routing/retrieval/generation/dispatch decisions, and failure reasons.
+- It records Gemini API failures as operational failures instead of retrieval refusals.
+- It still excludes passive listener behavior, reranking, dedupe, reaction boost, feedback correlation, weekly metrics, and advanced alerting.
+
 ## Phase 4: Retrieval Refusal Gate
 Add refusal logic before adding more sophisticated retrieval behavior.
 

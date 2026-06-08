@@ -1,0 +1,683 @@
+{
+  "name": "RAG Active Call - Phase 3 Node Observability",
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "b70e59e0-c662-4277-9c33-d60eac135001",
+      "name": "Manual Trigger",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [-2760, 0]
+    },
+    {
+      "parameters": {
+        "mode": "manual",
+        "duplicateItem": false,
+        "assignments": {
+          "assignments": [
+            {
+              "id": "2fbf06ef-b625-4ea9-a9b2-2d31e538f5b3",
+              "name": "user_query",
+              "value": "How does the partnership interview at Meta work, and do I need technical examples for it?",
+              "type": "string"
+            },
+            {
+              "id": "5f593664-0cb6-42e4-8107-780f39328eaf",
+              "name": "discord_message_id",
+              "value": "phase-3-node-observability-manual",
+              "type": "string"
+            },
+            {
+              "id": "71d01889-b00a-47b9-942a-dc215d78cf4f",
+              "name": "channel_id",
+              "value": "phase-3-test",
+              "type": "string"
+            },
+            {
+              "id": "9f83c0ed-5534-4fd3-953b-25c1c1d4278d",
+              "name": "channel_name",
+              "value": "n8n-phase-3-test",
+              "type": "string"
+            },
+            {
+              "id": "68346115-ae1d-4d69-a8a2-9db3b02bdf86",
+              "name": "author_id_hash",
+              "value": "manual-test-author",
+              "type": "string"
+            },
+            {
+              "id": "a53fd67b-f4f0-4ca9-af9e-489555af249b",
+              "name": "qdrant_collection",
+              "value": "tpm_unite_history",
+              "type": "string"
+            },
+            {
+              "id": "c0dd4d89-8cce-455e-83a4-f0f0dad4ac24",
+              "name": "embedding_url",
+              "value": "http://172.20.0.6:8000/embed",
+              "type": "string"
+            },
+            {
+              "id": "5fae5328-d112-47a0-8aeb-00b4ef9871b7",
+              "name": "qdrant_base_url",
+              "value": "http://172.20.0.3:6333",
+              "type": "string"
+            },
+            {
+              "id": "97ac32f6-9e9c-4d89-b38a-0b471c3a36b6",
+              "name": "gemini_url",
+              "value": "https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash:generateContent?key=REPLACE_WITH_GEMINI_API_KEY",
+              "type": "string"
+            },
+            {
+              "id": "b865f437-fcf7-4504-8a95-d7cd0bca4bc9",
+              "name": "discord_webhook_url",
+              "value": "REPLACE_WITH_DISCORD_WEBHOOK_URL?wait=true",
+              "type": "string"
+            },
+            {
+              "id": "fd60ed59-bd90-4d65-ace1-36225e11c961",
+              "name": "top_k",
+              "value": 20,
+              "type": "number"
+            },
+            {
+              "id": "c72d0d14-4d57-4981-9f34-42fb04e671c1",
+              "name": "context_k",
+              "value": 5,
+              "type": "number"
+            },
+            {
+              "id": "cfc17fa6-0d15-4f51-a5d3-5874738bfbda",
+              "name": "min_result_count",
+              "value": 3,
+              "type": "number"
+            },
+            {
+              "id": "00ec962b-dc6e-489d-9769-08b46613917b",
+              "name": "retrieval_score_threshold",
+              "value": 0.55,
+              "type": "number"
+            }
+          ]
+        },
+        "includeOtherFields": true,
+        "options": {}
+      },
+      "id": "da2e88d5-854e-4cb6-a60c-f881a3fa7b47",
+      "name": "Set Manual Active Call",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [-2520, 0]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "INSERT INTO rag_transactions (\n  discord_message_id,\n  channel_id,\n  channel_name,\n  author_id_hash,\n  incoming_message_ts,\n  route_type,\n  status,\n  retrieval_status,\n  response_status,\n  user_query\n)\nVALUES (\n  '{{ $json.discord_message_id }}',\n  '{{ $json.channel_id }}',\n  '{{ $json.channel_name }}',\n  '{{ $json.author_id_hash }}',\n  now(),\n  'active_call',\n  'created',\n  'not_started',\n  'not_started',\n  '{{ $json.user_query }}'\n)\nRETURNING\n  transaction_id,\n  created_at,\n  discord_message_id,\n  channel_id,\n  channel_name,\n  author_id_hash,\n  route_type,\n  status,\n  retrieval_status,\n  response_status,\n  user_query;"
+      },
+      "id": "a7f88c91-2217-4ee8-b4b0-ad077ce0d488",
+      "name": "Create Transaction",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [-2280, 0],
+      "credentials": {
+        "postgres": {
+          "id": "91KXbNmHZPM5D5mO",
+          "name": "Postgres account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const tx = $items('Create Transaction')[0].json;\nconst input = $items('Set Manual Active Call')[0].json;\nconst normalizedQuery = `search_query: ${tx.user_query.replace(/\\s+/g, ' ').trim()}`;\nconst now = Date.now();\nreturn [{ json: {\n  ...tx,\n  qdrant_collection: input.qdrant_collection,\n  embedding_url: input.embedding_url,\n  qdrant_base_url: input.qdrant_base_url,\n  gemini_url: input.gemini_url,\n  discord_webhook_url: input.discord_webhook_url,\n  top_k: Number(input.top_k ?? 20),\n  context_k: Number(input.context_k ?? 5),\n  min_result_count: Number(input.min_result_count ?? 3),\n  retrieval_score_threshold: Number(input.retrieval_score_threshold ?? 0.55),\n  normalized_query: normalizedQuery,\n  workflow_started_ms: now,\n  query_hash: Buffer.from(normalizedQuery).toString('base64').slice(0, 24)\n}}];"
+      },
+      "id": "49d5f65e-5e47-45c0-bef6-72b81cc08f77",
+      "name": "Initialize Runtime State",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [-2040, 0]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "UPDATE rag_transactions\nSET\n  status = 'retrieving',\n  retrieval_status = 'not_started',\n  normalized_query = '{{ $json.normalized_query }}'\nWHERE transaction_id = '{{ $json.transaction_id }}';\n\nINSERT INTO rag_trace_events (\n  transaction_id,\n  event_name,\n  node_name,\n  status,\n  latency_ms,\n  event_payload\n)\nVALUES\n(\n  '{{ $json.transaction_id }}',\n  'discord.event_received',\n  'Set Manual Active Call',\n  'completed',\n  0,\n  jsonb_build_object(\n    'discord_message_id', '{{ $json.discord_message_id }}',\n    'channel_id', '{{ $json.channel_id }}',\n    'channel_name', '{{ $json.channel_name }}',\n    'route_type', '{{ $json.route_type }}',\n    'query_hash', '{{ $json.query_hash }}'\n  )\n),\n(\n  '{{ $json.transaction_id }}',\n  'routing.active_call',\n  'Create Transaction',\n  'decision',\n  0,\n  jsonb_build_object(\n    'route_type', '{{ $json.route_type }}',\n    'reason', 'manual_phase_3_active_call_observability_test',\n    'query_hash', '{{ $json.query_hash }}'\n  )\n),\n(\n  '{{ $json.transaction_id }}',\n  'query.normalized',\n  'Initialize Runtime State',\n  'completed',\n  0,\n  jsonb_build_object(\n    'normalized_query', '{{ $json.normalized_query }}',\n    'query_prefix', 'search_query:',\n    'query_hash', '{{ $json.query_hash }}'\n  )\n),\n(\n  '{{ $json.transaction_id }}',\n  'qdrant.query_started',\n  'Embed Query + Qdrant Vector Search',\n  'started',\n  0,\n  jsonb_build_object(\n    'qdrant_collection', '{{ $json.qdrant_collection }}',\n    'top_k', {{ $json.top_k }},\n    'retrieval_score_threshold', {{ $json.retrieval_score_threshold }},\n    'min_result_count', {{ $json.min_result_count }},\n    'default_scope', 'all_channels',\n    'query_hash', '{{ $json.query_hash }}'\n  )\n)\nRETURNING event_id, transaction_id, event_name;"
+      },
+      "id": "943a276a-adbd-44df-a7c7-d9343e2097b94",
+      "name": "Log Ingress Routing Query Start",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [-1800, 0],
+      "credentials": {
+        "postgres": {
+          "id": "91KXbNmHZPM5D5mO",
+          "name": "Postgres account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const state = $items('Initialize Runtime State')[0].json;\nreturn [{ json: { ...state, embedding_started_ms: Date.now() } }];"
+      },
+      "id": "49963ba7-3822-4518-a1fc-ee9fbf5eb653",
+      "name": "Prepare Embedding Request",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [-1560, 0]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $json.embedding_url }}",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ { text: $json.normalized_query } }}",
+        "options": {
+          "response": {
+            "response": {
+              "fullResponse": true,
+              "neverError": true,
+              "responseFormat": "json"
+            }
+          }
+        }
+      },
+      "id": "2803c283-af1a-4411-a31f-c8c2c692141b",
+      "name": "Embed Query",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [-1320, 0],
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "jsCode": "const state = $items('Prepare Embedding Request')[0].json;\nconst response = $json;\nconst body = response.body ?? response;\nconst vector = body.embedding || body.vector || body.data?.[0]?.embedding || [];\nconst now = Date.now();\nreturn [{ json: {\n  ...state,\n  embedding_completed_ms: now,\n  embedding_latency_ms: Math.max(0, now - state.embedding_started_ms),\n  embedding_status_code: response.statusCode ?? response.status ?? 0,\n  query_vector: vector,\n  embedding_ok: Array.isArray(vector) && vector.length === 768\n}}];"
+      },
+      "id": "d4d18d8e-2755-4729-8bda-7811d9d6d95c",
+      "name": "Build Embedding Result",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [-1080, 0]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "INSERT INTO rag_trace_events (\n  transaction_id,\n  event_name,\n  node_name,\n  status,\n  latency_ms,\n  event_payload\n)\nVALUES (\n  '{{ $json.transaction_id }}',\n  'query.embedding_completed',\n  'Embed Query',\n  '{{ $json.embedding_ok ? \"completed\" : \"failed\" }}',\n  {{ $json.embedding_latency_ms || 0 }},\n  jsonb_build_object(\n    'embedding_ok', {{ $json.embedding_ok }},\n    'embedding_status_code', {{ $json.embedding_status_code || 0 }},\n    'embedding_dimension', {{ $json.query_vector.length || 0 }},\n    'model', 'nomic-ai/nomic-embed-text-v1.5',\n    'query_hash', '{{ $json.query_hash }}'\n  )\n)\nRETURNING event_id, transaction_id, event_name;"
+      },
+      "id": "40c3bbdc-b347-4dc5-987f-6db82b0a75da",
+      "name": "Log Embedding Completed",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [-840, 0],
+      "credentials": {
+        "postgres": {
+          "id": "91KXbNmHZPM5D5mO",
+          "name": "Postgres account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const state = $items('Build Embedding Result')[0].json;\nreturn [{ json: { ...state, qdrant_started_ms: Date.now() } }];"
+      },
+      "id": "b1ac2688-0123-44a7-af08-ae3c476cb97e",
+      "name": "Prepare Qdrant Search",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [-600, 0]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $json.qdrant_base_url }}/collections/{{ $json.qdrant_collection }}/points/search",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ { vector: $json.query_vector, limit: $json.top_k, with_payload: true, with_vector: false } }}",
+        "options": {
+          "response": {
+            "response": {
+              "fullResponse": true,
+              "neverError": true,
+              "responseFormat": "json"
+            }
+          }
+        }
+      },
+      "id": "41a6334e-a3e0-4de0-a9fa-a90ce41b3260",
+      "name": "Qdrant Vector Search",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [-360, 0],
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "jsCode": "const base = $items('Prepare Qdrant Search')[0].json;\nconst response = $json;\nconst now = Date.now();\nconst statusCode = response.statusCode ?? response.status ?? 0;\nconst raw = response.body?.result || response.result || [];\nconst candidates = Array.isArray(raw) ? raw.map((hit, i) => {\n  const p = hit.payload || {};\n  return {\n    qdrant_point_id: String(hit.id),\n    rank: i + 1,\n    retrieval_score: Number(hit.score || 0),\n    channel_id: p.channel_id || '',\n    channel_name: p.channel || '',\n    thread_name: p.thread_name || '',\n    first_message_id: p.first_message_id || '',\n    message_ids: Array.isArray(p.message_ids) ? p.message_ids.map(String) : [],\n    start_ts: p.start_ts || null,\n    end_ts: p.end_ts || null,\n    text: p.text || '',\n    payload: p\n  };\n}) : [];\nconst passed = candidates.filter(c => c.retrieval_score >= base.retrieval_score_threshold);\nconst selected = passed.slice(0, base.context_k);\nlet refusalReason = null;\nif (!base.embedding_ok) refusalReason = 'query_embedding_failed';\nelse if (statusCode < 200 || statusCode >= 300) refusalReason = 'qdrant_query_failed';\nelse if (candidates.length === 0) refusalReason = 'no_qdrant_results';\nelse if (passed.length < base.min_result_count) refusalReason = 'fewer_than_min_results';\nconst shouldGenerate = !refusalReason;\nconst guildId = '853099205206999050';\nconst contextBlock = selected.map((c, idx) => {\n  const dateStart = c.start_ts ? String(c.start_ts).slice(0, 10) : 'unknown';\n  const dateEnd = c.end_ts ? String(c.end_ts).slice(0, 10) : 'unknown';\n  const link = c.channel_id && c.first_message_id ? `https://discord.com/channels/${guildId}/${c.channel_id}/${c.first_message_id}` : 'N/A';\n  const authors = Array.isArray(c.payload.authors) ? c.payload.authors.join(', ') : 'N/A';\n  return `--- Context chunk ${idx + 1} of ${selected.length} ---\\nChannel:      #${c.channel_name || 'unknown'}\\nThread:       ${c.thread_name || 'N/A'}\\nDate range:   ${dateStart} to ${dateEnd}\\nAuthors:      ${authors}\\nScore:        ${c.retrieval_score.toFixed(2)}\\nMessage IDs:  ${c.message_ids.join(', ')}\\nDiscord link: ${link}\\n\\n${c.text}`;\n}).join('\\n\\n');\nconst refusalText = \"I don't have enough TPM Unite specific context to answer this confidently, try rephrasing or ask the community directly.\";\nconst systemPrompt = `You are an assistant for the TPM Unite Discord community.\\nYou have access to retrieved excerpts from real TPM Unite conversations spanning the community's history.\\n\\nRULES - follow exactly, in priority order:\\n1. GROUNDING: Answer ONLY from the provided context blocks. Never use general knowledge, personal opinions, or external sources. Every claim must be traceable to a specific context block.\\n2. REFUSAL: If the provided context is insufficient to answer confidently, respond with exactly: \"${refusalText}\" Then stop. Do not add caveats, partial answers, or suggestions.\\n3. CITATION: After each key claim, cite the source in this format: (#{channel}, {YYYY-MM-DD}). For forum threads: (#{channel} > {thread_name}, {YYYY-MM-DD})\\n4. FRAMING: Frame answers as community wisdom, not authoritative rulings. Use language like \"TPM Unite members have discussed...\", \"The community has shared...\", \"Past discussions suggest...\" Never say \"You should...\" or \"The answer is...\"\\n5. TEMPORAL HONESTY: If context is older than 12 months, note it.\\n6. NUANCE CAVEAT: For subjective, evolving, or role-specific topics, close with: \"This reflects past TPM Unite discussions - the community may have more recent or personal context to add.\"\\n7. SAFETY: Do not surface personal identifying information from the context even if present.`;\nconst prompt = `${systemPrompt}\\n\\nRetrieved context:\\n${contextBlock}\\n\\nUser question:\\n${base.user_query}`;\nconst retrievalRows = candidates.map(c => ({ qdrant_point_id: c.qdrant_point_id, rank: c.rank, retrieval_score: c.retrieval_score, channel_id: c.channel_id, channel_name: c.channel_name, thread_name: c.thread_name, first_message_id: c.first_message_id, message_ids: c.message_ids, start_ts: c.start_ts, end_ts: c.end_ts, payload: c.payload }));\nreturn [{ json: {\n  ...base,\n  qdrant_completed_ms: now,\n  qdrant_latency_ms: Math.max(0, now - base.qdrant_started_ms),\n  qdrant_status_code: statusCode,\n  raw_candidate_count: candidates.length,\n  passed_candidate_count: passed.length,\n  selected_context_count: selected.length,\n  candidates,\n  selected_context: selected,\n  context_block: contextBlock,\n  context_token_estimate: Math.ceil(contextBlock.length / 4),\n  prompt,\n  prompt_hash: Buffer.from(prompt).toString('base64').slice(0, 24),\n  retrieval_results_sql_json: JSON.stringify(retrievalRows).replace(/'/g, \"''\"),\n  should_generate: shouldGenerate,\n  should_generate_int: shouldGenerate ? 1 : 0,\n  refusal_reason: refusalReason,\n  retrieval_status: shouldGenerate ? 'context_found' : 'no_context',\n  final_status: shouldGenerate ? 'answered' : 'refused',\n  refusal_text: refusalText,\n  score_source: 'retrieval_score_until_rerank_phase'\n}}];"
+      },
+      "id": "5488f111-adf8-4218-9802-8d72ea7cfd82",
+      "name": "Build Retrieval And Context Decision",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [-120, 0]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "WITH rows AS (\n  SELECT *\n  FROM jsonb_to_recordset('{{ $json.retrieval_results_sql_json }}'::jsonb)\n  AS x(\n    qdrant_point_id text,\n    rank integer,\n    retrieval_score double precision,\n    channel_id text,\n    channel_name text,\n    thread_name text,\n    first_message_id text,\n    message_ids text[],\n    start_ts timestamptz,\n    end_ts timestamptz,\n    payload jsonb\n  )\n), inserted AS (\n  INSERT INTO rag_retrieval_results (\n    transaction_id,\n    qdrant_point_id,\n    rank,\n    retrieval_score,\n    channel_id,\n    channel_name,\n    thread_name,\n    first_message_id,\n    message_ids,\n    start_ts,\n    end_ts,\n    payload\n  )\n  SELECT\n    '{{ $json.transaction_id }}',\n    qdrant_point_id,\n    rank,\n    retrieval_score,\n    channel_id,\n    channel_name,\n    thread_name,\n    first_message_id,\n    message_ids,\n    start_ts,\n    end_ts,\n    payload\n  FROM rows\n  RETURNING 1\n)\nSELECT '{{ $json.transaction_id }}'::uuid AS transaction_id, count(*) AS inserted_count\nFROM inserted;"
+      },
+      "id": "e5cc87e9-3160-47df-94d0-a43104d7817c",
+      "name": "Store Retrieval Results",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [120, 0],
+      "credentials": {
+        "postgres": {
+          "id": "91KXbNmHZPM5D5mO",
+          "name": "Postgres account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "INSERT INTO rag_trace_events (\n  transaction_id,\n  event_name,\n  node_name,\n  status,\n  latency_ms,\n  event_payload\n)\nVALUES\n(\n  '{{ $items(\"Build Retrieval And Context Decision\")[0].json.transaction_id }}',\n  '{{ $items(\"Build Retrieval And Context Decision\")[0].json.should_generate ? \"qdrant.query_completed\" : \"qdrant.no_context\" }}',\n  'Qdrant Vector Search',\n  'decision',\n  {{ $items(\"Build Retrieval And Context Decision\")[0].json.qdrant_latency_ms || 0 }},\n  jsonb_build_object(\n    'qdrant_collection', '{{ $items(\"Build Retrieval And Context Decision\")[0].json.qdrant_collection }}',\n    'qdrant_status_code', {{ $items(\"Build Retrieval And Context Decision\")[0].json.qdrant_status_code || 0 }},\n    'raw_candidate_count', {{ $items(\"Build Retrieval And Context Decision\")[0].json.raw_candidate_count || 0 }},\n    'passed_candidate_count', {{ $items(\"Build Retrieval And Context Decision\")[0].json.passed_candidate_count || 0 }},\n    'selected_context_count', {{ $items(\"Build Retrieval And Context Decision\")[0].json.selected_context_count || 0 }},\n    'retrieval_score_threshold', {{ $items(\"Build Retrieval And Context Decision\")[0].json.retrieval_score_threshold || 0 }},\n    'min_result_count', {{ $items(\"Build Retrieval And Context Decision\")[0].json.min_result_count || 0 }},\n    'refusal_reason', '{{ $items(\"Build Retrieval And Context Decision\")[0].json.refusal_reason }}',\n    'query_hash', '{{ $items(\"Build Retrieval And Context Decision\")[0].json.query_hash }}'\n  )\n),\n(\n  '{{ $items(\"Build Retrieval And Context Decision\")[0].json.transaction_id }}',\n  '{{ $items(\"Build Retrieval And Context Decision\")[0].json.should_generate ? \"context.assembled\" : \"context.insufficient\" }}',\n  'Build Retrieval And Context Decision',\n  '{{ $items(\"Build Retrieval And Context Decision\")[0].json.should_generate ? \"completed\" : \"decision\" }}',\n  0,\n  jsonb_build_object(\n    'selected_context_count', {{ $items(\"Build Retrieval And Context Decision\")[0].json.selected_context_count || 0 }},\n    'context_token_estimate', {{ $items(\"Build Retrieval And Context Decision\")[0].json.context_token_estimate || 0 }},\n    'prompt_hash', '{{ $items(\"Build Retrieval And Context Decision\")[0].json.prompt_hash }}',\n    'score_source', '{{ $items(\"Build Retrieval And Context Decision\")[0].json.score_source }}'\n  )\n)\nRETURNING event_id, transaction_id, event_name;"
+      },
+      "id": "0994c8ed-d783-4267-9f7b-a3b61a57adaf",
+      "name": "Log Retrieval Context Decision",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [360, 0],
+      "credentials": {
+        "postgres": {
+          "id": "91KXbNmHZPM5D5mO",
+          "name": "Postgres account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "b51e6580-eec3-4e87-9ed0-bfd88ed4487d",
+              "leftValue": "={{ $items('Build Retrieval And Context Decision')[0].json.should_generate_int }}",
+              "rightValue": 1,
+              "operator": {
+                "type": "number",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "2c5655a7-e2b9-442a-81f2-8bdf749169a5",
+      "name": "Context Found?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [600, 0]
+    },
+    {
+      "parameters": {
+        "jsCode": "const state = $items('Build Retrieval And Context Decision')[0].json;\nreturn [{ json: { ...state, gemini_started_ms: Date.now() } }];"
+      },
+      "id": "37b526a1-7842-43d9-8417-406ca702d714",
+      "name": "Prepare Gemini Request",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [840, -220]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "INSERT INTO rag_trace_events (\n  transaction_id,\n  event_name,\n  node_name,\n  status,\n  latency_ms,\n  event_payload\n)\nVALUES (\n  '{{ $json.transaction_id }}',\n  'gemini.request_started',\n  'Gemini Generation',\n  'started',\n  0,\n  jsonb_build_object(\n    'model', 'gemini-3.5-flash',\n    'prompt_hash', '{{ $json.prompt_hash }}',\n    'selected_context_count', {{ $json.selected_context_count || 0 }},\n    'query_hash', '{{ $json.query_hash }}'\n  )\n)\nRETURNING event_id, transaction_id, event_name;"
+      },
+      "id": "2f58a8f2-0254-47c3-a69d-651242d11f3a",
+      "name": "Log Gemini Started",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [1080, -220],
+      "credentials": {
+        "postgres": {
+          "id": "91KXbNmHZPM5D5mO",
+          "name": "Postgres account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $items('Prepare Gemini Request')[0].json.gemini_url }}",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ { contents: [{ role: 'user', parts: [{ text: $items('Prepare Gemini Request')[0].json.prompt }] }], generationConfig: { temperature: 0.2, maxOutputTokens: 1000 } } }}",
+        "options": {
+          "response": {
+            "response": {
+              "fullResponse": true,
+              "neverError": true,
+              "responseFormat": "json"
+            }
+          }
+        }
+      },
+      "id": "1a8c6239-5286-42a6-b4e9-5f08062a2c0c",
+      "name": "Gemini Generation",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1320, -220],
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "jsCode": "const state = $items('Prepare Gemini Request')[0].json;\nconst response = $json;\nconst now = Date.now();\nconst statusCode = response.statusCode ?? response.status ?? 0;\nconst body = response.body ?? response;\nconst text = body.candidates?.[0]?.content?.parts?.map(p => p.text || '').join('\\n').trim() || '';\nlet generationFailed = statusCode < 200 || statusCode >= 300 || !text;\nlet failureReason = null;\nif (generationFailed) {\n  if (statusCode === 404) failureReason = 'gemini_model_not_found';\n  else if (statusCode === 401 || statusCode === 403) failureReason = 'gemini_auth_failed';\n  else if (!text && statusCode >= 200 && statusCode < 300) failureReason = 'gemini_malformed_response';\n  else failureReason = 'gemini_api_failed';\n}\nconst isModelRefusal = text === state.refusal_text;\nreturn [{ json: {\n  ...state,\n  gemini_completed_ms: now,\n  gemini_latency_ms: Math.max(0, now - state.gemini_started_ms),\n  gemini_status_code: statusCode,\n  gemini_response_text: text,\n  generation_failed: generationFailed,\n  generation_failed_int: generationFailed ? 1 : 0,\n  gemini_failure_reason: failureReason,\n  model_refusal: isModelRefusal,\n  discord_response_text: generationFailed ? '' : text,\n  final_status: generationFailed ? 'failed' : (isModelRefusal ? 'refused' : 'answered'),\n  retrieval_status: 'context_found',\n  refusal_reason: generationFailed ? failureReason : (isModelRefusal ? 'gemini_context_insufficient' : null)\n}}];"
+      },
+      "id": "e99ae61f-abaa-48bd-8576-060607a44267",
+      "name": "Build Gemini Result",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1560, -220]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "INSERT INTO rag_trace_events (\n  transaction_id,\n  event_name,\n  node_name,\n  status,\n  latency_ms,\n  event_payload\n)\nVALUES (\n  '{{ $json.transaction_id }}',\n  '{{ $json.generation_failed ? \"gemini.failed\" : \"gemini.response_completed\" }}',\n  'Gemini Generation',\n  '{{ $json.generation_failed ? \"failed\" : \"completed\" }}',\n  {{ $json.gemini_latency_ms || 0 }},\n  jsonb_build_object(\n    'model', 'gemini-3.5-flash',\n    'gemini_status_code', {{ $json.gemini_status_code || 0 }},\n    'generation_failed', {{ $json.generation_failed }},\n    'failure_reason', '{{ $json.gemini_failure_reason }}',\n    'model_refusal', {{ $json.model_refusal }},\n    'response_char_count', {{ $json.gemini_response_text.length || 0 }},\n    'prompt_hash', '{{ $json.prompt_hash }}',\n    'query_hash', '{{ $json.query_hash }}'\n  )\n)\nRETURNING event_id, transaction_id, event_name;"
+      },
+      "id": "7a286991-6ffe-427d-9d33-9f837be84580",
+      "name": "Log Gemini Result",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [1800, -220],
+      "credentials": {
+        "postgres": {
+          "id": "91KXbNmHZPM5D5mO",
+          "name": "Postgres account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "c414183c-f37a-41f8-bbc8-4f1661e635dc",
+              "leftValue": "={{ $items('Build Gemini Result')[0].json.generation_failed_int }}",
+              "rightValue": 1,
+              "operator": {
+                "type": "number",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "24fed6aa-5e62-4735-b75d-7275c72f5f86",
+      "name": "Gemini Failed?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [2040, -220]
+    },
+    {
+      "parameters": {
+        "jsCode": "const state = $items('Build Gemini Result')[0].json;\nreturn [{ json: { ...state, discord_started_ms: Date.now() } }];"
+      },
+      "id": "d6a6cbb2-a92b-4414-900e-834b85782976",
+      "name": "Prepare Discord Answer",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [2280, -320]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $json.discord_webhook_url }}",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ { content: $json.discord_response_text, allowed_mentions: { parse: [] } } }}",
+        "options": {
+          "response": {
+            "response": {
+              "fullResponse": true,
+              "neverError": true,
+              "responseFormat": "json"
+            }
+          }
+        }
+      },
+      "id": "d8810c03-8708-47b3-9fd8-9219753af95d",
+      "name": "Post Discord Answer",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [2520, -320],
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "jsCode": "const state = $items('Prepare Discord Answer')[0].json;\nconst response = $json;\nconst now = Date.now();\nconst statusCode = response.statusCode ?? response.status ?? 0;\nconst ok = statusCode >= 200 && statusCode < 300;\nreturn [{ json: { ...state, discord_completed_ms: now, discord_latency_ms: Math.max(0, now - state.discord_started_ms), discord_status_code: statusCode, discord_response_message_id: response.body?.id || '', response_status: ok ? 'posted' : 'failed' } }];"
+      },
+      "id": "981ad98d-70d3-4f41-a5a0-bc3b5013077b",
+      "name": "Build Discord Answer Result",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [2760, -320]
+    },
+    {
+      "parameters": {
+        "jsCode": "const state = $items('Build Retrieval And Context Decision')[0].json;\nreturn [{ json: { ...state, discord_response_text: state.refusal_text, discord_started_ms: Date.now() } }];"
+      },
+      "id": "ba5e467e-316e-4ab9-bc81-4ea34c0ab5e3",
+      "name": "Prepare Discord Refusal",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [840, 240]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $json.discord_webhook_url }}",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ { content: $json.discord_response_text, allowed_mentions: { parse: [] } } }}",
+        "options": {
+          "response": {
+            "response": {
+              "fullResponse": true,
+              "neverError": true,
+              "responseFormat": "json"
+            }
+          }
+        }
+      },
+      "id": "70d4640c-28c9-47d4-9f91-76f23a868e72",
+      "name": "Post Discord Refusal",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1080, 240],
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "jsCode": "const state = $items('Prepare Discord Refusal')[0].json;\nconst response = $json;\nconst now = Date.now();\nconst statusCode = response.statusCode ?? response.status ?? 0;\nconst ok = statusCode >= 200 && statusCode < 300;\nreturn [{ json: { ...state, final_status: 'refused', retrieval_status: state.retrieval_status, discord_completed_ms: now, discord_latency_ms: Math.max(0, now - state.discord_started_ms), discord_status_code: statusCode, discord_response_message_id: response.body?.id || '', response_status: ok ? 'posted' : 'failed' } }];"
+      },
+      "id": "681f20c9-8509-4885-89c5-754ae2895ec8",
+      "name": "Build Discord Refusal Result",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1320, 240]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "UPDATE rag_transactions\nSET\n  status = 'failed',\n  retrieval_status = 'context_found',\n  response_status = 'failed',\n  refusal_reason = '{{ $items(\"Build Gemini Result\")[0].json.gemini_failure_reason }}',\n  completed_at = now(),\n  latency_ms = GREATEST(1, EXTRACT(EPOCH FROM (now() - created_at))::int * 1000)\nWHERE transaction_id = '{{ $items(\"Build Gemini Result\")[0].json.transaction_id }}'\nRETURNING transaction_id, status, retrieval_status, response_status, refusal_reason, discord_response_message_id, latency_ms;"
+      },
+      "id": "2f08c991-3977-409b-a145-fe1bdcb0d079",
+      "name": "Finalize Gemini Failure",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [2280, -80],
+      "credentials": {
+        "postgres": {
+          "id": "91KXbNmHZPM5D5mO",
+          "name": "Postgres account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "UPDATE rag_transactions\nSET\n  status = '{{ $json.final_status }}',\n  retrieval_status = '{{ $json.retrieval_status }}',\n  response_status = '{{ $json.response_status }}',\n  discord_response_message_id = NULLIF('{{ $json.discord_response_message_id }}', ''),\n  refusal_reason = NULLIF(NULLIF('{{ $json.refusal_reason }}', ''), 'null'),\n  completed_at = now(),\n  latency_ms = GREATEST(1, EXTRACT(EPOCH FROM (now() - created_at))::int * 1000)\nWHERE transaction_id = '{{ $json.transaction_id }}'\nRETURNING transaction_id, status, retrieval_status, response_status, refusal_reason, discord_response_message_id, latency_ms;"
+      },
+      "id": "481c3807-7068-4bb6-a5fd-2ce0bc836e04",
+      "name": "Finalize Posted Transaction",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [3000, -40],
+      "credentials": {
+        "postgres": {
+          "id": "91KXbNmHZPM5D5mO",
+          "name": "Postgres account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "INSERT INTO rag_trace_events (\n  transaction_id,\n  event_name,\n  node_name,\n  status,\n  latency_ms,\n  event_payload\n)\nVALUES\n(\n  '{{ $json.transaction_id }}',\n  '{{ $json.response_status == \"posted\" ? \"discord.response_sent\" : \"discord.response_failed\" }}',\n  'Discord Response',\n  '{{ $json.response_status == \"posted\" ? \"completed\" : \"failed\" }}',\n  0,\n  jsonb_build_object(\n    'discord_response_message_id', '{{ $json.discord_response_message_id }}',\n    'response_status', '{{ $json.response_status }}',\n    'final_status', '{{ $json.status }}'\n  )\n),\n(\n  '{{ $json.transaction_id }}',\n  'transaction.phase_3_completed',\n  'Finalize Posted Transaction',\n  'completed',\n  {{ $json.latency_ms || 0 }},\n  jsonb_build_object(\n    'status', '{{ $json.status }}',\n    'retrieval_status', '{{ $json.retrieval_status }}',\n    'response_status', '{{ $json.response_status }}',\n    'refusal_reason', '{{ $json.refusal_reason }}',\n    'discord_response_message_id', '{{ $json.discord_response_message_id }}',\n    'latency_ms', {{ $json.latency_ms || 0 }}\n  )\n)\nRETURNING event_id, transaction_id, event_name;"
+      },
+      "id": "0c350f4a-10c0-492d-8f8e-f6077f233a9a",
+      "name": "Log Dispatch And Completion",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [3240, -40],
+      "credentials": {
+        "postgres": {
+          "id": "91KXbNmHZPM5D5mO",
+          "name": "Postgres account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "INSERT INTO rag_trace_events (\n  transaction_id,\n  event_name,\n  node_name,\n  status,\n  latency_ms,\n  event_payload\n)\nVALUES (\n  '{{ $json.transaction_id }}',\n  'transaction.phase_3_completed',\n  'Finalize Gemini Failure',\n  'failed',\n  {{ $json.latency_ms || 0 }},\n  jsonb_build_object(\n    'status', '{{ $json.status }}',\n    'retrieval_status', '{{ $json.retrieval_status }}',\n    'response_status', '{{ $json.response_status }}',\n    'failure_reason', '{{ $json.refusal_reason }}',\n    'latency_ms', {{ $json.latency_ms || 0 }}\n  )\n)\nRETURNING event_id, transaction_id, event_name;"
+      },
+      "id": "dc95dc18-ce8d-42ee-b3b9-95c37be4c85f",
+      "name": "Log Failure Completion",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [2520, -80],
+      "credentials": {
+        "postgres": {
+          "id": "91KXbNmHZPM5D5mO",
+          "name": "Postgres account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT\n  transaction_id,\n  route_type,\n  status,\n  retrieval_status,\n  response_status,\n  refusal_reason,\n  discord_response_message_id,\n  user_query,\n  normalized_query,\n  created_at,\n  completed_at,\n  latency_ms\nFROM rag_transactions\nWHERE transaction_id = '{{ $json.transaction_id }}';"
+      },
+      "id": "3859ba1a-7980-4820-b5fb-162aa1833c77",
+      "name": "Read Final Transaction",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [3480, -140],
+      "credentials": {
+        "postgres": {
+          "id": "91KXbNmHZPM5D5mO",
+          "name": "Postgres account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT\n  event_id,\n  event_name,\n  node_name,\n  status,\n  latency_ms,\n  event_payload,\n  created_at\nFROM rag_trace_events\nWHERE transaction_id = '{{ $json.transaction_id }}'\nORDER BY created_at ASC;"
+      },
+      "id": "046a652d-06bc-4dc6-9886-e3ef1a05d3cf",
+      "name": "Read Trace Events",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [3480, 60],
+      "credentials": {
+        "postgres": {
+          "id": "91KXbNmHZPM5D5mO",
+          "name": "Postgres account"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Manual Trigger": { "main": [[{"node": "Set Manual Active Call", "type": "main", "index": 0}]] },
+    "Set Manual Active Call": { "main": [[{"node": "Create Transaction", "type": "main", "index": 0}]] },
+    "Create Transaction": { "main": [[{"node": "Initialize Runtime State", "type": "main", "index": 0}]] },
+    "Initialize Runtime State": { "main": [[{"node": "Log Ingress Routing Query Start", "type": "main", "index": 0}]] },
+    "Log Ingress Routing Query Start": { "main": [[{"node": "Prepare Embedding Request", "type": "main", "index": 0}]] },
+    "Prepare Embedding Request": { "main": [[{"node": "Embed Query", "type": "main", "index": 0}]] },
+    "Embed Query": { "main": [[{"node": "Build Embedding Result", "type": "main", "index": 0}]] },
+    "Build Embedding Result": { "main": [[{"node": "Log Embedding Completed", "type": "main", "index": 0}]] },
+    "Log Embedding Completed": { "main": [[{"node": "Prepare Qdrant Search", "type": "main", "index": 0}]] },
+    "Prepare Qdrant Search": { "main": [[{"node": "Qdrant Vector Search", "type": "main", "index": 0}]] },
+    "Qdrant Vector Search": { "main": [[{"node": "Build Retrieval And Context Decision", "type": "main", "index": 0}]] },
+    "Build Retrieval And Context Decision": { "main": [[{"node": "Store Retrieval Results", "type": "main", "index": 0}]] },
+    "Store Retrieval Results": { "main": [[{"node": "Log Retrieval Context Decision", "type": "main", "index": 0}]] },
+    "Log Retrieval Context Decision": { "main": [[{"node": "Context Found?", "type": "main", "index": 0}]] },
+    "Context Found?": {
+      "main": [
+        [{"node": "Prepare Gemini Request", "type": "main", "index": 0}],
+        [{"node": "Prepare Discord Refusal", "type": "main", "index": 0}]
+      ]
+    },
+    "Prepare Gemini Request": { "main": [[{"node": "Log Gemini Started", "type": "main", "index": 0}]] },
+    "Log Gemini Started": { "main": [[{"node": "Gemini Generation", "type": "main", "index": 0}]] },
+    "Gemini Generation": { "main": [[{"node": "Build Gemini Result", "type": "main", "index": 0}]] },
+    "Build Gemini Result": { "main": [[{"node": "Log Gemini Result", "type": "main", "index": 0}]] },
+    "Log Gemini Result": { "main": [[{"node": "Gemini Failed?", "type": "main", "index": 0}]] },
+    "Gemini Failed?": {
+      "main": [
+        [{"node": "Finalize Gemini Failure", "type": "main", "index": 0}],
+        [{"node": "Prepare Discord Answer", "type": "main", "index": 0}]
+      ]
+    },
+    "Prepare Discord Answer": { "main": [[{"node": "Post Discord Answer", "type": "main", "index": 0}]] },
+    "Post Discord Answer": { "main": [[{"node": "Build Discord Answer Result", "type": "main", "index": 0}]] },
+    "Build Discord Answer Result": { "main": [[{"node": "Finalize Posted Transaction", "type": "main", "index": 0}]] },
+    "Prepare Discord Refusal": { "main": [[{"node": "Post Discord Refusal", "type": "main", "index": 0}]] },
+    "Post Discord Refusal": { "main": [[{"node": "Build Discord Refusal Result", "type": "main", "index": 0}]] },
+    "Build Discord Refusal Result": { "main": [[{"node": "Finalize Posted Transaction", "type": "main", "index": 0}]] },
+    "Finalize Gemini Failure": { "main": [[{"node": "Log Failure Completion", "type": "main", "index": 0}]] },
+    "Finalize Posted Transaction": { "main": [[{"node": "Log Dispatch And Completion", "type": "main", "index": 0}]] },
+    "Log Dispatch And Completion": {
+      "main": [[
+        {"node": "Read Final Transaction", "type": "main", "index": 0},
+        {"node": "Read Trace Events", "type": "main", "index": 0}
+      ]]
+    },
+    "Log Failure Completion": {
+      "main": [[
+        {"node": "Read Final Transaction", "type": "main", "index": 0},
+        {"node": "Read Trace Events", "type": "main", "index": 0}
+      ]]
+    }
+  },
+  "active": false,
+  "settings": { "executionOrder": "v1" },
+  "versionId": "f1feb068-fbd5-4e68-8539-dbd15c2fb305",
+  "meta": { "templateCredsSetupCompleted": false },
+  "id": "rag-active-call-phase-3-node-observability",
+  "tags": []
+}
