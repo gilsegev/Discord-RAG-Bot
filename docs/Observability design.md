@@ -246,6 +246,8 @@ One row per retrieved chunk candidate.
 
 One row per feedback signal.
 
+Feedback is a satisfaction signal and review trigger. It should not be treated as an evaluation label by itself. For example, a negative reaction can flag a transaction for human review, but it does not automatically become `label = fail` in `rag_eval_labels`.
+
 | Field | Purpose |
 |---|---|
 | `transaction_id` | Bot answer being evaluated |
@@ -266,11 +268,20 @@ Phoenix can display annotations and review context, but weekly metrics should re
 | `transaction_id` | Bot interaction being evaluated |
 | `dimension` | `groundedness`, `answer_relevance`, `tone_refusal`, `safety` |
 | `label` | `pass` or `fail` |
-| `failure_type` | Optional failure category, such as `hallucination`, `false_refusal`, `missed_refusal`, or `pii` |
-| `source` | `human`, `judge`, or `feedback` |
+| `failure_type` | Optional failure category, such as `unsupported_claim`, `correct_refusal`, `false_refusal`, `missed_refusal`, `no_context_violation`, or `pii` |
+| `source` | `human` or `judge` |
 | `labeler` | Human reviewer or judge identifier |
 | `notes` | Optional short review note |
 | `created_at` | Label timestamp |
+
+Refusal outcome vocabulary:
+
+- `correct_refusal`
+- `false_refusal`
+- `missed_refusal`
+- `no_context_violation`
+
+These values are stored in `failure_type` on the `tone_refusal` dimension. `no_context_violation` is the non-negotiable launch gate: no-context cases must not produce ungrounded answers.
 
 #### `rag_weekly_metrics`
 
@@ -290,7 +301,7 @@ Phoenix does not own this rollup. Phoenix stores traces and review context that 
 | `groundedness_pass_rate` | Evaluated answers that passed groundedness |
 | `correct_refusal_rate` | Refusal-category cases that refused correctly |
 | `thumbs_up_rate` | Positive reaction share |
-| `rri` | `0.7 * groundedness_pass_rate + 0.3 * correct_refusal_rate` |
+| `rag_reliability_index` | `0.7 * groundedness_pass_rate + 0.3 * correct_refusal_rate` |
 | `no_context_violation_count` | No-context cases where the bot answered anyway |
 | `negative_feedback_count` | Explicit or reaction-based negative feedback |
 | `p50_latency_ms`, `p95_latency_ms` | End-to-end latency |
@@ -315,7 +326,7 @@ These are logical observability events, not native events emitted directly by Di
 | Dedupe | `dedupe.started`, `dedupe.chunk_dropped`, `dedupe.completed` |
 | Context | `context.assembled`, `context.overflow`, `context.insufficient`, `context.insufficient_after_dedupe` |
 | LLM | `gemini.request_started`, `gemini.response_completed`, `gemini.failed` |
-| Refusal | `response.refused`, `evaluation.correct_refusal`, `evaluation.false_refusal`, `evaluation.missed_refusal` |
+| Refusal | `response.refused`, `evaluation.correct_refusal`, `evaluation.false_refusal`, `evaluation.missed_refusal`, `evaluation.no_context_violation` |
 | Response | `discord.response_sent`, `discord.response_failed` |
 | Feedback | `feedback.received`, `feedback.linked`, `feedback.unmatched` |
 
