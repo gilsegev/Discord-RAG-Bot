@@ -152,6 +152,8 @@ For every major node, log:
 - decision made
 - error reason if failed
 - `failure_reason` when the workflow fails operationally
+- SHA-256 `query_hash` and SHA-256 `prompt_hash` when query/prompt grouping is needed
+- context token-budget fields when context is assembled or trimmed
 
 Phoenix should show the execution trace.
 
@@ -173,6 +175,8 @@ Implementation notes:
 - It records stage-level latency, key input/output summaries, routing/retrieval/generation/dispatch decisions, and failure reasons.
 - It records Gemini API failures as operational failures instead of retrieval refusals.
 - It separates `refusal_reason` from `failure_reason`: refusal is a product quality decision, failure is an operational execution problem.
+- It enforces the context-token budget before Gemini. If selected context is too large, it drops the lowest-scored chunks until under budget. If fewer than three chunks remain, it refuses with `context_token_budget_insufficient`.
+- It logs `context.overflow` when context had to be trimmed and stores before/after token estimates.
 - It still excludes passive listener behavior, reranking, dedupe, reaction boost, feedback correlation, weekly metrics, and advanced alerting.
 
 ## Phase 4: Retrieval Refusal Gate
@@ -266,6 +270,15 @@ Include:
 Expected outcome:
 
 Gemini receives structured, citable context instead of raw unformatted chunks.
+
+Budget gate:
+
+- Assemble up to five chunks.
+- Estimate context tokens.
+- If the context exceeds the configured budget, drop the lowest-scored selected chunk and recompute.
+- Continue until under budget.
+- If fewer than three chunks remain, refuse with `context_token_budget_insufficient`.
+- Log `context.overflow` for trimming and `context.insufficient` for refusal.
 
 ## Phase 8: Passive Listener
 Add passive listener behavior only after the active-call path is stable.

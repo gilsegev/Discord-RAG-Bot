@@ -88,8 +88,12 @@ This workflow follows the current contracts for Phase 3:
 - Applies `retrieval_score >= 0.55`.
 - Refuses if fewer than 3 results pass threshold.
 - Assembles up to 5 context chunks.
+- Enforces a 1,200-token context budget before Gemini.
+- Drops lowest-scored selected chunks when context exceeds the budget.
+- Refuses with `context_token_budget_insufficient` if fewer than 3 chunks remain after budget trimming.
 - Uses the exact refusal string from the prompt contract.
 - Uses `gemini-3.5-flash` in the Gemini URL.
+- Stores SHA-256 `query_hash` and SHA-256 `prompt_hash` values for safe grouping.
 - Records Gemini API failures as operational failures, not retrieval refusals.
 - Separates `refusal_reason` from `failure_reason`: retrieval/context refusals use `refusal_reason`; API, dispatch, timeout, or malformed-response failures use `failure_reason`.
 
@@ -114,6 +118,14 @@ refusal_reason = null
 discord_response_message_id = <id>
 ```
 
+Trace expectations:
+
+```text
+context.assembled or context.overflow
+context_token_estimate <= 1200
+prompt_hash = 64-character SHA-256 hex string
+```
+
 ## Expected Refusal Result
 If retrieval is missing or too weak:
 
@@ -121,7 +133,7 @@ If retrieval is missing or too weak:
 status = refused
 retrieval_status = no_context
 response_status = posted
-refusal_reason = no_qdrant_results or fewer_than_min_results
+refusal_reason = no_qdrant_results, fewer_than_min_results, or context_token_budget_insufficient
 ```
 
 ## Expected Gemini Failure Result
