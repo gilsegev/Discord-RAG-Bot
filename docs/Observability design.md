@@ -165,6 +165,7 @@ Root trace attributes:
 | `query_hash` | Stable hash for grouping similar queries without exposing full text |
 | `status` | `started`, `answered`, `refused`, `dropped`, `failed` |
 | `refusal_reason` | Why the bot refused, if applicable |
+| `failure_reason` | Why the workflow failed operationally, if applicable |
 
 Child span groups:
 
@@ -197,9 +198,13 @@ One row per Discord event considered by the bot.
 | `channel_id`, `channel_name` | Discord source |
 | `author_id` | Requesting user |
 | `user_query` | Cleaned query text |
+| `query_hash` | SHA-256 hash of the normalized query for grouping without exposing query text |
 | `status` | `started`, `answered`, `refused`, `dropped`, `failed` |
 | `refusal_reason` | Why the bot refused, if applicable |
+| `failure_reason` | Why the workflow failed operationally, if applicable |
 | `created_at`, `completed_at` | Lifecycle timing |
+
+Use `refusal_reason` only when the bot deliberately refuses because product quality gates say it should not answer. Use `failure_reason` when the workflow could not complete because of an operational issue, such as Gemini failure, Discord dispatch failure, Qdrant API failure, Postgres write failure, or malformed third-party response.
 
 Allowed `refusal_reason` values:
 
@@ -210,6 +215,18 @@ Allowed `refusal_reason` values:
 - `context_after_dedupe_insufficient`
 - `context_token_budget_insufficient`
 - `safety_or_policy_limit`
+
+Allowed starting `failure_reason` values:
+
+- `query_embedding_failed`
+- `qdrant_query_failed`
+- `gemini_api_failed`
+- `gemini_model_not_found`
+- `gemini_auth_failed`
+- `gemini_malformed_response`
+- `discord_dispatch_failed`
+- `postgres_write_failed`
+- `workflow_timeout`
 
 #### `rag_trace_events`
 
@@ -339,6 +356,7 @@ Required attributes:
 - `status`
 - `latency_ms`
 - `error_type`, when applicable
+- `failure_reason`, when applicable
 
 ## 7. n8n Integration Points
 

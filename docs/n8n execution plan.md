@@ -151,6 +151,7 @@ For every major node, log:
 - key output summary
 - decision made
 - error reason if failed
+- `failure_reason` when the workflow fails operationally
 
 Phoenix should show the execution trace.
 
@@ -171,6 +172,7 @@ Implementation notes:
 - This workflow keeps the Phase 2 active-call happy path and adds durable trace events for each major node.
 - It records stage-level latency, key input/output summaries, routing/retrieval/generation/dispatch decisions, and failure reasons.
 - It records Gemini API failures as operational failures instead of retrieval refusals.
+- It separates `refusal_reason` from `failure_reason`: refusal is a product quality decision, failure is an operational execution problem.
 - It still excludes passive listener behavior, reranking, dedupe, reaction boost, feedback correlation, weekly metrics, and advanced alerting.
 
 ## Phase 4: Retrieval Refusal Gate

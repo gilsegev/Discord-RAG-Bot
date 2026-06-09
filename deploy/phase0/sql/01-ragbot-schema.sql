@@ -39,8 +39,10 @@ CREATE TABLE IF NOT EXISTS rag_transactions (
         )
     ) DEFAULT 'not_started',
     refusal_reason TEXT,
+    failure_reason TEXT,
     user_query TEXT,
     normalized_query TEXT,
+    query_hash TEXT,
     latency_ms INTEGER,
     created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
     completed_at TIMESTAMPTZ
@@ -134,6 +136,8 @@ CREATE INDEX IF NOT EXISTS idx_rag_transactions_status
     ON rag_transactions(status);
 CREATE INDEX IF NOT EXISTS idx_rag_transactions_discord_response
     ON rag_transactions(discord_response_message_id);
+CREATE INDEX IF NOT EXISTS idx_rag_transactions_query_hash
+    ON rag_transactions(query_hash);
 CREATE INDEX IF NOT EXISTS idx_rag_trace_events_transaction
     ON rag_trace_events(transaction_id, created_at);
 CREATE INDEX IF NOT EXISTS idx_rag_retrieval_results_transaction

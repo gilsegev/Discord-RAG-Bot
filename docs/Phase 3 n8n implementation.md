@@ -45,6 +45,13 @@ User: ragbot_admin
 SSL: disabled
 ```
 
+Before using `failure_reason` and durable query grouping, apply the Phase 3 observability migration:
+
+```bash
+cd ~/Discord-RAG-Bot/deploy/phase0
+docker compose exec -T postgres psql -U ragbot_admin -d ragbot < sql/02-observability-phase3-migration.sql
+```
+
 ## Values To Replace In n8n
 Before running, update the `Set Manual Active Call` node:
 
@@ -84,6 +91,7 @@ This workflow follows the current contracts for Phase 3:
 - Uses the exact refusal string from the prompt contract.
 - Uses `gemini-3.5-flash` in the Gemini URL.
 - Records Gemini API failures as operational failures, not retrieval refusals.
+- Separates `refusal_reason` from `failure_reason`: retrieval/context refusals use `refusal_reason`; API, dispatch, timeout, or malformed-response failures use `failure_reason`.
 
 Current intentional limitations:
 
@@ -123,10 +131,23 @@ If Gemini fails:
 status = failed
 retrieval_status = context_found
 response_status = failed
-refusal_reason = gemini_api_failed, gemini_model_not_found, gemini_auth_failed, or gemini_malformed_response
+failure_reason = gemini_api_failed, gemini_model_not_found, gemini_auth_failed, or gemini_malformed_response
 ```
 
 The workflow should not post the retrieval-refusal text when Gemini itself fails.
+
+## Expected Discord Failure Result
+If Gemini succeeds but Discord dispatch fails:
+
+```text
+status = failed
+retrieval_status = context_found
+response_status = failed
+failure_reason = discord_dispatch_failed
+discord_response_message_id = null
+```
+
+The workflow should not count this as `answered`, because the user did not receive the answer.
 
 ## Validation Queries
 Inspect the latest transaction:
@@ -135,7 +156,7 @@ Inspect the latest transaction:
 cd ~/Discord-RAG-Bot/deploy/phase0
 docker compose exec postgres psql -U ragbot_admin -d ragbot -c "
 SELECT transaction_id, status, retrieval_status, response_status,
-       refusal_reason, discord_response_message_id, latency_ms, created_at
+       refusal_reason, failure_reason, discord_response_message_id, latency_ms, created_at
 FROM rag_transactions
 ORDER BY created_at DESC
 LIMIT 5;"
