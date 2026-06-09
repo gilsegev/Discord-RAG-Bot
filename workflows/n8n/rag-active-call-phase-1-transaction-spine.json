@@ -1,0 +1,293 @@
+{
+  "name": "RAG Active Call - Phase 1 Transaction Spine",
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "3f0752ab-553a-4c5d-9e42-111f24af1e01",
+      "name": "Manual Trigger",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [-1560, 0]
+    },
+    {
+      "parameters": {
+        "mode": "manual",
+        "duplicateItem": false,
+        "assignments": {
+          "assignments": [
+            {
+              "id": "bc985b0f-ae01-47ff-a0ac-bb9c58c78653",
+              "name": "user_query",
+              "value": "Phase 1 test: can n8n create the transaction spine and make a retrieval readiness decision?",
+              "type": "string"
+            },
+            {
+              "id": "e9a77294-c227-43da-93a4-81f29c81b46c",
+              "name": "discord_message_id",
+              "value": "phase-1-transaction-spine-manual",
+              "type": "string"
+            },
+            {
+              "id": "d3185728-213e-4c94-9956-5625e19d6639",
+              "name": "channel_id",
+              "value": "phase-1-test",
+              "type": "string"
+            },
+            {
+              "id": "31e8b8e0-b1c2-4b1d-a1df-92f76afd73aa",
+              "name": "channel_name",
+              "value": "n8n-phase-1-test",
+              "type": "string"
+            },
+            {
+              "id": "d235b40a-a65a-4bfd-acdd-5b2a8d23c18a",
+              "name": "author_id_hash",
+              "value": "manual-test-author",
+              "type": "string"
+            },
+            {
+              "id": "3b9b93aa-c3e5-449d-b828-87fb580f81f0",
+              "name": "qdrant_collection",
+              "value": "tpm_unite_history",
+              "type": "string"
+            }
+          ]
+        },
+        "includeOtherFields": true,
+        "options": {}
+      },
+      "id": "c046aa0e-cb68-4486-a5f9-2c4e94260b51",
+      "name": "Set Manual Active Call",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [-1320, 0]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "INSERT INTO rag_transactions (\n  discord_message_id,\n  channel_id,\n  channel_name,\n  author_id_hash,\n  incoming_message_ts,\n  route_type,\n  status,\n  retrieval_status,\n  response_status,\n  user_query\n)\nVALUES (\n  '{{ $json.discord_message_id }}',\n  '{{ $json.channel_id }}',\n  '{{ $json.channel_name }}',\n  '{{ $json.author_id_hash }}',\n  now(),\n  'active_call',\n  'created',\n  'not_started',\n  'not_started',\n  '{{ $json.user_query }}'\n)\nRETURNING\n  transaction_id,\n  created_at,\n  discord_message_id,\n  channel_id,\n  channel_name,\n  author_id_hash,\n  route_type,\n  status,\n  retrieval_status,\n  response_status,\n  user_query;"
+      },
+      "id": "ce43d946-4c2b-40de-83f2-e256a5d54eb5",
+      "name": "Create Transaction",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [-1080, 0],
+      "credentials": {
+        "postgres": {
+          "id": "91KXbNmHZPM5D5mO",
+          "name": "Postgres account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "INSERT INTO rag_trace_events (\n  transaction_id,\n  event_name,\n  node_name,\n  status,\n  event_payload\n)\nVALUES\n(\n  '{{ $json.transaction_id }}',\n  'discord.event_received',\n  'Set Manual Active Call',\n  'completed',\n  jsonb_build_object(\n    'discord_message_id', '{{ $json.discord_message_id }}',\n    'channel_id', '{{ $json.channel_id }}',\n    'channel_name', '{{ $json.channel_name }}'\n  )\n),\n(\n  '{{ $json.transaction_id }}',\n  'routing.active_call',\n  'Create Transaction',\n  'decision',\n  jsonb_build_object(\n    'route_type', '{{ $json.route_type }}',\n    'reason', 'manual_phase_1_active_call_test'\n  )\n)\nRETURNING event_id, transaction_id, event_name;"
+      },
+      "id": "692a45c6-2f64-4191-8d96-523422638d37",
+      "name": "Log Ingress And Routing",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [-840, 0],
+      "credentials": {
+        "postgres": {
+          "id": "91KXbNmHZPM5D5mO",
+          "name": "Postgres account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const tx = $items('Create Transaction')[0].json;\nconst normalizedQuery = `search_query: ${tx.user_query.replace(/\\s+/g, ' ').trim()}`;\nreturn [{\n  json: {\n    ...tx,\n    normalized_query: normalizedQuery,\n    qdrant_collection: 'tpm_unite_history'\n  }\n}];"
+      },
+      "id": "bc7da45d-3a0d-423f-b937-5f95c03244e5",
+      "name": "Normalize Query",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [-600, 0]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "UPDATE rag_transactions\nSET normalized_query = '{{ $json.normalized_query }}'\nWHERE transaction_id = '{{ $json.transaction_id }}';\n\nINSERT INTO rag_trace_events (\n  transaction_id,\n  event_name,\n  node_name,\n  status,\n  event_payload\n)\nVALUES (\n  '{{ $json.transaction_id }}',\n  'query.normalized',\n  'Normalize Query',\n  'completed',\n  jsonb_build_object(\n    'normalized_query', '{{ $json.normalized_query }}',\n    'query_prefix', 'search_query:'\n  )\n)\nRETURNING event_id, transaction_id, event_name;"
+      },
+      "id": "a3844594-4847-4d1b-8375-c1795be4ddc2",
+      "name": "Persist Query Normalized",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [-360, 0],
+      "credentials": {
+        "postgres": {
+          "id": "91KXbNmHZPM5D5mO",
+          "name": "Postgres account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "url": "http://ragbot-qdrant:6333/collections/tpm_unite_history",
+        "options": {
+          "response": {
+            "response": {
+              "fullResponse": true,
+              "neverError": true,
+              "responseFormat": "json"
+            }
+          }
+        }
+      },
+      "id": "bd140b31-51fd-487f-b7d9-c3e88ef0106a",
+      "name": "Check Qdrant Collection",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [-120, 0],
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "jsCode": "const tx = $items('Create Transaction')[0].json;\nconst normalized = $items('Normalize Query')[0].json.normalized_query;\nconst response = $json;\nconst statusCode = response.statusCode ?? response.status ?? 0;\nconst collectionExists = statusCode >= 200 && statusCode < 300 && !!response.body?.result;\nconst nextStatus = collectionExists ? 'retrieving' : 'refused';\nconst nextRetrievalStatus = collectionExists ? 'not_started' : 'no_context';\nconst refusalReason = collectionExists ? null : 'qdrant_collection_missing';\nreturn [{\n  json: {\n    transaction_id: tx.transaction_id,\n    user_query: tx.user_query,\n    normalized_query: normalized,\n    qdrant_collection: 'tpm_unite_history',\n    qdrant_status_code: statusCode,\n    collection_exists: collectionExists,\n    retrieval_decision: collectionExists ? 'collection_available' : 'qdrant_collection_missing',\n    next_status: nextStatus,\n    next_retrieval_status: nextRetrievalStatus,\n    refusal_reason: refusalReason,\n    phase_1_result: collectionExists ? 'ready_for_phase_2_retrieval' : 'refused_missing_qdrant_collection'\n  }\n}];"
+      },
+      "id": "d875936a-d7c6-4014-8fe1-eef2a73b9247",
+      "name": "Build Retrieval Readiness Decision",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [120, 0]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "INSERT INTO rag_trace_events (\n  transaction_id,\n  event_name,\n  node_name,\n  status,\n  event_payload\n)\nVALUES (\n  '{{ $json.transaction_id }}',\n  'retrieval.collection_check',\n  'Check Qdrant Collection',\n  'decision',\n  jsonb_build_object(\n    'qdrant_collection', '{{ $json.qdrant_collection }}',\n    'qdrant_status_code', {{ $json.qdrant_status_code || 0 }},\n    'collection_exists', {{ $json.collection_exists }},\n    'retrieval_decision', '{{ $json.retrieval_decision }}',\n    'phase_1_result', '{{ $json.phase_1_result }}'\n  )\n)\nRETURNING event_id, transaction_id, event_name;"
+      },
+      "id": "ff4f465e-09e9-48f7-b8ec-e4747df385c3",
+      "name": "Log Retrieval Readiness",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [360, 0],
+      "credentials": {
+        "postgres": {
+          "id": "91KXbNmHZPM5D5mO",
+          "name": "Postgres account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "UPDATE rag_transactions\nSET\n  status = '{{ $items(\"Build Retrieval Readiness Decision\")[0].json.next_status }}',\n  retrieval_status = '{{ $items(\"Build Retrieval Readiness Decision\")[0].json.next_retrieval_status }}',\n  response_status = 'not_posted',\n  refusal_reason = NULLIF('{{ $items(\"Build Retrieval Readiness Decision\")[0].json.refusal_reason }}', ''),\n  completed_at = now(),\n  latency_ms = GREATEST(1, EXTRACT(EPOCH FROM (now() - created_at))::int * 1000)\nWHERE transaction_id = '{{ $items(\"Build Retrieval Readiness Decision\")[0].json.transaction_id }}'\nRETURNING\n  transaction_id,\n  route_type,\n  status,\n  retrieval_status,\n  response_status,\n  refusal_reason,\n  user_query,\n  normalized_query,\n  created_at,\n  completed_at,\n  latency_ms;"
+      },
+      "id": "066e4e4c-e22b-4b46-b1a2-bb87bb13f998",
+      "name": "Finalize Phase 1 Transaction",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [600, 0],
+      "credentials": {
+        "postgres": {
+          "id": "91KXbNmHZPM5D5mO",
+          "name": "Postgres account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "INSERT INTO rag_trace_events (\n  transaction_id,\n  event_name,\n  node_name,\n  status,\n  event_payload\n)\nVALUES (\n  '{{ $json.transaction_id }}',\n  'transaction.phase_1_completed',\n  'Finalize Phase 1 Transaction',\n  'completed',\n  jsonb_build_object(\n    'status', '{{ $json.status }}',\n    'retrieval_status', '{{ $json.retrieval_status }}',\n    'response_status', '{{ $json.response_status }}',\n    'refusal_reason', '{{ $json.refusal_reason }}',\n    'latency_ms', {{ $json.latency_ms || 0 }}\n  )\n)\nRETURNING event_id, transaction_id, event_name;"
+      },
+      "id": "25285be3-4abc-4ace-a7a5-cb94ed17b0d3",
+      "name": "Log Phase 1 Completed",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [840, 0],
+      "credentials": {
+        "postgres": {
+          "id": "91KXbNmHZPM5D5mO",
+          "name": "Postgres account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT\n  transaction_id,\n  route_type,\n  status,\n  retrieval_status,\n  response_status,\n  refusal_reason,\n  user_query,\n  normalized_query,\n  created_at,\n  completed_at,\n  latency_ms\nFROM rag_transactions\nWHERE transaction_id = '{{ $json.transaction_id }}';"
+      },
+      "id": "1ccb627b-faa4-408a-8487-65df0fa8da54",
+      "name": "Read Final Transaction",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [1080, -100],
+      "credentials": {
+        "postgres": {
+          "id": "91KXbNmHZPM5D5mO",
+          "name": "Postgres account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT\n  event_id,\n  event_name,\n  node_name,\n  status,\n  event_payload,\n  created_at\nFROM rag_trace_events\nWHERE transaction_id = '{{ $json.transaction_id }}'\nORDER BY created_at ASC;"
+      },
+      "id": "fcf43271-21cb-4549-b083-efdb553fc9b1",
+      "name": "Read Trace Events",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [1080, 100],
+      "credentials": {
+        "postgres": {
+          "id": "91KXbNmHZPM5D5mO",
+          "name": "Postgres account"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Manual Trigger": {
+      "main": [[{"node": "Set Manual Active Call", "type": "main", "index": 0}]]
+    },
+    "Set Manual Active Call": {
+      "main": [[{"node": "Create Transaction", "type": "main", "index": 0}]]
+    },
+    "Create Transaction": {
+      "main": [[{"node": "Log Ingress And Routing", "type": "main", "index": 0}]]
+    },
+    "Log Ingress And Routing": {
+      "main": [[{"node": "Normalize Query", "type": "main", "index": 0}]]
+    },
+    "Normalize Query": {
+      "main": [[{"node": "Persist Query Normalized", "type": "main", "index": 0}]]
+    },
+    "Persist Query Normalized": {
+      "main": [[{"node": "Check Qdrant Collection", "type": "main", "index": 0}]]
+    },
+    "Check Qdrant Collection": {
+      "main": [[{"node": "Build Retrieval Readiness Decision", "type": "main", "index": 0}]]
+    },
+    "Build Retrieval Readiness Decision": {
+      "main": [[{"node": "Log Retrieval Readiness", "type": "main", "index": 0}]]
+    },
+    "Log Retrieval Readiness": {
+      "main": [[{"node": "Finalize Phase 1 Transaction", "type": "main", "index": 0}]]
+    },
+    "Finalize Phase 1 Transaction": {
+      "main": [[{"node": "Log Phase 1 Completed", "type": "main", "index": 0}]]
+    },
+    "Log Phase 1 Completed": {
+      "main": [
+        [
+          {"node": "Read Final Transaction", "type": "main", "index": 0},
+          {"node": "Read Trace Events", "type": "main", "index": 0}
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "4bcefb47-76a6-4249-a604-f0651dc181bf",
+  "meta": {
+    "templateCredsSetupCompleted": false
+  },
+  "id": "rag-active-call-phase-1-transaction-spine",
+  "tags": []
+}

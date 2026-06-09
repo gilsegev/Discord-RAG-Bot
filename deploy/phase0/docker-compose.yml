@@ -65,6 +65,20 @@ services:
       PHOENIX_TELEMETRY_ENABLED: "false"
       PHOENIX_DEFAULT_RETENTION_POLICY_DAYS: 90
 
+  embedder:
+    build:
+      context: ./embedder
+    container_name: ragbot-embedder
+    restart: unless-stopped
+    environment:
+      HF_TOKEN: ${HF_TOKEN:-}
+      MODEL_NAME: nomic-ai/nomic-embed-text-v1.5
+      MODEL_CACHE: /models
+    ports:
+      - "127.0.0.1:${EMBEDDER_PORT}:8000"
+    volumes:
+      - embedder_model_cache:/models
+
   qdrant:
     image: qdrant/qdrant:latest
     container_name: ragbot-qdrant
@@ -79,4 +93,5 @@ volumes:
   postgres_data:
   n8n_data:
   qdrant_data:
+  embedder_model_cache:
 

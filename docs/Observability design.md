@@ -165,6 +165,7 @@ Root trace attributes:
 | `query_hash` | Stable hash for grouping similar queries without exposing full text |
 | `status` | `started`, `answered`, `refused`, `dropped`, `failed` |
 | `refusal_reason` | Why the bot refused, if applicable |
+| `failure_reason` | Why the workflow failed operationally, if applicable |
 
 Child span groups:
 
@@ -180,6 +181,10 @@ Child span groups:
 | `feedback.*` | Linked or unmatched feedback events |
 
 Phoenix should store enough evidence for review, but not be the source of weekly reporting truth. It is acceptable to sample full prompt/context text after launch while keeping IDs and scores on every trace.
+
+Context spans must make token-budget behavior explicit. If selected context exceeds the configured budget, n8n should drop the lowest-scored selected chunk until the context is under budget. If fewer than three chunks remain or the context is still over budget, the transaction should refuse with `context_token_budget_insufficient`.
+
+Prompt hashes should be stable SHA-256 hashes, not base64 prefixes. `query_hash` and `prompt_hash` should both be safe to group on without exposing the original query or prompt text.
 
 ### 5b. Postgres Transaction Schema
 
@@ -197,9 +202,13 @@ One row per Discord event considered by the bot.
 | `channel_id`, `channel_name` | Discord source |
 | `author_id` | Requesting user |
 | `user_query` | Cleaned query text |
+| `query_hash` | SHA-256 hash of the normalized query for grouping without exposing query text |
 | `status` | `started`, `answered`, `refused`, `dropped`, `failed` |
 | `refusal_reason` | Why the bot refused, if applicable |
+| `failure_reason` | Why the workflow failed operationally, if applicable |
 | `created_at`, `completed_at` | Lifecycle timing |
+
+Use `refusal_reason` only when the bot deliberately refuses because product quality gates say it should not answer. Use `failure_reason` when the workflow could not complete because of an operational issue, such as Gemini failure, Discord dispatch failure, Qdrant API failure, Postgres write failure, or malformed third-party response.
 
 Allowed `refusal_reason` values:
 
@@ -210,6 +219,18 @@ Allowed `refusal_reason` values:
 - `context_after_dedupe_insufficient`
 - `context_token_budget_insufficient`
 - `safety_or_policy_limit`
+
+Allowed starting `failure_reason` values:
+
+- `query_embedding_failed`
+- `qdrant_query_failed`
+- `gemini_api_failed`
+- `gemini_model_not_found`
+- `gemini_auth_failed`
+- `gemini_malformed_response`
+- `discord_dispatch_failed`
+- `postgres_write_failed`
+- `workflow_timeout`
 
 #### `rag_trace_events`
 
@@ -223,6 +244,18 @@ Append-only lifecycle events.
 | `latency_ms` | Stage timing |
 | `payload_json` | Structured details |
 | `created_at` | Event timestamp |
+
+Context-related payloads should include:
+
+| Field | Purpose |
+|---|---|
+| `selected_context_count_before_budget` | Number of selected chunks before token-budget trimming |
+| `selected_context_count` | Final number of chunks sent to Gemini |
+| `context_token_budget` | Configured context-token budget |
+| `context_token_estimate_before_budget` | Estimated context tokens before trimming |
+| `context_token_estimate` | Final estimated context tokens |
+| `context_dropped_for_budget_count` | Number of chunks dropped to stay under budget |
+| `prompt_hash` | SHA-256 hash of the final prompt |
 
 #### `rag_retrieval_results`
 
@@ -339,6 +372,7 @@ Required attributes:
 - `status`
 - `latency_ms`
 - `error_type`, when applicable
+- `failure_reason`, when applicable
 
 ## 7. n8n Integration Points
 
@@ -354,7 +388,7 @@ Instrumentation points:
 6. **Reranker gate node:** refuse if reranked context is not relevant enough.
 7. **Dedupe node:** log kept/dropped chunks and reason.
 8. **Context node:** log final context chunk IDs and token estimate.
-9. **Context gate node:** refuse if context is insufficient after dedupe or token limits.
+9. **Context gate node:** enforce the context-token budget by dropping lowest-scored chunks, log `context.overflow` when trimming occurs, and refuse with `context_token_budget_insufficient` if fewer than three chunks remain or the context is still over budget.
 10. **Gemini node:** log model, latency, refusal/answer status.
 11. **Discord node:** log response message ID or dispatch failure.
 12. **Feedback workflow:** link reactions or feedback to transaction.

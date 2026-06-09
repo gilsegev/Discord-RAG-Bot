@@ -67,6 +67,19 @@ Expected outcome:
 
 Every workflow run has one durable transaction row that can be inspected outside n8n.
 
+Implementation artifact:
+
+```text
+workflows/n8n/rag-active-call-phase-1-transaction-spine.json
+```
+
+Implementation notes:
+
+- This workflow simulates an active call with a manual trigger.
+- It writes transaction and trace rows to Postgres.
+- It checks whether the Qdrant collection exists.
+- It does not perform real embedding, vector search, Gemini generation, or Discord dispatch.
+
 ## Phase 2: One Active-Call Happy Path
 Build only the direct bot mention path first.
 
@@ -101,6 +114,31 @@ Expected outcome:
 
 One known question can produce one grounded response or one refusal, with a transaction row and trace evidence.
 
+Implementation artifact for the first Phase 2 gate:
+
+```text
+workflows/n8n/rag-active-call-phase-2-retrieval-gate.json
+```
+
+Implementation notes:
+
+- This workflow checks whether Qdrant has the target collection and whether the collection has points.
+- It does not yet embed the query or execute vector search.
+- It fails/refuses cleanly when retrieval prerequisites are missing.
+- It marks the transaction as ready for embedding and vector search when Qdrant is populated.
+
+Implementation artifact for the full Phase 2 active-call path:
+
+```text
+workflows/n8n/rag-active-call-phase-2-full-happy-path.json
+```
+
+Implementation notes:
+
+- This workflow performs query embedding, Qdrant vector search, simple retrieval thresholding, context assembly, Gemini generation, Discord posting, and final transaction logging.
+- It requires a query embedding service, Gemini API key, and Discord webhook before it can execute end to end.
+- It still excludes passive listener behavior, reranking, dedupe, reaction boost, feedback correlation, weekly metrics, and advanced alerting.
+
 ## Phase 3: Node-Level Observability
 Instrument each active-call node.
 
@@ -113,6 +151,9 @@ For every major node, log:
 - key output summary
 - decision made
 - error reason if failed
+- `failure_reason` when the workflow fails operationally
+- SHA-256 `query_hash` and SHA-256 `prompt_hash` when query/prompt grouping is needed
+- context token-budget fields when context is assembled or trimmed
 
 Phoenix should show the execution trace.
 
@@ -121,6 +162,22 @@ Postgres should store durable transaction state and key events.
 Expected outcome:
 
 When the workflow fails, the failure point is obvious without manually stepping through the entire n8n canvas.
+
+Implementation artifact:
+
+```text
+workflows/n8n/rag-active-call-phase-3-node-observability.json
+```
+
+Implementation notes:
+
+- This workflow keeps the Phase 2 active-call happy path and adds durable trace events for each major node.
+- It records stage-level latency, key input/output summaries, routing/retrieval/generation/dispatch decisions, and failure reasons.
+- It records Gemini API failures as operational failures instead of retrieval refusals.
+- It separates `refusal_reason` from `failure_reason`: refusal is a product quality decision, failure is an operational execution problem.
+- It enforces the context-token budget before Gemini. If selected context is too large, it drops the lowest-scored chunks until under budget. If fewer than three chunks remain, it refuses with `context_token_budget_insufficient`.
+- It logs `context.overflow` when context had to be trimmed and stores before/after token estimates.
+- It still excludes passive listener behavior, reranking, dedupe, reaction boost, feedback correlation, weekly metrics, and advanced alerting.
 
 ## Phase 4: Retrieval Refusal Gate
 Add refusal logic before adding more sophisticated retrieval behavior.
@@ -213,6 +270,15 @@ Include:
 Expected outcome:
 
 Gemini receives structured, citable context instead of raw unformatted chunks.
+
+Budget gate:
+
+- Assemble up to five chunks.
+- Estimate context tokens.
+- If the context exceeds the configured budget, drop the lowest-scored selected chunk and recompute.
+- Continue until under budget.
+- If fewer than three chunks remain, refuse with `context_token_budget_insufficient`.
+- Log `context.overflow` for trimming and `context.insufficient` for refusal.
 
 ## Phase 8: Passive Listener
 Add passive listener behavior only after the active-call path is stable.
