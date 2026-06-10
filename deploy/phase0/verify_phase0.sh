@@ -24,6 +24,11 @@ echo "== Phoenix UI =="
 curl -fsSI http://127.0.0.1:${PHOENIX_UI_PORT:-6006}/ | head -n 5
 
 echo
+echo "== Trace emitter =="
+curl -fsS http://127.0.0.1:${TRACE_EMITTER_PORT:-8001}/health
+echo
+
+echo
 echo "== n8n UI =="
 curl -fsSI http://127.0.0.1:${N8N_PORT:-5678}/ | head -n 5
 

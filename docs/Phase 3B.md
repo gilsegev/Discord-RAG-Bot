@@ -67,9 +67,12 @@ This workflow uses the repo-owned n8n service-name setup from the server hardeni
 | Postgres credential host | `postgres` |
 | Qdrant | `http://qdrant:6333` |
 | Embedder | `http://embedder:8000/embed` |
+| Trace emitter | `http://trace-emitter:8001/v1/traces` |
 | Phoenix OTLP HTTP collector | `http://phoenix:6006/v1/traces` |
 
 Do not use container IPs such as `172.20.x.x` in this workflow.
+
+The workflow sends JSON trace payloads to the internal trace emitter. The trace emitter converts those payloads to OTLP protobuf and forwards them to Phoenix. This adapter exists because n8n HTTP nodes are convenient for JSON, while Phoenix's OTLP HTTP collector expects protobuf.
 
 ## Postgres Responsibilities
 Keep these Postgres writes:
@@ -91,7 +94,13 @@ from the n8n workflow.
 Postgres may still keep compact final summaries later if needed for weekly metrics, but detailed node spans belong in Phoenix.
 
 ## Phoenix Responsibilities
-Phoenix receives OTLP/HTTP trace payloads at major checkpoints during the workflow.
+Phoenix receives OTLP/HTTP trace payloads at major checkpoints during the workflow through the internal trace emitter service:
+
+```text
+n8n
+  -> trace-emitter:8001/v1/traces
+      -> phoenix:6006/v1/traces
+```
 
 The checkpoint emissions are:
 
@@ -228,9 +237,9 @@ LIMIT 5;"
 ```
 
 ## Known Risks
-- Phoenix OTLP/HTTP ingestion must be verified against the running Phoenix container.
+- Phoenix OTLP/HTTP ingestion must be verified against the running Phoenix container through the trace emitter.
 - If Phoenix rejects the trace payload, the workflow should still finalize Postgres state.
-- n8n is not a full tracing SDK, so this workflow manually builds an OTLP JSON payload.
+- n8n is not a full tracing SDK, so this workflow manually builds an OTLP JSON payload and the trace emitter converts it to OTLP protobuf.
 - Rerank/dedupe are still missing, so context quality is not final.
 
 ## References

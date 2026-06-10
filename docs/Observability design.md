@@ -413,6 +413,7 @@ Implementation note:
 - Use n8n OpenTelemetry for workflow/node execution traces where practical.
 - Use explicit Postgres writes for RAG-specific events that need durable querying.
 - Send custom Phoenix spans progressively at major workflow checkpoints: start, embedding, retrieval/context, Gemini, and final dispatch.
+- Use the internal trace-emitter service when n8n emits JSON checkpoint payloads. The trace emitter converts JSON payloads to OTLP protobuf before forwarding them to Phoenix.
 - Keep Postgres writes on the hot path limited to durable transaction state and reporting inputs, such as retrieval result rows.
 
 ## 8. User Interaction With Observability
