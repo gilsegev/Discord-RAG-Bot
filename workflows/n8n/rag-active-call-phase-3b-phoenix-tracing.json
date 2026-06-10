@@ -579,7 +579,7 @@
     {
       "parameters": {
         "operation": "executeQuery",
-        "query": "SELECT\n  transaction_id,\n  route_type,\n  status,\n  retrieval_status,\n  response_status,\n  refusal_reason,\n  failure_reason,\n  discord_response_message_id,\n  user_query,\n  normalized_query,\n  query_hash,\n  created_at,\n  completed_at,\n  latency_ms\nFROM rag_transactions\nWHERE transaction_id = '{{ $json.transaction_id }}';"
+        "query": "SELECT\n  transaction_id,\n  route_type,\n  status,\n  retrieval_status,\n  response_status,\n  refusal_reason,\n  failure_reason,\n  discord_response_message_id,\n  user_query,\n  normalized_query,\n  query_hash,\n  created_at,\n  completed_at,\n  latency_ms\nFROM rag_transactions\nWHERE transaction_id = '{{ $items(\"Build Phoenix Final Checkpoint\")[0].json.transaction_id }}';"
       },
       "id": "3859ba1a-7980-4820-b5fb-162aa1833c77",
       "name": "Read Final Transaction",
