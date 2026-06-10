@@ -598,10 +598,170 @@
     },
     {
       "parameters": {
-        "jsCode": "function getNode(name) { try { return $items(name)[0]?.json || null; } catch (e) { return null; } }\nfunction hexToBase64(hex) { let binary = ''; for (let i = 0; i < hex.length; i += 2) binary += String.fromCharCode(parseInt(hex.slice(i, i + 2), 16)); return btoa(binary); }\nfunction value(v) { if (v === null || v === undefined) return { stringValue: '' }; if (typeof v === 'boolean') return { boolValue: v }; if (typeof v === 'number') return Number.isInteger(v) ? { intValue: String(v) } : { doubleValue: v }; return { stringValue: String(v) }; }\nfunction attrs(obj) { return Object.entries(obj).filter(([, v]) => v !== undefined).map(([key, val]) => ({ key, value: value(val) })); }\nfunction ns(ms) { return String(Math.max(0, Math.floor(ms || Date.now())) * 1000000); }\nfunction spanId(seed) { return hexToBase64(seed.padEnd(16, '0').slice(0, 16)); }\nfunction makeSpan(name, idSeed, parentId, start, end, attributes, statusCode) { return { traceId, spanId: spanId(idSeed), parentSpanId: parentId || undefined, name, kind: 1, startTimeUnixNano: ns(start), endTimeUnixNano: ns(end || start), attributes: attrs(attributes), status: { code: statusCode || 1 } }; }\nconst init = getNode('Initialize Runtime State') || {};\nconst embedding = getNode('Build Embedding Result') || init;\nconst retrieval = getNode('Build Retrieval And Context Decision') || embedding;\nconst gemini = getNode('Build Gemini Result');\nconst answer = getNode('Build Discord Answer Result');\nconst refusal = getNode('Build Discord Refusal Result');\nconst finalTx = $json || {};\nconst discord = answer || refusal || finalTx;\nconst traceSeed = String(init.query_hash || retrieval.query_hash || finalTx.transaction_id || '').replace(/-/g, '').padEnd(32, '0').slice(0, 32);\nconst traceId = hexToBase64(traceSeed);\nconst rootSpanId = spanId('1000000000000000');\nconst startMs = init.workflow_started_ms || Date.now();\nconst endMs = Date.now();\nconst finalStatus = finalTx.status || retrieval.final_status || 'unknown';\nconst refusalReason = finalTx.refusal_reason || retrieval.refusal_reason || '';\nconst failureReason = finalTx.failure_reason || gemini?.gemini_failure_reason || discord?.failure_reason || '';\nconst spans = [\n  makeSpan('rag.active_call', '1000000000000000', null, startMs, endMs, { 'transaction_id': init.transaction_id || finalTx.transaction_id, 'openinference.span.kind': 'chain', 'phoenix.project.name': init.phoenix_project_name || 'discord-rag-bot-phase-3b', 'project.name': init.phoenix_project_name || 'discord-rag-bot-phase-3b', 'openinference.project.name': init.phoenix_project_name || 'discord-rag-bot-phase-3b', 'route_type': init.route_type, 'channel_id': init.channel_id, 'channel_name': init.channel_name, 'query_hash': init.query_hash, 'status': finalStatus, 'refusal_reason': refusalReason, 'failure_reason': failureReason }, finalStatus === 'failed' ? 2 : 1),\n  makeSpan('discord.event_received', '2000000000000000', rootSpanId, startMs, startMs, { 'discord_message_id': init.discord_message_id, 'channel_id': init.channel_id, 'channel_name': init.channel_name, 'route_type': init.route_type }),\n  makeSpan('query.normalized', '3000000000000000', rootSpanId, startMs, startMs, { 'query_hash': init.query_hash, 'query_prefix': 'search_query:', 'normalized_query': init.normalized_query }),\n  makeSpan('query.embedding_completed', '4000000000000000', rootSpanId, embedding.embedding_started_ms, embedding.embedding_completed_ms, { 'model': 'nomic-ai/nomic-embed-text-v1.5', 'embedding_ok': embedding.embedding_ok, 'embedding_dimension': Array.isArray(embedding.query_vector) ? embedding.query_vector.length : 0, 'embedding_status_code': embedding.embedding_status_code, 'latency_ms': embedding.embedding_latency_ms }, embedding.embedding_ok ? 1 : 2),\n  makeSpan('qdrant.query_completed', '5000000000000000', rootSpanId, retrieval.qdrant_started_ms, retrieval.qdrant_completed_ms, { 'qdrant_collection': retrieval.qdrant_collection, 'qdrant_status_code': retrieval.qdrant_status_code, 'raw_candidate_count': retrieval.raw_candidate_count, 'passed_candidate_count': retrieval.passed_candidate_count, 'selected_context_count': retrieval.selected_context_count, 'retrieval_score_threshold': retrieval.retrieval_score_threshold, 'min_result_count': retrieval.min_result_count, 'latency_ms': retrieval.qdrant_latency_ms }, retrieval.qdrant_status_code >= 200 && retrieval.qdrant_status_code < 300 ? 1 : 2),\n  makeSpan(retrieval.should_generate ? (retrieval.context_overflow_detected ? 'context.overflow' : 'context.assembled') : 'context.insufficient', '6000000000000000', rootSpanId, retrieval.qdrant_completed_ms, retrieval.qdrant_completed_ms, { 'prompt_hash': retrieval.prompt_hash, 'score_source': retrieval.score_source, 'context_token_budget': retrieval.context_token_budget, 'context_token_estimate_before_budget': retrieval.context_token_estimate_before_budget, 'context_token_estimate': retrieval.context_token_estimate, 'context_dropped_for_budget_count': retrieval.context_dropped_for_budget_count, 'selected_context_count_before_budget': retrieval.selected_context_count_before_budget, 'selected_context_count': retrieval.selected_context_count, 'refusal_reason': retrieval.refusal_reason }, retrieval.should_generate ? 1 : 2)\n];\nif (gemini) spans.push(makeSpan(gemini.generation_failed ? 'gemini.failed' : 'gemini.response_completed', '7000000000000000', rootSpanId, gemini.gemini_started_ms, gemini.gemini_completed_ms, { 'model': 'gemini-3.5-flash', 'prompt_hash': gemini.prompt_hash, 'gemini_status_code': gemini.gemini_status_code, 'generation_failed': gemini.generation_failed, 'failure_reason': gemini.gemini_failure_reason, 'model_refusal': gemini.model_refusal, 'response_char_count': String(gemini.gemini_response_text || '').length, 'latency_ms': gemini.gemini_latency_ms }, gemini.generation_failed ? 2 : 1));\nif (discord && discord.discord_started_ms) spans.push(makeSpan(discord.response_status === 'posted' ? 'discord.response_sent' : 'discord.response_failed', '8000000000000000', rootSpanId, discord.discord_started_ms, discord.discord_completed_ms, { 'discord_status_code': discord.discord_status_code, 'discord_response_message_id': discord.discord_response_message_id, 'response_status': discord.response_status, 'latency_ms': discord.discord_latency_ms }, discord.response_status === 'posted' ? 1 : 2));\nconst phoenixTracePayload = { resourceSpans: [{ resource: { attributes: attrs({ 'service.name': 'discord-rag-bot', 'deployment.environment': 'phase0', 'phoenix.project.name': init.phoenix_project_name || 'discord-rag-bot-phase-3b', 'project.name': init.phoenix_project_name || 'discord-rag-bot-phase-3b', 'openinference.project.name': init.phoenix_project_name || 'discord-rag-bot-phase-3b' }) }, scopeSpans: [{ scope: { name: 'n8n.phase3b.workflow', version: '1.0.0' }, spans }] }] };\nreturn [{ json: { ...finalTx, phoenix_collector_url: init.phoenix_collector_url || 'http://phoenix:6006/v1/traces', phoenix_trace_payload: phoenixTracePayload, phoenix_span_count: spans.length } }];"
+        "jsCode": "function getNode(name) { try { return $items(name)[0]?.json || null; } catch (e) { return null; } }\nfunction hexToBase64(hex) { let binary = ''; for (let i = 0; i < hex.length; i += 2) binary += String.fromCharCode(parseInt(hex.slice(i, i + 2), 16)); return btoa(binary); }\nfunction value(v) { if (v === null || v === undefined) return { stringValue: '' }; if (typeof v === 'boolean') return { boolValue: v }; if (typeof v === 'number') return Number.isInteger(v) ? { intValue: String(v) } : { doubleValue: v }; return { stringValue: String(v) }; }\nfunction attrs(obj) { return Object.entries(obj).filter(([, v]) => v !== undefined).map(([key, val]) => ({ key, value: value(val) })); }\nfunction ns(ms) { return String(Math.max(0, Math.floor(ms || Date.now())) * 1000000); }\nfunction spanId(seed) { return hexToBase64(seed.padEnd(16, '0').slice(0, 16)); }\nfunction makeSpan(name, idSeed, parentId, start, end, attributes, statusCode) { const span = { traceId, spanId: spanId(idSeed), name, kind: 1, startTimeUnixNano: ns(start), endTimeUnixNano: ns(end || start), attributes: attrs(attributes), status: { code: statusCode || 1 } }; if (parentId) span.parentSpanId = parentId; return span; }\nfunction payload(spans, projectName) { return { resourceSpans: [{ resource: { attributes: attrs({ 'service.name': 'discord-rag-bot', 'deployment.environment': 'phase0', 'phoenix.project.name': projectName, 'project.name': projectName, 'openinference.project.name': projectName }) }, scopeSpans: [{ scope: { name: 'n8n.phase3b.workflow', version: '1.0.0' }, spans }] }] }; }\nconst init = getNode('Initialize Runtime State') || $json || {};\nconst projectName = init.phoenix_project_name || 'discord-rag-bot-phase-3b';\nconst collectorUrl = init.phoenix_collector_url || 'http://phoenix:6006/v1/traces';\nconst traceSeed = String(init.query_hash || init.transaction_id || '').replace(/-/g, '').padEnd(32, '0').slice(0, 32);\nconst traceId = hexToBase64(traceSeed);\nconst rootSpanId = spanId('1000000000000000');\nconst startMs = init.workflow_started_ms || Date.now();\nconst state = init;\nconst spans = [\n  makeSpan('rag.active_call.started', '1100000000000000', null, startMs, Date.now(), { 'transaction_id': state.transaction_id, 'openinference.span.kind': 'chain', 'phoenix.project.name': projectName, 'route_type': state.route_type, 'channel_id': state.channel_id, 'channel_name': state.channel_name, 'query_hash': state.query_hash, 'status': 'retrieving' }),\n  makeSpan('discord.event_received', '2000000000000000', rootSpanId, startMs, startMs, { 'discord_message_id': state.discord_message_id, 'channel_id': state.channel_id, 'channel_name': state.channel_name, 'route_type': state.route_type }),\n  makeSpan('routing.active_call', '2100000000000000', rootSpanId, startMs, startMs, { 'route_type': state.route_type, 'reason': 'manual_phase_3b_active_call_phoenix_test' }),\n  makeSpan('query.normalized', '3000000000000000', rootSpanId, startMs, startMs, { 'query_hash': state.query_hash, 'query_prefix': 'search_query:', 'normalized_query': state.normalized_query })\n];\nreturn [{ json: { ...state, phoenix_collector_url: collectorUrl, phoenix_trace_payload: payload(spans, projectName), phoenix_checkpoint: 'start', phoenix_span_count: spans.length } }];"
       },
-      "id": "phase3b-build-phoenix-trace-payload",
-      "name": "Build Phoenix Trace Payload",
+      "id": "phase3b-build-phoenix-start",
+      "name": "Build Phoenix Start Checkpoint",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -1560,
+        -260
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $json.phoenix_collector_url }}",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ $json.phoenix_trace_payload }}",
+        "options": {
+          "response": {
+            "response": {
+              "fullResponse": true,
+              "neverError": true,
+              "responseFormat": "json"
+            }
+          }
+        }
+      },
+      "id": "phase3b-send-phoenix-start",
+      "name": "Send Phoenix Start Checkpoint",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -1320,
+        -260
+      ],
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "jsCode": "function getNode(name) { try { return $items(name)[0]?.json || null; } catch (e) { return null; } }\nfunction hexToBase64(hex) { let binary = ''; for (let i = 0; i < hex.length; i += 2) binary += String.fromCharCode(parseInt(hex.slice(i, i + 2), 16)); return btoa(binary); }\nfunction value(v) { if (v === null || v === undefined) return { stringValue: '' }; if (typeof v === 'boolean') return { boolValue: v }; if (typeof v === 'number') return Number.isInteger(v) ? { intValue: String(v) } : { doubleValue: v }; return { stringValue: String(v) }; }\nfunction attrs(obj) { return Object.entries(obj).filter(([, v]) => v !== undefined).map(([key, val]) => ({ key, value: value(val) })); }\nfunction ns(ms) { return String(Math.max(0, Math.floor(ms || Date.now())) * 1000000); }\nfunction spanId(seed) { return hexToBase64(seed.padEnd(16, '0').slice(0, 16)); }\nfunction makeSpan(name, idSeed, parentId, start, end, attributes, statusCode) { const span = { traceId, spanId: spanId(idSeed), name, kind: 1, startTimeUnixNano: ns(start), endTimeUnixNano: ns(end || start), attributes: attrs(attributes), status: { code: statusCode || 1 } }; if (parentId) span.parentSpanId = parentId; return span; }\nfunction payload(spans, projectName) { return { resourceSpans: [{ resource: { attributes: attrs({ 'service.name': 'discord-rag-bot', 'deployment.environment': 'phase0', 'phoenix.project.name': projectName, 'project.name': projectName, 'openinference.project.name': projectName }) }, scopeSpans: [{ scope: { name: 'n8n.phase3b.workflow', version: '1.0.0' }, spans }] }] }; }\nconst init = getNode('Initialize Runtime State') || $json || {};\nconst projectName = init.phoenix_project_name || 'discord-rag-bot-phase-3b';\nconst collectorUrl = init.phoenix_collector_url || 'http://phoenix:6006/v1/traces';\nconst traceSeed = String(init.query_hash || init.transaction_id || '').replace(/-/g, '').padEnd(32, '0').slice(0, 32);\nconst traceId = hexToBase64(traceSeed);\nconst rootSpanId = spanId('1000000000000000');\nconst startMs = init.workflow_started_ms || Date.now();\nconst state = getNode('Build Embedding Result') || init;\nconst spans = [makeSpan('query.embedding_completed', '4000000000000000', rootSpanId, state.embedding_started_ms, state.embedding_completed_ms, { 'model': 'nomic-ai/nomic-embed-text-v1.5', 'embedding_ok': state.embedding_ok, 'embedding_dimension': Array.isArray(state.query_vector) ? state.query_vector.length : 0, 'embedding_status_code': state.embedding_status_code, 'latency_ms': state.embedding_latency_ms, 'query_hash': state.query_hash }, state.embedding_ok ? 1 : 2)];\nreturn [{ json: { ...state, phoenix_collector_url: collectorUrl, phoenix_trace_payload: payload(spans, projectName), phoenix_checkpoint: 'embedding', phoenix_span_count: spans.length } }];"
+      },
+      "id": "phase3b-build-phoenix-embedding",
+      "name": "Build Phoenix Embedding Checkpoint",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -840,
+        -260
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $json.phoenix_collector_url }}",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ $json.phoenix_trace_payload }}",
+        "options": {
+          "response": {
+            "response": {
+              "fullResponse": true,
+              "neverError": true,
+              "responseFormat": "json"
+            }
+          }
+        }
+      },
+      "id": "phase3b-send-phoenix-embedding",
+      "name": "Send Phoenix Embedding Checkpoint",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -600,
+        -260
+      ],
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "jsCode": "function getNode(name) { try { return $items(name)[0]?.json || null; } catch (e) { return null; } }\nfunction hexToBase64(hex) { let binary = ''; for (let i = 0; i < hex.length; i += 2) binary += String.fromCharCode(parseInt(hex.slice(i, i + 2), 16)); return btoa(binary); }\nfunction value(v) { if (v === null || v === undefined) return { stringValue: '' }; if (typeof v === 'boolean') return { boolValue: v }; if (typeof v === 'number') return Number.isInteger(v) ? { intValue: String(v) } : { doubleValue: v }; return { stringValue: String(v) }; }\nfunction attrs(obj) { return Object.entries(obj).filter(([, v]) => v !== undefined).map(([key, val]) => ({ key, value: value(val) })); }\nfunction ns(ms) { return String(Math.max(0, Math.floor(ms || Date.now())) * 1000000); }\nfunction spanId(seed) { return hexToBase64(seed.padEnd(16, '0').slice(0, 16)); }\nfunction makeSpan(name, idSeed, parentId, start, end, attributes, statusCode) { const span = { traceId, spanId: spanId(idSeed), name, kind: 1, startTimeUnixNano: ns(start), endTimeUnixNano: ns(end || start), attributes: attrs(attributes), status: { code: statusCode || 1 } }; if (parentId) span.parentSpanId = parentId; return span; }\nfunction payload(spans, projectName) { return { resourceSpans: [{ resource: { attributes: attrs({ 'service.name': 'discord-rag-bot', 'deployment.environment': 'phase0', 'phoenix.project.name': projectName, 'project.name': projectName, 'openinference.project.name': projectName }) }, scopeSpans: [{ scope: { name: 'n8n.phase3b.workflow', version: '1.0.0' }, spans }] }] }; }\nconst init = getNode('Initialize Runtime State') || $json || {};\nconst projectName = init.phoenix_project_name || 'discord-rag-bot-phase-3b';\nconst collectorUrl = init.phoenix_collector_url || 'http://phoenix:6006/v1/traces';\nconst traceSeed = String(init.query_hash || init.transaction_id || '').replace(/-/g, '').padEnd(32, '0').slice(0, 32);\nconst traceId = hexToBase64(traceSeed);\nconst rootSpanId = spanId('1000000000000000');\nconst startMs = init.workflow_started_ms || Date.now();\nconst state = getNode('Build Retrieval And Context Decision') || init;\nconst contextName = state.should_generate ? (state.context_overflow_detected ? 'context.overflow' : 'context.assembled') : 'context.insufficient';\nconst spans = [\n  makeSpan('qdrant.query_completed', '5000000000000000', rootSpanId, state.qdrant_started_ms, state.qdrant_completed_ms, { 'qdrant_collection': state.qdrant_collection, 'qdrant_status_code': state.qdrant_status_code, 'raw_candidate_count': state.raw_candidate_count, 'passed_candidate_count': state.passed_candidate_count, 'selected_context_count': state.selected_context_count, 'retrieval_score_threshold': state.retrieval_score_threshold, 'min_result_count': state.min_result_count, 'latency_ms': state.qdrant_latency_ms, 'query_hash': state.query_hash }, state.qdrant_status_code >= 200 && state.qdrant_status_code < 300 ? 1 : 2),\n  makeSpan(contextName, '6000000000000000', rootSpanId, state.qdrant_completed_ms, state.qdrant_completed_ms, { 'prompt_hash': state.prompt_hash, 'score_source': state.score_source, 'context_token_budget': state.context_token_budget, 'context_token_estimate_before_budget': state.context_token_estimate_before_budget, 'context_token_estimate': state.context_token_estimate, 'context_dropped_for_budget_count': state.context_dropped_for_budget_count, 'selected_context_count_before_budget': state.selected_context_count_before_budget, 'selected_context_count': state.selected_context_count, 'refusal_reason': state.refusal_reason }, state.should_generate ? 1 : 2)\n];\nreturn [{ json: { ...state, phoenix_collector_url: collectorUrl, phoenix_trace_payload: payload(spans, projectName), phoenix_checkpoint: 'retrieval_context', phoenix_span_count: spans.length } }];"
+      },
+      "id": "phase3b-build-phoenix-retrieval",
+      "name": "Build Phoenix Retrieval Context Checkpoint",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        360,
+        -260
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $json.phoenix_collector_url }}",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ $json.phoenix_trace_payload }}",
+        "options": {
+          "response": {
+            "response": {
+              "fullResponse": true,
+              "neverError": true,
+              "responseFormat": "json"
+            }
+          }
+        }
+      },
+      "id": "phase3b-send-phoenix-retrieval",
+      "name": "Send Phoenix Retrieval Context Checkpoint",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        600,
+        -260
+      ],
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "jsCode": "function getNode(name) { try { return $items(name)[0]?.json || null; } catch (e) { return null; } }\nfunction hexToBase64(hex) { let binary = ''; for (let i = 0; i < hex.length; i += 2) binary += String.fromCharCode(parseInt(hex.slice(i, i + 2), 16)); return btoa(binary); }\nfunction value(v) { if (v === null || v === undefined) return { stringValue: '' }; if (typeof v === 'boolean') return { boolValue: v }; if (typeof v === 'number') return Number.isInteger(v) ? { intValue: String(v) } : { doubleValue: v }; return { stringValue: String(v) }; }\nfunction attrs(obj) { return Object.entries(obj).filter(([, v]) => v !== undefined).map(([key, val]) => ({ key, value: value(val) })); }\nfunction ns(ms) { return String(Math.max(0, Math.floor(ms || Date.now())) * 1000000); }\nfunction spanId(seed) { return hexToBase64(seed.padEnd(16, '0').slice(0, 16)); }\nfunction makeSpan(name, idSeed, parentId, start, end, attributes, statusCode) { const span = { traceId, spanId: spanId(idSeed), name, kind: 1, startTimeUnixNano: ns(start), endTimeUnixNano: ns(end || start), attributes: attrs(attributes), status: { code: statusCode || 1 } }; if (parentId) span.parentSpanId = parentId; return span; }\nfunction payload(spans, projectName) { return { resourceSpans: [{ resource: { attributes: attrs({ 'service.name': 'discord-rag-bot', 'deployment.environment': 'phase0', 'phoenix.project.name': projectName, 'project.name': projectName, 'openinference.project.name': projectName }) }, scopeSpans: [{ scope: { name: 'n8n.phase3b.workflow', version: '1.0.0' }, spans }] }] }; }\nconst init = getNode('Initialize Runtime State') || $json || {};\nconst projectName = init.phoenix_project_name || 'discord-rag-bot-phase-3b';\nconst collectorUrl = init.phoenix_collector_url || 'http://phoenix:6006/v1/traces';\nconst traceSeed = String(init.query_hash || init.transaction_id || '').replace(/-/g, '').padEnd(32, '0').slice(0, 32);\nconst traceId = hexToBase64(traceSeed);\nconst rootSpanId = spanId('1000000000000000');\nconst startMs = init.workflow_started_ms || Date.now();\nconst state = getNode('Build Gemini Result') || init;\nconst spans = [makeSpan(state.generation_failed ? 'gemini.failed' : 'gemini.response_completed', '7000000000000000', rootSpanId, state.gemini_started_ms, state.gemini_completed_ms, { 'model': 'gemini-3.5-flash', 'prompt_hash': state.prompt_hash, 'gemini_status_code': state.gemini_status_code, 'generation_failed': state.generation_failed, 'failure_reason': state.gemini_failure_reason, 'model_refusal': state.model_refusal, 'response_char_count': String(state.gemini_response_text || '').length, 'latency_ms': state.gemini_latency_ms, 'query_hash': state.query_hash }, state.generation_failed ? 2 : 1)];\nreturn [{ json: { ...state, phoenix_collector_url: collectorUrl, phoenix_trace_payload: payload(spans, projectName), phoenix_checkpoint: 'gemini', phoenix_span_count: spans.length } }];"
+      },
+      "id": "phase3b-build-phoenix-gemini",
+      "name": "Build Phoenix Gemini Checkpoint",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1800,
+        -520
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $json.phoenix_collector_url }}",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ $json.phoenix_trace_payload }}",
+        "options": {
+          "response": {
+            "response": {
+              "fullResponse": true,
+              "neverError": true,
+              "responseFormat": "json"
+            }
+          }
+        }
+      },
+      "id": "phase3b-send-phoenix-gemini",
+      "name": "Send Phoenix Gemini Checkpoint",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        2040,
+        -520
+      ],
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "jsCode": "function getNode(name) { try { return $items(name)[0]?.json || null; } catch (e) { return null; } }\nfunction hexToBase64(hex) { let binary = ''; for (let i = 0; i < hex.length; i += 2) binary += String.fromCharCode(parseInt(hex.slice(i, i + 2), 16)); return btoa(binary); }\nfunction value(v) { if (v === null || v === undefined) return { stringValue: '' }; if (typeof v === 'boolean') return { boolValue: v }; if (typeof v === 'number') return Number.isInteger(v) ? { intValue: String(v) } : { doubleValue: v }; return { stringValue: String(v) }; }\nfunction attrs(obj) { return Object.entries(obj).filter(([, v]) => v !== undefined).map(([key, val]) => ({ key, value: value(val) })); }\nfunction ns(ms) { return String(Math.max(0, Math.floor(ms || Date.now())) * 1000000); }\nfunction spanId(seed) { return hexToBase64(seed.padEnd(16, '0').slice(0, 16)); }\nfunction makeSpan(name, idSeed, parentId, start, end, attributes, statusCode) { const span = { traceId, spanId: spanId(idSeed), name, kind: 1, startTimeUnixNano: ns(start), endTimeUnixNano: ns(end || start), attributes: attrs(attributes), status: { code: statusCode || 1 } }; if (parentId) span.parentSpanId = parentId; return span; }\nfunction payload(spans, projectName) { return { resourceSpans: [{ resource: { attributes: attrs({ 'service.name': 'discord-rag-bot', 'deployment.environment': 'phase0', 'phoenix.project.name': projectName, 'project.name': projectName, 'openinference.project.name': projectName }) }, scopeSpans: [{ scope: { name: 'n8n.phase3b.workflow', version: '1.0.0' }, spans }] }] }; }\nconst init = getNode('Initialize Runtime State') || $json || {};\nconst projectName = init.phoenix_project_name || 'discord-rag-bot-phase-3b';\nconst collectorUrl = init.phoenix_collector_url || 'http://phoenix:6006/v1/traces';\nconst traceSeed = String(init.query_hash || init.transaction_id || '').replace(/-/g, '').padEnd(32, '0').slice(0, 32);\nconst traceId = hexToBase64(traceSeed);\nconst rootSpanId = spanId('1000000000000000');\nconst startMs = init.workflow_started_ms || Date.now();\nconst finalTx = $json || {}; const answer = getNode('Build Discord Answer Result'); const refusal = getNode('Build Discord Refusal Result'); const discord = answer || refusal || finalTx; const retrieval = getNode('Build Retrieval And Context Decision') || {}; const gemini = getNode('Build Gemini Result');\nconst finalStatus = finalTx.status || retrieval.final_status || 'unknown';\nconst refusalReason = finalTx.refusal_reason || retrieval.refusal_reason || '';\nconst failureReason = finalTx.failure_reason || gemini?.gemini_failure_reason || discord?.failure_reason || '';\nconst endMs = Date.now();\nconst spans = [makeSpan('rag.active_call', '1000000000000000', null, startMs, endMs, { 'transaction_id': init.transaction_id || finalTx.transaction_id, 'openinference.span.kind': 'chain', 'phoenix.project.name': projectName, 'route_type': init.route_type, 'channel_id': init.channel_id, 'channel_name': init.channel_name, 'query_hash': init.query_hash, 'status': finalStatus, 'refusal_reason': refusalReason, 'failure_reason': failureReason }, finalStatus === 'failed' ? 2 : 1)];\nif (discord && discord.discord_started_ms) {\n  spans.push(makeSpan(discord.response_status === 'posted' ? 'discord.response_sent' : 'discord.response_failed', '8000000000000000', rootSpanId, discord.discord_started_ms, discord.discord_completed_ms, { 'discord_status_code': discord.discord_status_code, 'discord_response_message_id': discord.discord_response_message_id, 'response_status': discord.response_status, 'latency_ms': discord.discord_latency_ms }, discord.response_status === 'posted' ? 1 : 2));\n}\nreturn [{ json: { ...finalTx, phoenix_collector_url: collectorUrl, phoenix_trace_payload: payload(spans, projectName), phoenix_checkpoint: 'final', phoenix_span_count: spans.length } }];"
+      },
+      "id": "phase3b-build-phoenix-final",
+      "name": "Build Phoenix Final Checkpoint",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
@@ -626,8 +786,8 @@
           }
         }
       },
-      "id": "phase3b-send-phoenix-trace",
-      "name": "Send Phoenix Trace",
+      "id": "phase3b-send-phoenix-final",
+      "name": "Send Phoenix Final Checkpoint",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [
@@ -720,7 +880,7 @@
       "main": [
         [
           {
-            "node": "Prepare Qdrant Search",
+            "node": "Build Phoenix Embedding Checkpoint",
             "type": "main",
             "index": 0
           }
@@ -764,7 +924,7 @@
       "main": [
         [
           {
-            "node": "Context Found?",
+            "node": "Build Phoenix Retrieval Context Checkpoint",
             "type": "main",
             "index": 0
           }
@@ -815,7 +975,7 @@
       "main": [
         [
           {
-            "node": "Gemini Failed?",
+            "node": "Build Phoenix Gemini Checkpoint",
             "type": "main",
             "index": 0
           }
@@ -910,7 +1070,7 @@
       "main": [
         [
           {
-            "node": "Build Phoenix Trace Payload",
+            "node": "Build Phoenix Final Checkpoint",
             "type": "main",
             "index": 0
           }
@@ -921,7 +1081,7 @@
       "main": [
         [
           {
-            "node": "Build Phoenix Trace Payload",
+            "node": "Build Phoenix Final Checkpoint",
             "type": "main",
             "index": 0
           }
@@ -932,6 +1092,28 @@
       "main": [
         [
           {
+            "node": "Build Phoenix Start Checkpoint",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Phoenix Start Checkpoint": {
+      "main": [
+        [
+          {
+            "node": "Send Phoenix Start Checkpoint",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send Phoenix Start Checkpoint": {
+      "main": [
+        [
+          {
             "node": "Prepare Embedding Request",
             "type": "main",
             "index": 0
@@ -939,18 +1121,84 @@
         ]
       ]
     },
-    "Build Phoenix Trace Payload": {
+    "Build Phoenix Embedding Checkpoint": {
       "main": [
         [
           {
-            "node": "Send Phoenix Trace",
+            "node": "Send Phoenix Embedding Checkpoint",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Send Phoenix Trace": {
+    "Send Phoenix Embedding Checkpoint": {
+      "main": [
+        [
+          {
+            "node": "Prepare Qdrant Search",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Phoenix Retrieval Context Checkpoint": {
+      "main": [
+        [
+          {
+            "node": "Send Phoenix Retrieval Context Checkpoint",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send Phoenix Retrieval Context Checkpoint": {
+      "main": [
+        [
+          {
+            "node": "Context Found?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Phoenix Gemini Checkpoint": {
+      "main": [
+        [
+          {
+            "node": "Send Phoenix Gemini Checkpoint",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send Phoenix Gemini Checkpoint": {
+      "main": [
+        [
+          {
+            "node": "Gemini Failed?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Phoenix Final Checkpoint": {
+      "main": [
+        [
+          {
+            "node": "Send Phoenix Final Checkpoint",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send Phoenix Final Checkpoint": {
       "main": [
         [
           {

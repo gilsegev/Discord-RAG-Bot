@@ -154,6 +154,20 @@ Every event gets one `transaction_id`. Phoenix and Postgres both use this ID, bu
 
 Phoenix stores the step-by-step trace of a bot interaction. Each Phoenix trace should include one root span and child spans for routing, retrieval, reranking, dedupe, context assembly, LLM generation, response dispatch, and feedback.
 
+Phoenix spans should be emitted progressively at major workflow checkpoints rather than only as one final trace dump. This gives maintainers partial trace evidence when a workflow fails mid-run, while avoiding an HTTP call after every tiny n8n node.
+
+Starting checkpoint emission points:
+
+| Checkpoint | Phoenix Spans |
+|---|---|
+| Start | `rag.active_call.started`, `discord.event_received`, `routing.active_call`, `query.normalized` |
+| Embedding | `query.embedding_completed` |
+| Retrieval and context | `qdrant.query_completed`, `qdrant.no_context`, `context.assembled`, `context.overflow`, `context.insufficient` |
+| Gemini | `gemini.response_completed`, `gemini.failed` |
+| Final dispatch | `rag.active_call`, `discord.response_sent`, `discord.response_failed` |
+
+Postgres should not be used as the primary detailed node-level trace store. It should keep durable state and reporting inputs while Phoenix owns visual trace inspection.
+
 Root trace attributes:
 
 | Attribute | Purpose |
@@ -348,6 +362,7 @@ These are logical observability events, not native events emitted directly by Di
 
 - Phoenix stores them as trace spans/events for visual debugging.
 - Postgres stores key events as durable rows in `rag_trace_events` for reporting and weekly metrics.
+- For active-call execution traces, prefer progressive Phoenix checkpoint emission over a single end-of-workflow trace upload.
 
 | Stage | Event / Span |
 |---|---|
@@ -397,7 +412,8 @@ Implementation note:
 
 - Use n8n OpenTelemetry for workflow/node execution traces where practical.
 - Use explicit Postgres writes for RAG-specific events that need durable querying.
-- Send custom Phoenix spans for retrieval, rerank, dedupe, context, and LLM calls.
+- Send custom Phoenix spans progressively at major workflow checkpoints: start, embedding, retrieval/context, Gemini, and final dispatch.
+- Keep Postgres writes on the hot path limited to durable transaction state and reporting inputs, such as retrieval result rows.
 
 ## 8. User Interaction With Observability
 

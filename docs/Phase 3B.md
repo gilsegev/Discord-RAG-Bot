@@ -17,6 +17,8 @@ The intended split is:
 
 Phase 3B moves detailed per-node trace evidence to Phoenix while keeping Postgres for durable bot state.
 
+Phoenix traces are emitted progressively at major checkpoints rather than only once at the end. This gives us partial trace evidence when a workflow fails midway without adding a Phoenix write after every tiny n8n node.
+
 ## What Changes
 Phase 3B keeps the working active-call path:
 
@@ -40,7 +42,7 @@ Phase 3:
 n8n -> Postgres rag_trace_events for detailed node trace events
 
 Phase 3B:
-n8n -> Phoenix OTLP trace for detailed node spans
+n8n -> Phoenix OTLP trace spans at major checkpoints
 n8n -> Postgres only for durable state and reporting inputs
 ```
 
@@ -89,9 +91,19 @@ from the n8n workflow.
 Postgres may still keep compact final summaries later if needed for weekly metrics, but detailed node spans belong in Phoenix.
 
 ## Phoenix Responsibilities
-Phoenix receives one OTLP/HTTP trace payload near the end of the workflow.
+Phoenix receives OTLP/HTTP trace payloads at major checkpoints during the workflow.
 
-The trace contains:
+The checkpoint emissions are:
+
+| Checkpoint | Node Pair | Spans |
+|---|---|---|
+| Start | `Build Phoenix Start Checkpoint` -> `Send Phoenix Start Checkpoint` | `rag.active_call.started`, `discord.event_received`, `routing.active_call`, `query.normalized` |
+| Embedding | `Build Phoenix Embedding Checkpoint` -> `Send Phoenix Embedding Checkpoint` | `query.embedding_completed` |
+| Retrieval/context | `Build Phoenix Retrieval Context Checkpoint` -> `Send Phoenix Retrieval Context Checkpoint` | `qdrant.query_completed`, `context.assembled`, `context.overflow`, or `context.insufficient` |
+| Gemini | `Build Phoenix Gemini Checkpoint` -> `Send Phoenix Gemini Checkpoint` | `gemini.response_completed` or `gemini.failed` |
+| Final | `Build Phoenix Final Checkpoint` -> `Send Phoenix Final Checkpoint` | `rag.active_call`, `discord.response_sent`, or `discord.response_failed` |
+
+The resulting trace contains:
 
 - one root span: `rag.active_call`
 - child spans:
