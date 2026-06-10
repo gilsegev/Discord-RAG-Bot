@@ -28,6 +28,7 @@ repo-owned ragbot-n8n
   -> postgres:5432
   -> qdrant:6333
   -> embedder:8000
+  -> trace-emitter:8001
   -> phoenix:6006
 ```
 
@@ -64,6 +65,7 @@ Repo-owned n8n mode:
 | Postgres | `postgres` |
 | Qdrant | `qdrant` |
 | Embedder | `embedder` |
+| Trace emitter | `trace-emitter` |
 | Phoenix | `phoenix` |
 
 External n8n compatibility mode:
@@ -73,6 +75,7 @@ External n8n compatibility mode:
 | Postgres | `ragbot-postgres` |
 | Qdrant | `ragbot-qdrant` |
 | Embedder | `ragbot-embedder` |
+| Trace emitter | `ragbot-trace-emitter` |
 | Phoenix | `ragbot-phoenix` |
 
 ## Secret Safety
@@ -96,6 +99,7 @@ The repo must not contain:
 ## Initial Acceptance Criteria
 - `docker compose up -d` starts backend services reliably.
 - Repo-owned n8n can resolve `postgres`, `qdrant`, `embedder`, and `phoenix`.
+- Repo-owned n8n can resolve and call `trace-emitter` for Phoenix trace forwarding.
 - External n8n compatibility mode has a documented, repeatable network attach path.
 - Phase 3 workflow can run using service hostnames instead of container IPs.
 - Verification script catches DNS, healthcheck, and connectivity failures before workflow testing.

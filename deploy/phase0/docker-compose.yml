@@ -79,6 +79,19 @@ services:
     volumes:
       - embedder_model_cache:/models
 
+  trace-emitter:
+    build:
+      context: ./trace-emitter
+    container_name: ragbot-trace-emitter
+    restart: unless-stopped
+    depends_on:
+      - phoenix
+    environment:
+      PHOENIX_OTLP_HTTP_ENDPOINT: http://phoenix:6006/v1/traces
+      REQUEST_TIMEOUT_SECONDS: 5
+    ports:
+      - "127.0.0.1:${TRACE_EMITTER_PORT}:8001"
+
   qdrant:
     image: qdrant/qdrant:latest
     container_name: ragbot-qdrant

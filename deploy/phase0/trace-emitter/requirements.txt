@@ -1,0 +1,5 @@
+fastapi==0.115.6
+uvicorn[standard]==0.34.0
+requests==2.32.3
+protobuf==5.29.2
+opentelemetry-proto==1.29.0
