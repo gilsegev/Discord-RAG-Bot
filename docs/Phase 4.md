@@ -109,6 +109,17 @@ Run at least these tests before moving to Phase 5.
 | No useful match | Use an out-of-domain/nonsense query | Refusal with `no_qdrant_results` or `fewer_than_min_stage_1_results` |
 | Known answer candidate | Use a known indexed question | Stage 1 passes with at least 3 candidates |
 | Current token-budget edge case | Use the Meta partnership interview question | Stage 1 should pass; later context budget may still refuse |
+| Stage 1 false positive | Ask a semantically adjacent but unsupported question, such as "How is the culture at Coupang?" | Stage 1 may pass, Gemini may refuse with `gemini_context_insufficient`; this is expected until Phase 5 reranking |
+
+If Gemini refuses after Stage 1 passed, the final transaction should use:
+
+```text
+status = refused
+retrieval_status = no_context
+refusal_reason = gemini_context_insufficient
+```
+
+This means Qdrant found candidate chunks, but the final grounding check found the assembled context insufficient for the actual question.
 
 ## Validation Queries
 Latest transaction:
