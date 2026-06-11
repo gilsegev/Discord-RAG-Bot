@@ -179,8 +179,10 @@ Implementation notes:
 - It logs `context.overflow` when context had to be trimmed and stores before/after token estimates.
 - It still excludes passive listener behavior, reranking, dedupe, reaction boost, feedback correlation, weekly metrics, and advanced alerting.
 
-## Phase 4: Retrieval Refusal Gate
-Add refusal logic before adding more sophisticated retrieval behavior.
+## Phase 4: Stage 1 Retrieval Refusal Gate
+Harden the Qdrant-stage refusal logic before adding reranking or dedupe.
+
+This phase only owns the Stage 1 gate from the retrieval contract. It does not decide reranker refusal, dedupe sufficiency, or final LLM grounding refusal.
 
 Gate:
 
@@ -201,7 +203,26 @@ If yes:
 
 Expected outcome:
 
-The bot refuses weak retrieval instead of generating unsupported answers.
+The bot refuses when Qdrant cannot provide at least three candidates above `retrieval_score >= 0.55`, and the reason is explicit in Postgres and Phoenix.
+
+Phase 4 intentionally stops short of the full retrieval contract:
+
+- reranker refusal is added in Phase 5
+- dedupe-driven context sufficiency is added in Phase 6
+- exact context block formatting and final prompt refusal are finalized in Phase 7
+
+Implementation artifact:
+
+```text
+workflows/n8n/rag-active-call-phase-4-stage-1-retrieval-gate.json
+```
+
+Implementation notes:
+
+- Adds `Build Stage 1 Retrieval Gate` immediately after Qdrant search.
+- Records `stage_1_gate_status`, `stage_1_gate_reason`, threshold, raw candidate count, and passed candidate count.
+- Emits a Phoenix span named `retrieval.stage1_gate_passed` or `retrieval.stage1_gate_refused`.
+- Keeps the Phase 3B Phoenix trace emitter path and durable Postgres transaction state.
 
 ## Phase 5: Reranker
 Add the CrossEncoder reranker after raw Qdrant retrieval is working.
