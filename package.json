@@ -1,0 +1,7 @@
+{
+  "scripts": {
+    "n8n:list": "node scripts/n8n-sync.js list",
+    "n8n:pull": "node scripts/n8n-sync.js pull",
+    "n8n:push": "node scripts/n8n-sync.js push"
+  }
+}
