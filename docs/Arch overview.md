@@ -20,6 +20,20 @@ The system relies on a lean, containerized stack designed to balance low operati
 **Responsibility:** Stores historical message embeddings for RAG lookups.  
 **Implementation:** Runs natively in Docker with ARM64 compatibility.
 
+### Local Embedder Service
+**Role:** Query embedding runtime.  
+**Responsibility:** Converts normalized user queries into vectors using `nomic-ai/nomic-embed-text-v1.5`.  
+**Implementation:** Local FastAPI service called by n8n at `http://embedder:8000/embed`.
+
+n8n owns the workflow node and request orchestration. The embedder service owns the Python/model runtime because n8n Code nodes are not designed to load Hugging Face models, manage model cache, or run local CPU inference.
+
+### Local Reranker Service
+**Role:** Stage 2 retrieval relevance runtime.  
+**Responsibility:** Scores Stage 1 Qdrant candidates with `cross-encoder/ms-marco-MiniLM-L-6-v2` and returns `reranker_score` values.  
+**Implementation:** Local FastAPI service called by n8n at `http://reranker:8002/rerank`.
+
+n8n still owns the logical rerank node, threshold gate, refusal handling, context assembly, and observability. The reranker service exists only to host the Python/PyTorch CrossEncoder runtime. This avoids embedding heavyweight ML dependencies inside n8n and follows the same model-serving pattern as the embedder.
+
 ### Gemini API
 **Role:** Cognitive engine.  
 **Responsibility:** Evaluates relevance, structures data, and generates responses.  
@@ -53,7 +67,13 @@ The live interaction loop operates through a dual-trigger ingress system. It pro
        +-------------------------+---------------+
                                  |
                                  v
+                       [ Embed Query ]
+                                 |
+                                 v
                        [ Qdrant Payload Query ]
+                                 |
+                                 v
+                       [ CrossEncoder Rerank ]
                                  |
                                  v
               [ Log: Vector Latency & Context Matches ]
@@ -126,9 +146,9 @@ To minimize overhead, the backend infrastructure is self-contained within the ex
 | Area             | Design                                                                           | Notes                                                            |
 |------------------|----------------------------------------------------------------------------------|------------------------------------------------------------------|
 | Host             | OCI Always Free Tier on ARM64 Ampere compute.                                    | Up to 24 GB RAM available for the instance.                      |
-| Containers       | Qdrant and observability storage run beside n8n.                                 | Keeps the backend lightweight and self-contained.                 |
-| Internal network | n8n, Qdrant, and telemetry storage communicate over Docker bridge or `localhost`. | Minimizes latency between local services.                        |
-| External network | Discord and Gemini calls use outbound HTTPS.                                     | Keeps third-party API traffic separate from local service traffic. |
+| Containers       | Qdrant, Phoenix/Postgres, embedder, reranker, and trace emitter run beside n8n. | Keeps runtime dependencies local and self-contained. |
+| Internal network | n8n reaches Qdrant, embedder, reranker, Phoenix, and Postgres over Docker service names. | Avoids container IP drift and keeps local calls off the public network. |
+| External network | Discord, Gemini, and model downloads use outbound HTTPS. | Keeps third-party API traffic separate from local service traffic. |
 
 ## 5. Volunteer Implementation Scope
 
@@ -137,6 +157,7 @@ Volunteers own the implementation details that stem from this structural baselin
 | Workstream             | Responsibility                                                              | Output                                      |
 |------------------------|-----------------------------------------------------------------------------|---------------------------------------------|
 | Vector database schema | Design Qdrant collections, distance metrics, payload fields, and indexes.   | Searchable vector store with useful metadata. |
+| Local model services   | Package embedder and reranker runtimes as lightweight internal HTTP services. | n8n can call CPU-bound models without carrying Python/PyTorch dependencies. |
 | Bot engagement logic   | Configure n8n filtering for when the bot should respond or stay silent.     | Clear active/passive response rules.        |
 | Observability backend  | Select and wire tracing storage, such as PostgreSQL, Langfuse, or Phoenix.  | Queryable logs for each bot transaction.    |
 | Feedback correlation   | Define keys that link reactions and critiques back to prior inference logs. | Feedback data tied to the original bot answer. |
