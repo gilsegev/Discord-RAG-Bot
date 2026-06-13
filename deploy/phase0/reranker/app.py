@@ -8,6 +8,9 @@ from sentence_transformers import CrossEncoder
 
 MODEL_NAME = os.getenv("MODEL_NAME", "cross-encoder/ms-marco-MiniLM-L-6-v2")
 MODEL_CACHE = os.getenv("MODEL_CACHE", "/models")
+os.environ.setdefault("HF_HOME", MODEL_CACHE)
+os.environ.setdefault("SENTENCE_TRANSFORMERS_HOME", MODEL_CACHE)
+os.environ.setdefault("TRANSFORMERS_CACHE", MODEL_CACHE)
 
 app = FastAPI(title="Discord RAG Bot Reranker")
 model: CrossEncoder | None = None
@@ -27,7 +30,7 @@ class RerankRequest(BaseModel):
 @app.on_event("startup")
 def load_model() -> None:
     global model
-    model = CrossEncoder(MODEL_NAME, cache_folder=MODEL_CACHE)
+    model = CrossEncoder(MODEL_NAME)
 
 
 @app.get("/health")
@@ -37,6 +40,14 @@ def health() -> Dict[str, str]:
 
 @app.post("/rerank")
 def rerank(request: RerankRequest) -> Dict[str, Any]:
+    if model is None:
+        return {
+            "model": MODEL_NAME,
+            "latency_ms": 0,
+            "results": [],
+            "error": "model_not_loaded",
+        }
+
     if not request.candidates:
         return {"model": MODEL_NAME, "latency_ms": 0, "results": []}
 
