@@ -1,5 +1,7 @@
 {
+  "id": "MPsiMHYdldFofa7G",
   "name": "RAG Active Call - Phase 5 Reranker",
+  "active": false,
   "nodes": [
     {
       "parameters": {},
@@ -868,7 +870,6 @@
       "onError": "continueRegularOutput"
     }
   ],
-  "pinData": {},
   "connections": {
     "Manual Trigger": {
       "main": [
@@ -1303,14 +1304,11 @@
       ]
     }
   },
-  "active": false,
   "settings": {
     "executionOrder": "v1"
   },
-  "versionId": "phase-3b-phoenix-tracing-v1",
+  "staticData": null,
   "meta": {
     "templateCredsSetupCompleted": false
-  },
-  "id": "rag-active-call-phase-3b-phoenix-tracing",
-  "tags": []
+  }
 }
