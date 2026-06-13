@@ -123,9 +123,9 @@
               "type": "string"
             },
             {
-              "id": "phase3b-context-budget",
+              "id": "phase5-context-budget",
               "name": "context_token_budget",
-              "value": 1200,
+              "value": 2200,
               "type": "number"
             },
             {

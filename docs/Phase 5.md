@@ -72,6 +72,8 @@ Build Stage 1 Retrieval Gate
 - drop lowest-score chunks when over token budget
 - populate the context block score field
 
+Phase 5 uses `context_token_budget = 2200`, matching the retrieval/context contract's approximate total budget. The earlier 1200-token safety rail is too small for reranked top-5 context and can create false refusals even when the reranker finds high-quality evidence.
+
 ## Refusal Rules
 Refuse before Gemini when:
 
