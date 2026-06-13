@@ -245,6 +245,20 @@ Expected outcome:
 
 The workflow improves relevance without changing the rest of the active-call path.
 
+Implementation artifact:
+
+```text
+workflows/n8n/rag-active-call-phase-5-reranker.json
+```
+
+Implementation notes:
+
+- Adds repo-owned reranker service at `http://reranker:8002/rerank`.
+- Uses `cross-encoder/ms-marco-MiniLM-L-6-v2`.
+- Refuses before Gemini when fewer than three candidates have `reranker_score > 0`.
+- Stores both `retrieval_score` and `reranker_score`.
+- Emits Phoenix rerank spans.
+
 ## Phase 6: Dedupe Placeholder
 Add message-overlap dedupe after reranking and before context assembly.
 

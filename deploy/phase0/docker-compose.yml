@@ -79,6 +79,20 @@ services:
     volumes:
       - embedder_model_cache:/models
 
+  reranker:
+    build:
+      context: ./reranker
+    container_name: ragbot-reranker
+    restart: unless-stopped
+    environment:
+      HF_TOKEN: ${HF_TOKEN:-}
+      MODEL_NAME: cross-encoder/ms-marco-MiniLM-L-6-v2
+      MODEL_CACHE: /models
+    ports:
+      - "127.0.0.1:${RERANKER_PORT}:8002"
+    volumes:
+      - reranker_model_cache:/models
+
   trace-emitter:
     build:
       context: ./trace-emitter
@@ -107,4 +121,5 @@ volumes:
   n8n_data:
   qdrant_data:
   embedder_model_cache:
+  reranker_model_cache:
 
