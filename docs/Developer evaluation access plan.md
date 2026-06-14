@@ -177,6 +177,8 @@ This section must be performed by the Oracle server administrator because it req
 
 ### 8.1 Shilpi Generates A Dedicated Key
 
+Shilpi does not need the Oracle server address, an Oracle account, or any existing server credential for this step. Key generation happens entirely on her laptop.
+
 On Shilpi's laptop:
 
 ```bash
@@ -190,6 +192,8 @@ She should set a passphrase and send only this public-key file to the server adm
 ```
 
 She must not send the private file `~/.ssh/tpm-rag-eval`.
+
+After receiving the public key, the server administrator completes steps 8.2 through 8.4. Shilpi only needs the server DNS name when she opens the tunnel in step 8.5.
 
 ### 8.2 Create The Tunnel-Only Linux Account
 
@@ -281,7 +285,13 @@ The account is constrained in both `sshd_config` and `authorized_keys`. The dupl
 
 ### 8.5 Shilpi Opens The Tunnel
 
-From Shilpi's laptop, replace `ORACLE_PUBLIC_IP` with the server's public IP or DNS name:
+At this point, provide Shilpi with the server DNS name:
+
+```text
+discord-notifier.duckdns.org
+```
+
+From Shilpi's laptop:
 
 ```bash
 ssh -i ~/.ssh/tpm-rag-eval \
@@ -290,7 +300,7 @@ ssh -i ~/.ssh/tpm-rag-eval \
   -o ExitOnForwardFailure=yes \
   -o ServerAliveInterval=30 \
   -o ServerAliveCountMax=3 \
-  n8n_eval_shilpi@ORACLE_PUBLIC_IP
+  n8n_eval_shilpi@discord-notifier.duckdns.org
 ```
 
 While that command remains running, Shilpi opens:
