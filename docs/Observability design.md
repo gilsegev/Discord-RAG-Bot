@@ -293,16 +293,23 @@ One row per retrieved chunk candidate.
 
 One row per feedback signal.
 
-Feedback is a satisfaction signal and review trigger. It should not be treated as an evaluation label by itself. For example, a negative reaction can flag a transaction for human review, but it does not automatically become `label = fail` in `rag_eval_labels`.
+Feedback is a satisfaction signal and review trigger. It should not be treated as an evaluation label by itself. A negative reaction or explicit critique flags the transaction for human review (`review_candidate = true`, `review_status = pending`); a reviewer then writes the authoritative pass/fail row to `rag_eval_labels`. A 👎 never becomes `label = fail` automatically. The correlation mechanism that populates this table is specified in §5c.
 
 | Field | Purpose |
 |---|---|
-| `transaction_id` | Bot answer being evaluated |
-| `discord_response_message_id` | Bot response message |
-| `feedback_type` | `reaction`, `slash_command`, `form` |
-| `feedback_value` | Positive, negative, or structured value |
-| `feedback_author_id` | Feedback source |
+| `transaction_id` | Bot answer being evaluated; `NULL` until correlation succeeds |
+| `discord_response_message_id` | Bot response message — the correlation key feedback is matched on |
+| `feedback_author_id_hash` | Hashed feedback source |
+| `feedback_type` | Feedback channel: `reaction` or `context_menu` |
+| `feedback_value` | Sentiment: `positive` or `negative` (a `context_menu` critique is always `negative`) |
+| `feedback_category` | Explicit-critique reason (`context_menu` only): `made_something_up`, `did_not_answer`, `wrong_tone`, `surfaced_personal_info`, `other`; `NULL` for reactions |
+| `feedback_text` | Optional free-text critique |
+| `matched` | Whether the feedback correlated to a transaction; `false` ⇒ unmatched, excluded from weekly metrics |
+| `review_candidate` | `true` for negative reactions and all `context_menu` critiques — the concrete state n8n writes to flag a transaction for review |
+| `review_status` | Review lifecycle: `pending`, `in_review`, `resolved`, `dismissed`; `NULL` when `review_candidate = false` |
 | `created_at` | Feedback timestamp |
+
+> **For the schema owner (Gil) — two things to confirm.** (1) This models `feedback_type` as the *channel* (`reaction` / `context_menu`) with a separate `feedback_value` for sentiment; the deployed `01-ragbot-schema.sql` currently encodes `feedback_type` as `('positive','negative','explicit')`, so the table and the SQL need reconciling. (2) `review_status` proposes the fuller lifecycle `pending → in_review → resolved → dismissed`; your comment named `pending`, so confirm the rest. The matching SQL (base-schema columns plus a `03` migration for the already-running DB) is additive and is handed to the schema owner to apply; it is not included in this PR.
 
 #### `rag_eval_labels`
 
@@ -354,6 +361,37 @@ Phoenix does not own this rollup. Phoenix stores traces and review context that 
 | `p50_latency_ms`, `p95_latency_ms` | End-to-end latency |
 | `generated_at` | When the rollup was produced |
 
+### 5c. Feedback And Reaction Correlation
+
+This subsection specifies how community feedback on bot answers is captured and tied back to the transaction that produced the answer. It is the design home for feedback/reaction correlation and resolves the previously open implementation question in §12. It implements the workflow shape in `docs/n8n workflow design.md` → *Feedback Correlation Workflow*.
+
+**Scope.** This covers feedback *on bot answers*. The reaction-based ranking boost on community (human) messages described in `retrieval-context-prompt-contracts.md` §1.6 is a separate retrieval feature and is out of scope here — keeping the two apart is deliberate.
+
+**Two feedback channels.**
+
+- **Reactions** — a 👍 / 👎 added to a bot response message. `feedback_type = reaction`, `feedback_value = positive | negative`.
+- **Explicit critique** — a Discord context-menu command on a bot response opens a modal with preset reason categories (`made_something_up`, `did_not_answer`, `wrong_tone`, `surfaced_personal_info`, `other`) plus optional free text. `feedback_type = context_menu`, `feedback_value = negative`, `feedback_category` set, `feedback_text` optional.
+
+**Correlation key.** Feedback is matched to a transaction through `discord_response_message_id`, which node `20 Discord Response` writes to `rag_transactions` when it posts the answer:
+
+```text
+reaction / critique target message -> discord_response_message_id -> transaction_id
+```
+
+**Correlation flow.**
+
+1. A feedback event arrives (reaction added to a bot message, or a context-menu critique).
+2. Confirm the target is a bot response. If not, record it as unmatched (`matched = false`) and stop.
+3. Look up the transaction by `discord_response_message_id`. If none is found, record it as unmatched and stop.
+4. Normalize the feedback into `feedback_type`, `feedback_value`, `feedback_category`, `feedback_text`.
+5. Upsert one `rag_feedback` row per author per response (`matched = true`). Treat add/remove or repeated feedback as last-write-wins.
+6. **If `feedback_value = negative` or `feedback_type = context_menu`,** set `review_candidate = true` and `review_status = pending`. This is the concrete state that lets n8n flag a transaction for review.
+7. Emit `feedback.received`, then `feedback.linked` (matched) or `feedback.unmatched`, plus `feedback.review_flagged` when a review candidate is set.
+
+**Review handoff (the feedback → label boundary).** A review candidate is a *trigger*, not a verdict. Flagged transactions surface in a review queue; a human inspects the answer and writes the authoritative pass/fail row to `rag_eval_labels` (`source = human`). `review_status` then moves `pending → in_review → resolved | dismissed`. Feedback never writes `rag_eval_labels` directly — this preserves the rule that a satisfaction signal is not an evaluation label.
+
+**Unmatched feedback.** Rows with `matched = false` are kept for debugging the correlation path but are excluded from weekly metrics (`thumbs_up_rate`, `negative_feedback_count`).
+
 ## 6. Event And Span Taxonomy
 
 Use stable names so traces are easy to filter.
@@ -376,7 +414,7 @@ These are logical observability events, not native events emitted directly by Di
 | LLM | `gemini.request_started`, `gemini.response_completed`, `gemini.failed` |
 | Refusal | `response.refused`, `evaluation.correct_refusal`, `evaluation.false_refusal`, `evaluation.missed_refusal`, `evaluation.no_context_violation` |
 | Response | `discord.response_sent`, `discord.response_failed` |
-| Feedback | `feedback.received`, `feedback.linked`, `feedback.unmatched` |
+| Feedback | `feedback.received`, `feedback.linked`, `feedback.unmatched`, `feedback.review_flagged` |
 
 Required attributes:
 
@@ -406,7 +444,7 @@ Instrumentation points:
 9. **Context gate node:** enforce the context-token budget by dropping lowest-scored chunks, log `context.overflow` when trimming occurs, and refuse with `context_token_budget_insufficient` if fewer than three chunks remain or the context is still over budget.
 10. **Gemini node:** log model, latency, refusal/answer status.
 11. **Discord node:** log response message ID or dispatch failure.
-12. **Feedback workflow:** link reactions or feedback to transaction.
+12. **Feedback workflow:** correlate reactions and explicit critiques to the transaction via `discord_response_message_id`, write `rag_feedback`, and set `review_candidate = true` / `review_status = pending` for negative or explicit feedback; record unmatched feedback. See §5c.
 
 Implementation note:
 
@@ -535,10 +573,11 @@ Suggested retention:
 
 ### Phase 3: Feedback Correlation
 
-- Capture reactions and explicit feedback.
-- Link feedback to `discord_response_message_id`.
-- Store feedback in Postgres and Phoenix traces.
-- Define the missing feedback-correlation workflow: Discord reaction event, target bot message lookup, transaction lookup, feedback write, and unmatched-feedback handling.
+- Capture reactions and explicit context-menu critiques (design: §5c).
+- Correlate feedback to a transaction via `discord_response_message_id`.
+- Store feedback in Postgres (`rag_feedback`) and Phoenix traces.
+- Set `review_candidate = true` / `review_status = pending` on negative or explicit feedback so flagged transactions reach the review queue.
+- Handle unmatched feedback (`matched = false`) without including it in weekly metrics.
 
 ### Phase 4: Weekly Metrics Rollup
 
@@ -561,7 +600,7 @@ Suggested retention:
 - What retention period is acceptable for full prompt/context text?
 - Who can access Phoenix traces?
 - Should `root_message_id` be required before final n8n dedupe?
-- Feedback/reaction correlation is referenced in the architecture and evaluation docs, but the concrete implementation is still open. Which Discord events, message IDs, lookup tables, and failure paths should own this?
+- Feedback/reaction correlation is now specified in §5c (correlation key, the two feedback channels, the review-candidate handoff, and unmatched handling). Remaining sub-decisions: the exact supported reaction set, and whether a critical critique (e.g. `surfaced_personal_info`) should auto-open a GitHub issue.
 - What is the minimum dashboard we need before launch?
 - Should passive listener traces sample more aggressively than active calls?
 
