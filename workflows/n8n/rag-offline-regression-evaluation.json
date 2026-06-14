@@ -1,0 +1,567 @@
+{
+  "name": "RAG Offline Regression Evaluation",
+  "active": false,
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "eval-0001-manual-trigger",
+      "name": "Manual Trigger",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        -2200,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "mode": "manual",
+        "duplicateItem": false,
+        "assignments": {
+          "assignments": [
+            {
+              "id": "eval-input-id",
+              "name": "regression_id",
+              "value": "RQ-001",
+              "type": "string"
+            },
+            {
+              "id": "eval-input-question",
+              "name": "question",
+              "value": "How should I prepare for the Amazon TPM interview loop?",
+              "type": "string"
+            },
+            {
+              "id": "eval-input-category",
+              "name": "category",
+              "value": "happy_path",
+              "type": "string"
+            },
+            {
+              "id": "eval-input-action",
+              "name": "expected_action",
+              "value": "answer",
+              "type": "string"
+            },
+            {
+              "id": "eval-input-caveat",
+              "name": "expected_caveat",
+              "value": "no",
+              "type": "string"
+            },
+            {
+              "id": "eval-input-flags",
+              "name": "expected_flags",
+              "value": "none",
+              "type": "string"
+            },
+            {
+              "id": "eval-input-source",
+              "name": "source_area",
+              "value": "tpm-interview-resources",
+              "type": "string"
+            },
+            {
+              "id": "eval-input-notes",
+              "name": "evaluator_notes",
+              "value": "",
+              "type": "string"
+            },
+            {
+              "id": "eval-input-collection",
+              "name": "qdrant_collection",
+              "value": "tpm_unite_history",
+              "type": "string"
+            },
+            {
+              "id": "eval-input-corpus",
+              "name": "corpus_version",
+              "value": "pending-full-23-log-ingestion",
+              "type": "string"
+            },
+            {
+              "id": "eval-input-embedder",
+              "name": "embedding_url",
+              "value": "http://embedder:8000/embed",
+              "type": "string"
+            },
+            {
+              "id": "eval-input-qdrant",
+              "name": "qdrant_base_url",
+              "value": "http://qdrant:6333",
+              "type": "string"
+            },
+            {
+              "id": "eval-input-reranker",
+              "name": "reranker_url",
+              "value": "http://reranker:8002/rerank",
+              "type": "string"
+            },
+            {
+              "id": "eval-input-topk",
+              "name": "top_k",
+              "value": 20,
+              "type": "number"
+            },
+            {
+              "id": "eval-input-contextk",
+              "name": "context_k",
+              "value": 5,
+              "type": "number"
+            },
+            {
+              "id": "eval-input-min",
+              "name": "min_result_count",
+              "value": 3,
+              "type": "number"
+            },
+            {
+              "id": "eval-input-retrieval-threshold",
+              "name": "retrieval_score_threshold",
+              "value": 0.55,
+              "type": "number"
+            },
+            {
+              "id": "eval-input-reranker-threshold",
+              "name": "reranker_score_threshold",
+              "value": 0,
+              "type": "number"
+            },
+            {
+              "id": "eval-input-weak-threshold",
+              "name": "weak_reranker_score_threshold",
+              "value": 2,
+              "type": "number"
+            }
+          ]
+        },
+        "includeOtherFields": false,
+        "options": {}
+      },
+      "id": "eval-0002-set-input",
+      "name": "Set Evaluation Input",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -1980,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const input = $json;\nconst question = String(input.question || '').replace(/\\s+/g, ' ').trim();\nconst regressionId = String(input.regression_id || '').trim();\nconst errors = [];\nif (!regressionId) errors.push('missing_regression_id');\nif (!question) errors.push('missing_question');\nconst normalizedQuery = question ? `search_query: ${question}` : '';\nreturn [{ json: {\n  ...input,\n  regression_id: regressionId,\n  question,\n  normalized_query: normalizedQuery,\n  input_valid: errors.length === 0,\n  input_valid_int: errors.length === 0 ? 1 : 0,\n  validation_errors: errors,\n  evaluation_started_ms: Date.now()\n}}];"
+      },
+      "id": "eval-0003-validate",
+      "name": "Validate And Normalize Input",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -1760,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "eval-input-valid-condition",
+              "leftValue": "={{ $json.input_valid_int }}",
+              "rightValue": 1,
+              "operator": {
+                "type": "number",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "eval-0004-input-valid",
+      "name": "Input Valid?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        -1540,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const state = $items('Validate And Normalize Input')[0].json;\nreturn [{ json: {\n  regression_id: state.regression_id || null,\n  question: state.question || null,\n  expected_action: state.expected_action || null,\n  decision: 'invalid_input',\n  refusal_reason: 'invalid_evaluation_input',\n  errors: state.validation_errors,\n  corpus: null,\n  stage_1: null,\n  reranker: null,\n  dedupe_status: 'not_implemented_phase_6',\n  top_results: [],\n  latency_ms: { embedding: 0, retrieval: 0, reranking: 0, total: Date.now() - state.evaluation_started_ms }\n}}];"
+      },
+      "id": "eval-0005-validation-error",
+      "name": "Build Validation Error",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -1320,
+        260
+      ]
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "={{ $json.qdrant_base_url }}/collections/{{ $json.qdrant_collection }}",
+        "options": {
+          "response": {
+            "response": {
+              "fullResponse": true,
+              "neverError": true,
+              "responseFormat": "json"
+            }
+          }
+        }
+      },
+      "id": "eval-0006-collection-info",
+      "name": "Get Collection Metadata",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -1320,
+        -80
+      ],
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "jsCode": "const state = $items('Validate And Normalize Input')[0].json;\nconst response = $json;\nconst body = response.body ?? response;\nconst statusCode = response.statusCode ?? response.status ?? 0;\nconst result = body.result || {};\nreturn [{ json: {\n  ...state,\n  collection_status_code: statusCode,\n  collection_ready: statusCode >= 200 && statusCode < 300 && result.status === 'green',\n  collection_status: result.status || 'unavailable',\n  collection_points_count: Number(result.points_count || 0),\n  collection_indexed_vectors_count: Number(result.indexed_vectors_count || 0),\n  embedding_started_ms: Date.now()\n}}];"
+      },
+      "id": "eval-0007-build-collection",
+      "name": "Build Collection Metadata",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -1100,
+        -80
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $json.embedding_url }}",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ { text: $json.normalized_query } }}",
+        "options": {
+          "response": {
+            "response": {
+              "fullResponse": true,
+              "neverError": true,
+              "responseFormat": "json"
+            }
+          }
+        }
+      },
+      "id": "eval-0008-embed",
+      "name": "Embed Query",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -880,
+        -80
+      ],
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "jsCode": "const state = $items('Build Collection Metadata')[0].json;\nconst response = $json;\nconst body = response.body ?? response;\nconst vector = body.embedding || body.vector || body.data?.[0]?.embedding || [];\nconst now = Date.now();\nreturn [{ json: {\n  ...state,\n  embedding_status_code: response.statusCode ?? response.status ?? 0,\n  embedding_latency_ms: now - state.embedding_started_ms,\n  embedding_ok: Array.isArray(vector) && vector.length === 768,\n  query_vector: vector,\n  qdrant_started_ms: now\n}}];"
+      },
+      "id": "eval-0009-build-embedding",
+      "name": "Build Embedding Result",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -660,
+        -80
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $json.qdrant_base_url }}/collections/{{ $json.qdrant_collection }}/points/search",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ { vector: $json.query_vector, limit: $json.top_k, with_payload: true, with_vector: false } }}",
+        "options": {
+          "response": {
+            "response": {
+              "fullResponse": true,
+              "neverError": true,
+              "responseFormat": "json"
+            }
+          }
+        }
+      },
+      "id": "eval-0010-qdrant-search",
+      "name": "Qdrant Vector Search",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -440,
+        -80
+      ],
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "jsCode": "const base = $items('Build Embedding Result')[0].json;\nconst response = $json;\nconst now = Date.now();\nconst statusCode = response.statusCode ?? response.status ?? 0;\nconst raw = response.body?.result || response.result || [];\nconst threshold = Number(base.retrieval_score_threshold ?? 0.55);\nconst minResultCount = Number(base.min_result_count ?? 3);\nconst candidates = Array.isArray(raw) ? raw.map((hit, index) => {\n  const p = hit.payload || {};\n  return {\n    qdrant_point_id: String(hit.id),\n    retrieval_rank: index + 1,\n    retrieval_score: Number(hit.score || 0),\n    channel_id: p.channel_id || '',\n    channel_name: p.channel || '',\n    thread_name: p.thread_name || '',\n    first_message_id: p.first_message_id || '',\n    message_ids: Array.isArray(p.message_ids) ? p.message_ids.map(String) : [],\n    start_ts: p.start_ts || null,\n    end_ts: p.end_ts || null,\n    authors: Array.isArray(p.authors) ? p.authors : [],\n    text: p.text || '',\n    payload: p\n  };\n}) : [];\nconst passed = candidates.filter(c => c.retrieval_score >= threshold).sort((a,b) => b.retrieval_score - a.retrieval_score);\nlet refusalReason = null;\nif (!base.collection_ready) refusalReason = 'qdrant_collection_unavailable';\nelse if (!base.embedding_ok) refusalReason = 'embedding_failed';\nelse if (statusCode < 200 || statusCode >= 300) refusalReason = 'qdrant_failed';\nelse if (passed.length < minResultCount) refusalReason = 'fewer_than_min_stage_1_results';\nreturn [{ json: {\n  ...base,\n  query_vector: undefined,\n  qdrant_status_code: statusCode,\n  qdrant_latency_ms: now - base.qdrant_started_ms,\n  raw_candidate_count: candidates.length,\n  passed_candidate_count: passed.length,\n  candidates,\n  passed_stage_1_candidates: passed,\n  stage_1_gate_status: refusalReason ? 'refused' : 'passed',\n  stage_1_passed_int: refusalReason ? 0 : 1,\n  stage_1_refusal_reason: refusalReason,\n  reranker_started_ms: now,\n  reranker_request: {\n    query: base.question,\n    candidates: passed.map(c => ({ id: c.qdrant_point_id, text: c.text, metadata: { retrieval_rank: c.retrieval_rank, retrieval_score: c.retrieval_score } }))\n  }\n}}];"
+      },
+      "id": "eval-0011-stage1",
+      "name": "Build Stage 1 Gate And Reranker Request",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -220,
+        -80
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "eval-stage1-passed-condition",
+              "leftValue": "={{ $json.stage_1_passed_int }}",
+              "rightValue": 1,
+              "operator": {
+                "type": "number",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "eval-0012-stage1-passed",
+      "name": "Stage 1 Passed?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        0,
+        -80
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $json.reranker_url }}",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ $json.reranker_request }}",
+        "options": {
+          "response": {
+            "response": {
+              "fullResponse": true,
+              "neverError": true,
+              "responseFormat": "json"
+            }
+          }
+        }
+      },
+      "id": "eval-0012-rerank",
+      "name": "CrossEncoder Rerank",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        220,
+        -140
+      ],
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "jsCode": "const base = $items('Build Stage 1 Gate And Reranker Request')[0].json;\nconst response = $json;\nconst body = response.body ?? response;\nconst now = Date.now();\nconst statusCode = response.statusCode ?? response.status ?? 0;\nconst threshold = Number(base.reranker_score_threshold ?? 0);\nconst weakThreshold = Number(base.weak_reranker_score_threshold ?? 2);\nconst byId = new Map((base.passed_stage_1_candidates || []).map(c => [c.qdrant_point_id, c]));\nconst ranked = (Array.isArray(body.results) ? body.results : []).map((item, index) => {\n  const c = byId.get(String(item.id));\n  return c ? { ...c, reranker_rank: index + 1, reranker_score: Number(item.reranker_score) } : null;\n}).filter(Boolean);\nconst passed = ranked.filter(c => c.reranker_score > threshold);\nlet refusalReason = base.stage_1_refusal_reason;\nif (!refusalReason && (statusCode < 200 || statusCode >= 300)) refusalReason = 'reranker_failed';\nelse if (!refusalReason && ranked.length === 0) refusalReason = 'reranker_no_results';\nelse if (!refusalReason && passed.length < Number(base.min_result_count ?? 3)) refusalReason = 'reranker_score_below_threshold';\nconst selected = refusalReason ? [] : passed.slice(0, Number(base.context_k ?? 5));\nconst selectedIds = new Set(selected.map(c => c.qdrant_point_id));\nconst guildId = '853099205206999050';\nconst topResults = ranked.slice(0, 10).map(c => ({\n  qdrant_point_id: c.qdrant_point_id,\n  retrieval_rank: c.retrieval_rank,\n  retrieval_score: c.retrieval_score,\n  reranker_rank: c.reranker_rank,\n  reranker_score: c.reranker_score,\n  selected_for_context: selectedIds.has(c.qdrant_point_id),\n  channel_id: c.channel_id || null,\n  channel_name: c.channel_name || null,\n  thread_name: c.thread_name || null,\n  first_message_id: c.first_message_id || null,\n  message_ids: c.message_ids,\n  start_ts: c.start_ts,\n  end_ts: c.end_ts,\n  authors: c.authors,\n  discord_link: c.channel_id && c.first_message_id ? `https://discord.com/channels/${guildId}/${c.channel_id}/${c.first_message_id}` : null,\n  text_preview: String(c.text || '').slice(0, 1200),\n  gate_status: c.reranker_score > threshold ? 'passed' : 'excluded',\n  exclusion_reason: c.reranker_score > threshold ? null : 'reranker_score_below_threshold'\n}));\nconst weakSignal = selected.length > 0 && selected.every(c => c.reranker_score > threshold && c.reranker_score < weakThreshold);\nreturn [{ json: {\n  regression_id: base.regression_id,\n  category: base.category || null,\n  question: base.question,\n  normalized_query: base.normalized_query,\n  expected_action: base.expected_action || null,\n  expected_caveat: base.expected_caveat || null,\n  expected_flags: base.expected_flags || null,\n  source_area: base.source_area || null,\n  evaluator_notes: base.evaluator_notes || null,\n  corpus: {\n    collection: base.qdrant_collection,\n    corpus_version: base.corpus_version,\n    status: base.collection_status,\n    points_count: base.collection_points_count,\n    indexed_vectors_count: base.collection_indexed_vectors_count\n  },\n  decision: refusalReason ? 'no_context' : 'context_found',\n  refusal_reason: refusalReason,\n  stage_1: {\n    status: base.stage_1_gate_status,\n    raw_count: base.raw_candidate_count,\n    passed_count: base.passed_candidate_count,\n    threshold: Number(base.retrieval_score_threshold),\n    minimum_required: Number(base.min_result_count)\n  },\n  reranker: {\n    status: refusalReason && !base.stage_1_refusal_reason ? 'refused' : (base.stage_1_refusal_reason ? 'skipped_after_stage_1_refusal' : 'passed'),\n    model: body.model || 'cross-encoder/ms-marco-MiniLM-L-6-v2',\n    candidate_count: ranked.length,\n    passed_count: passed.length,\n    selected_count: selected.length,\n    threshold,\n    weak_signal_threshold: weakThreshold,\n    weak_signal: weakSignal\n  },\n  dedupe_status: 'not_implemented_phase_6',\n  top_results: topResults,\n  latency_ms: {\n    embedding: base.embedding_latency_ms,\n    retrieval: base.qdrant_latency_ms,\n    reranking: now - base.reranker_started_ms,\n    reranker_service: body.latency_ms ?? null,\n    total: now - base.evaluation_started_ms\n  }\n}}];"
+      },
+      "id": "eval-0013-result",
+      "name": "Build Evaluation Result",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        440,
+        -140
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const base = $items('Build Stage 1 Gate And Reranker Request')[0].json;\nconst now = Date.now();\nconst guildId = '853099205206999050';\nconst topResults = (base.candidates || []).slice(0, 10).map(c => ({\n  qdrant_point_id: c.qdrant_point_id,\n  retrieval_rank: c.retrieval_rank,\n  retrieval_score: c.retrieval_score,\n  reranker_rank: null,\n  reranker_score: null,\n  selected_for_context: false,\n  channel_id: c.channel_id || null,\n  channel_name: c.channel_name || null,\n  thread_name: c.thread_name || null,\n  first_message_id: c.first_message_id || null,\n  message_ids: c.message_ids,\n  start_ts: c.start_ts,\n  end_ts: c.end_ts,\n  authors: c.authors,\n  discord_link: c.channel_id && c.first_message_id ? `https://discord.com/channels/${guildId}/${c.channel_id}/${c.first_message_id}` : null,\n  text_preview: String(c.text || '').slice(0, 1200),\n  gate_status: c.retrieval_score >= Number(base.retrieval_score_threshold) ? 'passed_stage_1' : 'excluded',\n  exclusion_reason: c.retrieval_score >= Number(base.retrieval_score_threshold) ? null : 'retrieval_score_below_threshold'\n}));\nreturn [{ json: {\n  regression_id: base.regression_id,\n  category: base.category || null,\n  question: base.question,\n  normalized_query: base.normalized_query,\n  expected_action: base.expected_action || null,\n  expected_caveat: base.expected_caveat || null,\n  expected_flags: base.expected_flags || null,\n  source_area: base.source_area || null,\n  evaluator_notes: base.evaluator_notes || null,\n  corpus: { collection: base.qdrant_collection, corpus_version: base.corpus_version, status: base.collection_status, points_count: base.collection_points_count, indexed_vectors_count: base.collection_indexed_vectors_count },\n  decision: 'no_context',\n  refusal_reason: base.stage_1_refusal_reason,\n  stage_1: { status: 'refused', raw_count: base.raw_candidate_count, passed_count: base.passed_candidate_count, threshold: Number(base.retrieval_score_threshold), minimum_required: Number(base.min_result_count) },\n  reranker: { status: 'skipped_after_stage_1_refusal', model: 'cross-encoder/ms-marco-MiniLM-L-6-v2', candidate_count: 0, passed_count: 0, selected_count: 0, threshold: Number(base.reranker_score_threshold), weak_signal_threshold: Number(base.weak_reranker_score_threshold), weak_signal: false },\n  dedupe_status: 'not_implemented_phase_6',\n  top_results: topResults,\n  latency_ms: { embedding: base.embedding_latency_ms, retrieval: base.qdrant_latency_ms, reranking: 0, reranker_service: null, total: now - base.evaluation_started_ms }\n}}];"
+      },
+      "id": "eval-0013-stage1-refusal",
+      "name": "Build Stage 1 Refusal Result",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        220,
+        100
+      ]
+    }
+  ],
+  "connections": {
+    "Manual Trigger": {
+      "main": [
+        [
+          {
+            "node": "Set Evaluation Input",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Set Evaluation Input": {
+      "main": [
+        [
+          {
+            "node": "Validate And Normalize Input",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Validate And Normalize Input": {
+      "main": [
+        [
+          {
+            "node": "Input Valid?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Input Valid?": {
+      "main": [
+        [
+          {
+            "node": "Get Collection Metadata",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Build Validation Error",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Collection Metadata": {
+      "main": [
+        [
+          {
+            "node": "Build Collection Metadata",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Collection Metadata": {
+      "main": [
+        [
+          {
+            "node": "Embed Query",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Embed Query": {
+      "main": [
+        [
+          {
+            "node": "Build Embedding Result",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Embedding Result": {
+      "main": [
+        [
+          {
+            "node": "Qdrant Vector Search",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Qdrant Vector Search": {
+      "main": [
+        [
+          {
+            "node": "Build Stage 1 Gate And Reranker Request",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Stage 1 Gate And Reranker Request": {
+      "main": [
+        [
+          {
+            "node": "Stage 1 Passed?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "CrossEncoder Rerank": {
+      "main": [
+        [
+          {
+            "node": "Build Evaluation Result",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Stage 1 Passed?": {
+      "main": [
+        [
+          {
+            "node": "CrossEncoder Rerank",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Build Stage 1 Refusal Result",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "meta": {
+    "templateCredsSetupCompleted": false
+  }
+}
+
