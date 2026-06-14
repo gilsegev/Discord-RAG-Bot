@@ -195,6 +195,19 @@ She must not send the private file `~/.ssh/tpm-rag-eval`.
 
 On the Oracle server, logged in as the existing `ubuntu` administrator:
 
+The preferred implementation uses the repo-owned setup script. First save Shilpi's public key as `/tmp/shilpi-tpm-rag-eval.pub`, then run:
+
+```bash
+cd ~/Discord-RAG-Bot
+sudo bash deploy/phase0/setup_eval_tunnel_user.sh \
+  n8n_eval_shilpi \
+  /tmp/shilpi-tpm-rag-eval.pub
+```
+
+The script creates the account, installs the restricted key, writes the SSH configuration fragment, validates the complete SSH configuration, and reloads SSH. Keep the current administrator session open while testing.
+
+The equivalent manual commands are retained below for troubleshooting or audit:
+
 ```bash
 sudo adduser --disabled-password --gecos "Shilpi n8n evaluation tunnel" n8n_eval_shilpi
 sudo install -d -m 700 -o n8n_eval_shilpi -g n8n_eval_shilpi /home/n8n_eval_shilpi/.ssh
