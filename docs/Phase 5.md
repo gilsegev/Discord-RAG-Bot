@@ -1,5 +1,5 @@
 # Phase 5: CrossEncoder Reranker
-**Status:** Draft
+**Status:** Reranker implementation validated; prompt hardening deferred to Phase 11
 **Scope:** Add Stage 2 reranking after Qdrant Stage 1 retrieval and before context assembly.
 **Related:** Retrieval Context Prompt Contracts, Phase 4, Observability Design, n8n Execution Plan
 
@@ -197,7 +197,8 @@ Pass:
 - workflow reaches the reranker service
 - Postgres stores `reranker_score`
 - Phoenix shows `rerank.completed` or `rerank.low_confidence`
-- weak matches no longer become uncited answers
+- the known-good Meta partnership query is promoted by the reranker and produces usable context
+- Gemini output is handled as a separate generation-quality concern rather than evidence that reranking failed
 
 Fail:
 
@@ -205,3 +206,10 @@ Fail:
 - context block still displays Qdrant `retrieval_score`
 - weak match answers without citation/grounding
 - Phoenix has no rerank span
+
+## Validation Outcome And Remaining Risk
+Phase 5 is considered a pass for the reranker integration when the service runs, candidates are reordered by `reranker_score`, selected context is persisted, and the rerank spans are visible in Phoenix.
+
+The known-good Meta partnership query produced strong reranker scores and relevant selected context. This validates the retrieval-to-reranker path. Gemini response quality was not fully stable across runs: the model sometimes refused relevant context, produced uncited output, or exceeded Discord's 2,000-character message limit. Those outcomes do not invalidate the reranker implementation, but they are not acceptable as final production behavior.
+
+Prompt reliability, response-length enforcement, repeated-run consistency, adversarial cases, and latency are explicitly deferred to Phase 11: Gemini Prompt Hardening And Stress Testing. Phase 5 may merge with this limitation documented; it must not be treated as final evidence that the generation layer is launch-ready.
