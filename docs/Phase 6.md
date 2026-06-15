@@ -31,16 +31,16 @@ If `overlap_ratio > 0.5`, keep the stronger candidate.
 
 Targeted decisions and dependencies still need closure:
 
-| Area | Current state | Recommendation |
-|---|---|---|
-| Phase 5 dependency | Phase 5 reranking is still PR 13, not in `main` | Merge Phase 5 before integrating the Phase 6 workflow |
-| Split-piece metadata | Current `main` leaves the original full `message_ids` on every split piece | Merge PR 5's per-piece `message_ids` fix and rebuild Qdrant before validating dedupe |
-| Reply-root dedupe | `root_message_id` is not in the payload | Implement message-overlap dedupe now; retain reply-root dedupe as a documented extension |
-| Candidate scope | The contract does not state this as an executable algorithm | Apply dedupe to every candidate that passes the reranker threshold, then select the top five |
-| Pairwise ordering | The formula does not define deterministic transitive handling or ties | Sort strongest-first and use deterministic greedy selection |
-| Missing IDs | Empty or missing `message_ids` behavior is unspecified | Keep the candidate, mark dedupe as not comparable, and emit an observability warning |
-| Post-dedupe sufficiency | Observability names the refusal but the retrieval contract is not explicit | Refuse when fewer than three deduped candidates remain, using `context_after_dedupe_insufficient` |
-| Reaction boost ordering | Current docs have conflicting historical wording | Skip the boost while `reaction_count` is unavailable; separately ratify whether dedupe strength uses raw or boosted reranker score |
+| Area | What is incomplete | Why it matters | Proposed resolution |
+|---|---|---|---|
+| Phase 5 dependency | Phase 5 reranking is still PR 13 and is not in `main` | Dedupe must know which overlapping chunk is stronger. Without the reranker and its scores, Phase 6 has no agreed basis for choosing which chunk to keep. | Merge Phase 5 before integrating the Phase 6 workflow. |
+| Split-piece metadata | Current `main` copies the original chunk's complete `message_ids` onto every smaller piece created during token splitting. PR 5 corrects this. | Two pieces containing different text can appear to have 100% message overlap, causing dedupe to delete useful evidence. Existing Qdrant points remain wrong even after the code changes. | Merge PR 5 and rebuild Qdrant before validating dedupe. |
+| Reply-root dedupe | Neither `main` nor PR 5 stores `root_message_id`. Issue 17 tracks this ingestion change. | Two chunks from the same Discord reply conversation may contain different child messages and therefore evade message-overlap dedupe. The LLM can still receive repeated conversation context. | Implement message-overlap dedupe in Phase 6. Add same-root handling after Issue 17 is completed and Qdrant is rebuilt. |
+| Candidate scope | The contract says dedupe occurs after reranking but does not explicitly say whether to dedupe only the initial top five or every candidate that passed the reranker gate. | Deduping only five can leave fewer than five chunks with no replacements, even when candidates ranked 6-20 provide useful, distinct evidence. | Dedupe every reranker-passed candidate, then select the first five retained candidates. |
+| Pairwise ordering | The overlap formula compares two chunks but does not define processing order, equal-score ties, or overlap chains such as A overlapping B and B overlapping C. | Different iteration orders could keep different chunks, making identical queries produce inconsistent context and tests. | Sort strongest-first, break ties deterministically, and compare each new candidate against chunks already kept. |
+| Missing IDs | The contract does not define behavior when a Qdrant result has an empty or missing `message_ids` array. | The overlap denominator would be zero, and silently dropping the chunk could remove good evidence because of a metadata defect rather than low relevance. | Keep the candidate, mark it `not_comparable_missing_message_ids`, and expose a warning in observability. |
+| Post-dedupe sufficiency | Observability defines a post-dedupe refusal category, but the retrieval contract does not explicitly state the minimum remaining evidence. | Retrieval and reranking could pass with three candidates, then dedupe could reduce them to one repeated conversation. Sending that to Gemini would violate the intended minimum-context rule. | Require at least three retained candidates; otherwise refuse before Gemini with `context_after_dedupe_insufficient`. |
+| Reaction boost ordering | Some documentation says reaction boost occurs before dedupe; older wording places it afterward. The payload does not currently contain `reaction_count`. | If boosted scores decide which duplicate survives, ordering can change the retained evidence. Implementations could disagree even with the same inputs. | Skip reaction boost while the field is unavailable. Before adding it, decide whether dedupe compares raw `reranker_score` or `boosted_reranker_score`. |
 
 This requires a short team review, not a redesign. The overlap formula and placement after reranking are solid.
 
@@ -139,8 +139,8 @@ Phase 6 should not merge as complete until:
 - known duplicate-heavy retrievals show less repeated context without losing the best answer
 
 ## Team Decisions Requested
-1. Confirm dedupe runs across all reranker-passed candidates before selecting top five.
-2. Confirm strongest-first greedy matching and the proposed tie-break order.
-3. Confirm missing-message-ID candidates are retained and flagged.
-4. Confirm `context_after_dedupe_insufficient` when fewer than three candidates remain.
-5. Confirm Phase 6 skips reaction boost until `reaction_count` exists, or explicitly define boosted-score ordering now.
+1. **Which candidates are deduped?** Proposed: dedupe every candidate that passed the reranker gate, then choose the top five retained candidates. This lets a distinct candidate ranked below a duplicate replace the duplicate.
+2. **How are overlapping candidates processed?** Proposed: strongest `reranker_score` first, then reranker rank and Qdrant point ID as stable tie-breakers. This makes repeated runs deterministic.
+3. **What happens when `message_ids` is missing?** Proposed: keep and flag the candidate. This avoids discarding relevant evidence because of incomplete metadata while making the ingestion defect visible.
+4. **What is the minimum context after dedupe?** Proposed: retain at least three candidates or refuse before Gemini with `context_after_dedupe_insufficient`. This preserves the existing minimum-evidence principle after duplicates are removed.
+5. **Does reaction popularity affect which duplicate survives?** Proposed for Phase 6: no. Skip reaction boost until `reaction_count` exists; then separately approve whether dedupe compares raw or boosted reranker scores.
