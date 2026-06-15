@@ -245,6 +245,20 @@ Expected outcome:
 
 The workflow improves relevance without changing the rest of the active-call path.
 
+Implementation artifact:
+
+```text
+workflows/n8n/rag-active-call-phase-5-reranker.json
+```
+
+Implementation notes:
+
+- Adds repo-owned reranker service at `http://reranker:8002/rerank`.
+- Uses `cross-encoder/ms-marco-MiniLM-L-6-v2`.
+- Refuses before Gemini when fewer than three candidates have `reranker_score > 0`.
+- Stores both `retrieval_score` and `reranker_score`.
+- Emits Phoenix rerank spans.
+
 ## Phase 6: Dedupe Placeholder
 Add message-overlap dedupe after reranking and before context assembly.
 
@@ -358,6 +372,33 @@ Alerts:
 Expected outcome:
 
 The system becomes measurable and maintainable without manual query assembly.
+
+## Phase 11: Gemini Prompt Hardening And Stress Testing
+Harden the generation and refusal behavior after the retrieval pipeline, dedupe, context assembly, feedback, and observability paths are stable.
+
+Scope:
+
+- run the curated regression question set across grounded-answer, partial-context, no-context, subjective, stale-context, adversarial, and PII cases
+- verify that supported questions produce grounded answers and unsupported questions produce the exact refusal
+- test multi-part questions where only some parts are supported
+- verify every key claim has a valid source citation
+- enforce Discord's 2,000-character limit with a 1,900-character generation target and deterministic pre-dispatch validation
+- record prompt version, model version, finish reason, token usage, answer length, refusal reason, and latency
+- measure answer consistency across repeated runs of the same question
+- tune the prompt and generation settings without weakening the retrieval and reranker gates
+- define launch thresholds for groundedness, correct refusal, citation validity, response length, and latency
+
+Expected outcome:
+
+Gemini behavior is repeatable enough for launch, with regression evidence showing that prompt changes do not turn unsupported context into answers or valid context into unnecessary refusals.
+
+Exit criteria:
+
+- all required regression categories have reviewed expected outcomes
+- grounded answers, correct refusals, and citation validity meet the evaluation thresholds
+- no response sent to Discord exceeds 2,000 characters
+- repeated runs expose and quantify model variability
+- known prompt-quality and latency limitations are either resolved or explicitly accepted for launch
 
 ## First Implementation Milestone
 The first milestone should be:
