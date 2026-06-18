@@ -300,6 +300,10 @@ Full reply-root dedupe can be added later when `root_message_id` is available in
 ## Phase 7: Context Assembly And Prompt Contract
 Implement the context block exactly from the retrieval/context/prompt contract.
 
+Implementation artifact:
+
+`workflows/n8n/rag-active-call-phase-7-context-prompt-contract.json`
+
 Include:
 
 - channel
@@ -314,6 +318,10 @@ Include:
 Expected outcome:
 
 Gemini receives structured, citable context instead of raw unformatted chunks.
+
+Implementation note:
+
+Phase 7 separates context assembly from the dedupe decision. `Assemble Context Contract` is the source of truth for the final context block, prompt hash, selected context count, token estimates, and budget-gate refusal. Phoenix should show `context.assembled`, `context.overflow`, or `context.insufficient` spans for this step.
 
 Budget gate:
 
