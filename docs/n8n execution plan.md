@@ -262,6 +262,14 @@ Implementation notes:
 ## Phase 6: Dedupe Placeholder
 Add message-overlap dedupe after reranking and before context assembly.
 
+Detailed design and implementation readiness review:
+
+```text
+docs/Phase 6.md
+```
+
+Phase 6 currently depends on the Phase 5 reranker merge and the per-piece `message_ids` ingestion correction. Do not validate dedupe quality against split chunks until Qdrant has been rebuilt with corrected payloads.
+
 Initial rule:
 
 ```text
@@ -275,10 +283,11 @@ Ordering:
 
 ```text
 rerank
--> reaction boost placeholder
 -> dedupe by message_ids
 -> context assembly
 ```
+
+Reaction boost remains out of Phase 6 until `reaction_count` exists in the Qdrant payload.
 
 Expected outcome:
 
