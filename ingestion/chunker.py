@@ -1,10 +1,15 @@
 """
-ingestion/chunker.py — v7 reply-aware chunking
-v7 fixes:
-  - Fix 1: split_index added to each split piece for unique Qdrant IDs
-  - Fix 2: first_message_id stored per split piece (not from original chunk)
-           ensures Discord links point to correct message in each piece
-  - span_days metadata for long-span reply chain filtering
+ingestion/chunker.py — v9 reply-aware chunking
+v9 fixes (PR #5):
+  - Fix 1: split pieces now update start_ts, end_ts, authors, span_days
+            per piece — previously inherited stale values from original chunk
+            gilsegev validation: 11/14 stale start_ts, 13/14 stale authors
+  - id_to_msg passed into _split_if_needed() to look up actual message objects
+Prior fixes retained from v8:
+  - Per-piece message_ids and first_message_id (PR #4)
+  - Single-line overflow guard (PR #4)
+  - message_count per piece (PR #4)
+  - Smoke test import as ingestion.parser (PR #4)
 Author: ThinkInSystems (Hemanth Aragonda)
 """
 import tiktoken
@@ -38,7 +43,8 @@ def chunk_records(records: list[dict]) -> list[dict]:
         chunks    = _reply_aware_chunk(msgs, id_to_msg,
                                        is_thread=is_thread)
         for chunk in chunks:
-            all_chunks.extend(_split_if_needed(chunk))
+            # Fix 1: pass id_to_msg so split pieces can look up message objects
+            all_chunks.extend(_split_if_needed(chunk, id_to_msg))
 
     all_chunks.sort(key=lambda c: c["start_ts"])
 
@@ -124,7 +130,6 @@ def _window_chunk(msgs: list[dict],
     chunks    = []
     current   = []
     start_ts  = None
-    prev_tail = []
 
     for msg in msgs:
         ts = datetime.fromisoformat(msg["timestamp"])
@@ -185,76 +190,173 @@ def _build(msgs: list[dict]) -> dict:
     }
 
 
-def _split_if_needed(chunk: dict) -> list[dict]:
+def _build_line_to_msg_id(lines: list[str],
+                           msg_ids: list[str]) -> dict:
+    """
+    Map each line index to its source message_id.
+
+    Strategy: walk lines in order. When a line starts with
+    '[author @ date]:' or '  > [author @ date]:' it's a new message.
+    Assign it the next message_id from msg_ids in order.
+    Continuation lines inherit the same message_id as the preceding
+    message line.
+    """
+    line_to_msg_id = {}
+    msg_id_idx     = 0
+    last_msg_id    = None
+
+    for i, line in enumerate(lines):
+        stripped = line.lstrip()
+        is_msg_line = (
+            stripped.startswith("[") and
+            "@ " in stripped and
+            "]:" in stripped
+        )
+        if is_msg_line:
+            if msg_id_idx < len(msg_ids):
+                last_msg_id = msg_ids[msg_id_idx]
+                msg_id_idx += 1
+        if last_msg_id:
+            line_to_msg_id[i] = last_msg_id
+
+    return line_to_msg_id
+
+
+def _metadata_from_msg_ids(piece_msg_ids: list[str],
+                            id_to_msg: dict,
+                            fallback_chunk: dict) -> dict:
+    """
+    Fix 1: derive accurate start_ts, end_ts, authors, span_days
+    from the actual message objects in this split piece.
+
+    Falls back to original chunk values if message objects are not
+    available in id_to_msg (e.g. cross-channel references).
+    """
+    msgs = [id_to_msg[mid] for mid in piece_msg_ids
+            if mid in id_to_msg]
+
+    if not msgs:
+        # Fallback — should not happen in practice
+        return {
+            "start_ts":  fallback_chunk["start_ts"],
+            "end_ts":    fallback_chunk["end_ts"],
+            "authors":   fallback_chunk["authors"],
+            "span_days": fallback_chunk.get("span_days", 0),
+        }
+
+    msgs_sorted = sorted(msgs, key=lambda m: m["timestamp"])
+    start_dt    = datetime.fromisoformat(msgs_sorted[0]["timestamp"])
+    end_dt      = datetime.fromisoformat(msgs_sorted[-1]["timestamp"])
+    span_days   = (end_dt - start_dt).days
+
+    return {
+        "start_ts":  msgs_sorted[0]["timestamp"],
+        "end_ts":    msgs_sorted[-1]["timestamp"],
+        "authors":   list(dict.fromkeys(m["author"] for m in msgs_sorted)),
+        "span_days": span_days,
+    }
+
+
+def _split_if_needed(chunk: dict,
+                     id_to_msg: dict) -> list[dict]:
     """
     Split chunk at line boundaries if it exceeds MAX_TOKENS.
-    Fix 1: each split piece gets a unique split_index so stable IDs
-    don't collide in Qdrant when multiple pieces share same message_ids.
-    Fix 2: first_message_id stored per split piece so Discord links
-    point to the correct message in each piece, not the original chunk.
-    Thread title preserved in every split piece.
+
+    Fix 1 (v9): start_ts, end_ts, authors, span_days now derived from
+    actual message objects in each split piece via _metadata_from_msg_ids().
+    Previously all split pieces inherited stale values from {**chunk}.
+    gilsegev validation: 11/14 stale start_ts, 13/14 stale authors fixed.
+
+    Fix from v8 retained:
+    - Per-piece message_ids and first_message_id
+    - Single-line overflow guard
+    - message_count per piece
     """
     tokens = len(enc.encode(chunk["text"]))
     chunk["token_count"] = tokens
 
     if tokens <= MAX_TOKENS:
-        chunk["split_index"]     = 0
+        chunk["split_index"]      = 0
         chunk["first_message_id"] = chunk["message_ids"][0] \
             if chunk["message_ids"] else ""
         return [chunk]
 
-    # Extract thread title — prepend to every split piece
     thread_name   = chunk.get("thread_name")
     thread_header = f"[Thread: {thread_name}]\n" if thread_name else ""
 
     lines = chunk["text"].split("\n")
-    # Skip existing thread header — re-added to each piece
     if thread_header and lines and lines[0].startswith("[Thread:"):
         lines = lines[1:]
 
-    current       = []
-    result        = []
-    current_msgs  = []  # track which messages are in current piece
+    all_msg_ids    = chunk.get("message_ids", [])
+    line_to_msg_id = _build_line_to_msg_id(lines, all_msg_ids)
 
-    # Build message lookup for tracking first_message_id per piece
-    # Each line maps to a message by position in original chunk
-    msg_ids = chunk.get("message_ids", [])
+    current         = []
+    current_msg_ids = []
+    result          = []
 
-    for line in lines:
-        current.append(line)
-        full_text = thread_header + "\n".join(current)
-        if len(enc.encode(full_text)) > MAX_TOKENS:
-            current.pop()
-            if current:
-                sub_text = thread_header + "\n".join(current)
-                sub = {**chunk, "text": sub_text}
-                sub["token_count"]     = len(enc.encode(sub_text))
-                sub["split_index"]     = len(result)
-                # first_message_id is first msg_id in this piece
-                piece_idx = len(result)
-                sub["first_message_id"] = msg_ids[piece_idx] \
-                    if piece_idx < len(msg_ids) else \
-                    (msg_ids[0] if msg_ids else "")
-                result.append(sub)
-            current = [line]
-
-    if current:
+    def _flush_piece():
+        """Save current accumulated lines as a new split piece."""
+        if not current:
+            return
         sub_text = thread_header + "\n".join(current)
-        sub = {**chunk, "text": sub_text}
-        sub["token_count"]     = len(enc.encode(sub_text))
-        sub["split_index"]     = len(result)
-        piece_idx = len(result)
-        sub["first_message_id"] = msg_ids[piece_idx] \
-            if piece_idx < len(msg_ids) else \
-            (msg_ids[0] if msg_ids else "")
+
+        # Fix 1: derive accurate metadata from actual messages in this piece
+        meta = _metadata_from_msg_ids(current_msg_ids, id_to_msg, chunk)
+
+        sub = {**chunk}
+        sub["text"]             = sub_text
+        sub["token_count"]      = len(enc.encode(sub_text))
+        sub["split_index"]      = len(result)
+        sub["message_ids"]      = list(current_msg_ids)
+        sub["message_count"]    = len(current_msg_ids)
+        sub["first_message_id"] = current_msg_ids[0] \
+            if current_msg_ids else \
+            (all_msg_ids[0] if all_msg_ids else "")
+        # Fix 1: overwrite stale timestamps and authors from {**chunk}
+        sub["start_ts"]         = meta["start_ts"]
+        sub["end_ts"]           = meta["end_ts"]
+        sub["authors"]          = meta["authors"]
+        sub["span_days"]        = meta["span_days"]
         result.append(sub)
+
+    for i, line in enumerate(lines):
+        msg_id = line_to_msg_id.get(i)
+
+        test_lines    = current + [line]
+        test_text     = thread_header + "\n".join(test_lines)
+        would_overflow = len(enc.encode(test_text)) > MAX_TOKENS
+
+        if would_overflow and not current:
+            # Single-line overflow guard — force include as own piece
+            current = [line]
+            if msg_id and msg_id not in current_msg_ids:
+                current_msg_ids.append(msg_id)
+            _flush_piece()
+            current         = []
+            current_msg_ids = []
+            continue
+
+        if would_overflow and current:
+            _flush_piece()
+            current         = [line]
+            current_msg_ids = []
+            if msg_id:
+                current_msg_ids = [msg_id]
+            continue
+
+        current.append(line)
+        if msg_id and msg_id not in current_msg_ids:
+            current_msg_ids.append(msg_id)
+
+    _flush_piece()
 
     return result
 
 
 # ── Quick test ────────────────────────────────────────────────
 if __name__ == "__main__":
-    from parser import parse_all_exports
+    from ingestion.parser import parse_all_exports
     records = parse_all_exports("chat_logs")
     chunks  = chunk_records(records)
 
@@ -282,3 +384,22 @@ if __name__ == "__main__":
           f"{min(c['token_count'] for c in chunks)}")
     print(f"  Max span (days):        "
           f"{max(c.get('span_days', 0) for c in chunks)}")
+
+    # Verify split piece metadata is correct
+    if split_chunks:
+        print(f"\nSplit piece metadata verification (first 3 pieces):")
+        for sc in split_chunks[:3]:
+            print(f"  split_index={sc['split_index']} "
+                  f"msg_count={sc['message_count']} "
+                  f"start_ts={sc['start_ts'][:10]} "
+                  f"end_ts={sc['end_ts'][:10]} "
+                  f"authors={sc['authors']} "
+                  f"span_days={sc['span_days']} "
+                  f"first_message_id={sc['first_message_id']}")
+
+        # Coverage check
+        all_piece_ids = set()
+        for sc in split_chunks:
+            all_piece_ids.update(sc["message_ids"])
+        print(f"\nSplit coverage: {len(split_chunks)} pieces, "
+              f"{len(all_piece_ids)} unique message IDs")
