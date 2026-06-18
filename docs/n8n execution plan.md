@@ -283,10 +283,11 @@ Ordering:
 
 ```text
 rerank
--> reaction boost placeholder
 -> dedupe by message_ids
 -> context assembly
 ```
+
+Reaction boost remains out of Phase 6 until `reaction_count` exists in the Qdrant payload.
 
 Expected outcome:
 
