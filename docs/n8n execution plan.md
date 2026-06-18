@@ -409,6 +409,32 @@ Exit criteria:
 - repeated runs expose and quantify model variability
 - known prompt-quality and latency limitations are either resolved or explicitly accepted for launch
 
+Required regression seed case:
+
+```text
+Question:
+How does the partnership interview at Meta work, and do I need technical examples for it?
+
+Category:
+grounded multi-part answer
+
+Expected behavior:
+- answer the partnership-interview portion directly
+- explicitly answer the technical-examples portion instead of leaving it implicit
+- explain that retrieved community evidence frames the partnership interview primarily around cross-functional collaboration, communication, stakeholder alignment, and influence without authority
+- state that the retrieved evidence does not show technical examples are required for the partnership interview specifically
+- qualify that technical or semi-technical examples can still be useful when they demonstrate cross-functional influence, delivery, tradeoffs, metrics, or collaboration with technical and non-technical stakeholders
+- distinguish partnership-interview evidence from separate Meta technical/program/system-design interview evidence when both appear in retrieval
+- cite the June 18, 2024 `#tpm-interview-resources` source and at least one supporting `#interview-experience` source when used
+- stay under the Discord response limit
+
+Failure examples:
+- answering only how the interview works while ignoring whether technical examples are needed
+- treating technical-interview preparation evidence as proof that technical examples are required for the partnership interview
+- refusing despite the retrieved context containing direct partnership-interview evidence
+- answering without citations
+```
+
 ## First Implementation Milestone
 The first milestone should be:
 
