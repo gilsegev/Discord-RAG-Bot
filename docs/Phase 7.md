@@ -19,7 +19,7 @@ Phase 6 proved the retrieval mechanics. Phase 7 separates context assembly into 
 - Added `Assemble Context Contract` after `Build Dedupe And Context Decision`.
 - The new node builds the context block using the exact field structure from `retrieval-context-prompt-contracts.md`.
 - The context-token budget gate now lives in the context assembly step.
-- The workflow defaults to a `1200` context-token budget to match the contract.
+- The workflow defaults to a `2200` context-token budget based on Phase 7 testing. The contract currently says `1200`, but that caused a false refusal on the known-good Meta partnership interview query after three selected chunks still estimated at 1266 tokens.
 - `Context Found?`, `Prepare Gemini Request`, `Prepare Discord Refusal`, and the Phoenix retrieval/context checkpoint now read from `Assemble Context Contract`.
 - Retrieval result rows are regenerated after context assembly so `selected_for_context` reflects the final post-budget context.
 
@@ -86,4 +86,4 @@ A no-context or over-budget query should:
 
 ## Known Notes
 
-The stricter `1200` context-token budget may cause more conservative refusals than Phase 6. That is intentional for contract alignment and should be calibrated during regression testing.
+The implementation uses `2200` as the context-token budget because the original `1200` budget was too tight for the current indexed Discord corpus. The budget gate remains in place, but the default is calibrated to avoid false refusals when retrieval, reranking, and dedupe already found useful evidence. The retrieval/context/prompt contract should be updated to match this implementation decision.
