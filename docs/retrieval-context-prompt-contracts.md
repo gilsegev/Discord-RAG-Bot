@@ -163,6 +163,9 @@ Fields rationale:
 - **Message IDs** — enables dedupe detection and feedback correlation; reflects actual messages in this piece
 - **Discord link** — constructed from `channel_id` and `first_message_id` stored in Qdrant payload; points to the correct first message in each split piece
 
+Feedback correlation note:
+`message_ids` and `first_message_id` identify the evidence shown to the user. User feedback on the bot response is stored separately in `rag_feedback`, where `feedback_source` records the input channel (`reaction`, `context_menu`, `slash_command`, `form`, or `manual`) and `feedback_type` / `feedback_value` record the normalized sentiment or critique. Do not overload `feedback_type` to mean both source and sentiment.
+
 ### 2.2 Token budget
 
 | Allocation | Tokens |

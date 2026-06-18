@@ -299,10 +299,25 @@ Feedback is a satisfaction signal and review trigger. It should not be treated a
 |---|---|
 | `transaction_id` | Bot answer being evaluated |
 | `discord_response_message_id` | Bot response message |
-| `feedback_type` | `reaction`, `slash_command`, `form` |
-| `feedback_value` | Positive, negative, or structured value |
-| `feedback_author_id` | Feedback source |
+| `feedback_source` | Feedback channel, such as `reaction`, `context_menu`, `slash_command`, `form`, or `manual` |
+| `feedback_type` | Legacy normalized feedback type: `positive`, `negative`, or `explicit` |
+| `feedback_value` | Normalized sentiment or structured value, such as `positive`, `negative`, a reaction name, or a form value |
+| `reaction_name` | Raw Discord reaction name when `feedback_source = reaction` |
+| `feedback_text` | Optional explicit critique text |
+| `feedback_category` | Optional failure category, such as `made_something_up`, `did_not_answer`, `wrong_tone`, `surfaced_personal_info`, or `other` |
+| `matched` | Whether the feedback was linked to a known bot transaction |
+| `review_candidate` | True when the feedback should be reviewed by a human |
+| `review_status` | `pending`, `in_review`, `resolved`, or `dismissed` |
+| `feedback_author_id_hash` | Hashed feedback source |
 | `created_at` | Feedback timestamp |
+
+Feedback write rule:
+
+- Positive reaction or praise: write `feedback_type = positive`; `review_candidate = false`.
+- Negative reaction or explicit critique: write `feedback_type = negative` or `explicit`; set `review_candidate = true` and `review_status = pending`.
+- Unmatched feedback: write `matched = false` when a transaction cannot be linked; do not include it in weekly quality metrics until linked.
+
+This keeps feedback separate from evaluation labels. Human or judge review can later convert a review candidate into rows in `rag_eval_labels`.
 
 #### `rag_eval_labels`
 
@@ -538,6 +553,9 @@ Suggested retention:
 - Capture reactions and explicit feedback.
 - Link feedback to `discord_response_message_id`.
 - Store feedback in Postgres and Phoenix traces.
+- Write `feedback_source`, `feedback_type`, and `feedback_value` separately so the source channel is not confused with sentiment.
+- For negative reactions or explicit critique, set `review_candidate = true` and `review_status = pending`.
+- Use `matched = false` for feedback that cannot be linked to a known bot transaction.
 - Define the missing feedback-correlation workflow: Discord reaction event, target bot message lookup, transaction lookup, feedback write, and unmatched-feedback handling.
 
 ### Phase 4: Weekly Metrics Rollup
