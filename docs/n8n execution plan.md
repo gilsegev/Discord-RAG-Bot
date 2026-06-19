@@ -339,13 +339,14 @@ Reason:
 
 The active-call path now has retrieval, reranking, dedupe, context assembly, prompt construction, Discord dispatch, Postgres state, and Phoenix traces. Manual validation is no longer enough to know whether a workflow change improved quality or simply passed one demo question.
 
-The regression harness should run the curated question set from `docs/regression_questions.jsonl` and any additional questions provided by the team.
+The regression harness should run the curated question set from `scripts/regression_questions.jsonl` and any additional questions provided by the team. The file format and maintenance rules are documented in `docs/Regression README.md`.
 
 It needs:
 
 - one repeatable n8n workflow or script entry point for running a batch of questions
 - support for retrieval-only evaluation so retrieval, rerank, dedupe, and context assembly can be tested without Gemini cost or variability
 - support for full answer/refusal evaluation when Gemini behavior is being tested
+- three supported run paths: maintainer manual run, no-secret CI run, and Shilpi/manual evaluator run without Gil's Discord webhook or Gemini API key
 - one durable row per regression run and one durable row per question result
 - expected outcome fields for grounded answer, correct refusal, partial context, no context, stale context, adversarial, safety, and PII cases
 - actual outcome fields for status, retrieval status, refusal reason, selected chunks, scores, citations, answer length, latency, and trace link
@@ -359,6 +360,7 @@ Exit criteria:
 
 - the regression question file format is documented
 - the harness can run at least retrieval-only mode
+- retrieval-only mode can run without Gemini, Discord, or personal credentials
 - the harness can run the known Meta partnership seed case
 - each run persists enough evidence to debug failures outside the n8n editor
 - false refusal, missed refusal, no-context violation, and citation failure categories are explicit
