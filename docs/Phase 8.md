@@ -371,10 +371,11 @@ The first Phase 8 implementation can limit the intake workflow to regression mod
 
 Implementation slice 1:
 
-- Add `workflows/n8n/rag-intake-routing-phase-8-active-call.json`.
-- Preserve the known-working Phase 7 active-call RAG path.
-- Add the Phase 8 intake mode contract fields.
-- Validate that the active-call path still reaches Discord before adding regression and CI branches.
+- Add `workflows/n8n/rag-intake-routing-phase-8.json`.
+- Add `workflows/n8n/rag-core-execution-phase-8.json`.
+- Preserve the known-working Phase 7 RAG internals inside the shared core.
+- Keep transaction setup, mode flags, Discord posting, and final transaction updates in intake.
+- Validate that the active-call path still reaches Discord through `Intake -> Execute RAG Core -> Discord` before adding regression and CI branches.
 - Do not build a separate regression-only RAG copy.
 
 Intake nodes:
