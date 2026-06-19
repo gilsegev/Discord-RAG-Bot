@@ -41,7 +41,7 @@ Two-stage retrieval — broad recall first, then rerank. Two separate scoring sy
 | Term | System | Scale | Starting threshold | Usage |
 |---|---|---|---|---|
 | `retrieval_score` | Qdrant cosine similarity | 0.0 – 1.0 | 0.55 | Stage 1 — filters weak Qdrant results before reranking |
-| `reranker_score` | CrossEncoder score | unbounded, typically -10 to +10 | > 0 (recalibrate against eval set) | Stage 2 — ranks Stage 1 candidates; proceeds to boost and dedupe |
+| `reranker_score` | CrossEncoder score | unbounded, typically -10 to +10 | > 0 (recalibrate against eval set) | Stage 2 — ranks Stage 1 candidates; proceeds to dedupe and top-5 selection |
 
 For `cross-encoder/ms-marco-MiniLM-L-6-v2`, positive scores indicate relevance and negative scores indicate non-relevance. `reranker_score > 0` is a safe starting gate — recalibrate once the 40–60 question eval set is built.
 
@@ -54,7 +54,7 @@ For `cross-encoder/ms-marco-MiniLM-L-6-v2`, positive scores indicate relevance a
 - Pass Stage 1 candidates to CrossEncoder `cross-encoder/ms-marco-MiniLM-L-6-v2`
 - Rerank by `reranker_score`
 - Apply starting threshold `reranker_score > 0`
-- Candidates then proceed to reaction boost and dedupe before final top-5 selection (see section 1.6 for full pipeline order)
+- Candidates proceed to dedupe before final top-5 selection
 
 **What score appears in the context block sent to the LLM:**
 The `reranker_score` is included in the context block (section 2.1), not the `retrieval_score`. The reranker score is the more meaningful signal at the point of context assembly.
@@ -79,58 +79,34 @@ Two sources of duplication exist in the indexed corpus and both must be handled:
 
 **Source 1 — Boundary overlap:** The ingestion pipeline uses 2-message overlap at chunk boundaries. Adjacent chunks share messages.
 
-**Source 2 — Reply-chain root duplication:** Reply-aware chunking causes parent/root messages to appear in multiple chunks. Observed in the 13-file run: 1,014 message IDs appear in multiple chunks, max 5 appearances for a single message, 1,571 extra message memberships from overlap.
+**Source 2 — Reply-chain root duplication:** Reply-aware chunking causes parent/root messages to appear in multiple chunks. Observed in the 22-file run: 1,014+ message IDs appear in multiple chunks.
 
-**Important: both dedupe rules must be applied AFTER reaction boost and BEFORE final top-5 selection.** The boost (section 1.6) must run first so that highly-reacted chunks are not discarded before their score is elevated. `boosted_reranker_score` referenced below is defined in section 1.6 — read section 1.6 before implementing dedupe.
+**Both dedupe rules must be applied AFTER reranking and BEFORE final top-5 selection.**
 
 **Dedupe rule 1 — Boundary overlap:**
 
-After reaction boost, apply the following formula for each pair of candidate chunks. For `top_k=20` Stage 1 results this requires at most 190 pairwise comparisons — acceptable for synchronous n8n execution.
+After reranking, apply the following formula for each pair of candidate chunks. For `top_k=20` Stage 1 results this requires at most 190 pairwise comparisons — acceptable for synchronous n8n execution.
 
 ```
 shared        = intersection(chunk_a.message_ids, chunk_b.message_ids)
 overlap_ratio = len(shared) / min(len(chunk_a.message_ids), len(chunk_b.message_ids))
 ```
 
-If `overlap_ratio > 0.5` — keep only the higher `boosted_reranker_score` chunk.
+If `overlap_ratio > 0.5` — keep only the higher `reranker_score` chunk.
 
-Using `min()` as the denominator catches cases where a short reply-chain chunk is mostly contained inside a larger chunk — Jaccard similarity would miss these cases.
-
-**Note on split chunks:** Each split piece now stores only the `message_ids` actually rendered in that piece (fixed in ingestion v8). Dedupe correctly compares piece-level message sets, not the full original chunk's message set.
+**Note on split chunks:** Each split piece stores only the `message_ids` actually rendered in that piece (ingestion v10). Dedupe correctly compares piece-level message sets.
 
 **Dedupe rule 2 — Reply-chain root duplication:**
 
 If multiple retrieved chunks share the same root/parent message ID:
-- Keep the highest `boosted_reranker_score` chunk
+- Keep the highest `reranker_score` chunk
 - Only retain an additional chunk if it contains meaningfully different child replies (i.e. `overlap_ratio <= 0.5` against the kept chunk)
 
-**Current implementation note:** `root_message_id` is not yet stored in the Qdrant payload — deferred to PR #5 (see Open Question 7). Until it is added, n8n must include a dedupe placeholder after reaction boost and before context assembly that applies rule 1 formula across all candidate pairs. This placeholder must be in place before this PR is merged. Full reply-root dedupe upgrades automatically when `root_message_id` arrives in PR #5.
+**Current implementation note:** `root_message_id` is not yet stored in the Qdrant payload. Until it is added, n8n implements rule 2 using `message_ids` overlap only (rule 1 formula). Full reply-root dedupe activates when `root_message_id` is added in a future ingestion PR.
 
 ### 1.6 Reaction-based ranking boost
 
-CaliMan flagged that replies with reactions should rank higher in retrieval. The boost is applied **after reranking and before dedupe** so that highly-reacted chunks are not discarded before the boost has any effect.
-
-**Full pipeline order:**
-```
-Stage 1: Qdrant retrieval (top_k=20, retrieval_score >= 0.55)
-    ↓
-Stage 2: CrossEncoder reranking (reranker_score > 0)
-    ↓
-Stage 3: Reaction boost applied to reranker_score → boosted_reranker_score
-    ↓
-Stage 4: Dedupe (boundary overlap rule 1 + reply-root rule 2)
-    ↓
-Stage 5: Final top-5 selection for context assembly
-```
-
-**Boost formula:**
-```
-boosted_reranker_score = reranker_score * (1 + 0.1 * min(reaction_count, 5))
-```
-
-This caps the boost at 50% for chunks with 5 or more reactions.
-
-**n8n implementation note:** `reaction_count` must be added to the Qdrant payload during ingestion before Stage 3 can be activated (see Open Question 3). Until `reaction_count` is available in the payload, treat it as 0 — do not error on missing field. Pass `reranker_score` directly to Stage 4 as `boosted_reranker_score` with no modification.
+**Status: Deferred.** `reaction_count` is not yet stored in the Qdrant payload. Until it is added via an ingestion update, skip the reaction boost entirely and pass `reranker_score` directly to dedupe. The boost formula and ordering will be ratified separately once `reaction_count` is available.
 
 ---
 
@@ -138,9 +114,9 @@ This caps the boost at 50% for chunks with 5 or more reactions.
 
 ### 2.1 What gets sent to the LLM
 
-For each of the top 5 reranked, boosted, and deduped chunks, include the following fields in the assembled context block.
+For each of the top 5 reranked and deduped chunks, include the following fields in the assembled context block.
 
-**Note:** `channel_id`, `first_message_id`, and `message_ids` are stored in the Qdrant payload (added in ingestion v7, corrected per-piece in v8). `first_message_id` and `message_ids` reflect the actual messages rendered in each split piece — not the full original chunk's message set.
+**Note:** `channel_id`, `first_message_id`, and `message_ids` are stored in the Qdrant payload (ingestion v10). `first_message_id` and `message_ids` reflect the actual messages rendered in each split piece.
 
 ```
 --- Context chunk {n} of {total} ---
@@ -160,33 +136,32 @@ Fields rationale:
 - **Date range** — lets the LLM note if context is old; critical for fast-changing topics like hiring
 - **Authors** — preserves community attribution; supports citation style
 - **Score** — `reranker_score` (not `retrieval_score`) — the more meaningful confidence signal at context assembly time
-- **Message IDs** — enables dedupe detection and feedback correlation; reflects actual messages in this piece
-- **Discord link** — constructed from `channel_id` and `first_message_id` stored in Qdrant payload; points to the correct first message in each split piece
-
-Feedback correlation note:
-`message_ids` and `first_message_id` identify the evidence shown to the user. User feedback on the bot response is stored separately in `rag_feedback`, where `feedback_source` records the input channel (`reaction`, `context_menu`, `slash_command`, `form`, or `manual`) and `feedback_type` / `feedback_value` record the normalized sentiment or critique. Do not overload `feedback_type` to mean both source and sentiment.
+- **Message IDs** — enables dedupe detection and feedback correlation
+- **Discord link** — constructed from `channel_id` and `first_message_id` stored in Qdrant payload
 
 ### 2.2 Token budget
+
+**Updated per Issue #19:** Phase 7 testing confirmed the previous 1,200-token context budget caused frequent `context_token_budget_insufficient` refusals on the real Discord corpus. Budget updated to 2,200 tokens — matching the Phase 5 n8n workflow implementation (`context_token_budget = 2200`).
 
 | Allocation | Tokens |
 |---|---|
 | System prompt | ~300 |
-| Retrieved context (5 chunks × avg 154 tokens per chunk based on current index) | ~770 |
+| Retrieved context (5 chunks × avg 154 tokens per chunk) | ~770 |
 | Context block metadata overhead (5 chunks × ~50 tokens per header) | ~250 |
 | User question | ~100 |
 | Answer generation headroom | ~800 |
 | **Total budget** | **~2,220 tokens** |
 
-The 154 tokens/chunk figure is derived from the current Qdrant index average (153.6 tokens/chunk across 1,232 indexed chunks). The ~50 tokens/header estimate accounts for channel, thread, date range, authors, score, message IDs, and Discord link.
+If assembled context exceeds 2,200 tokens after 5 chunks, drop the lowest-scoring chunk and note the omission.
 
 ### 2.3 Context overflow handling
 
-**Single chunk overflow:** The current largest chunk is 692 tokens — well under the 1,200-token context budget for 5 chunks. The ingestion pipeline's `_split_if_needed()` function splits oversized chunks at line boundaries before indexing, including a single-line overflow guard (v8). n8n does not need to handle single-chunk overflow at retrieval time.
+**Single chunk overflow:** The current largest chunk is 692 tokens — well under the 2,200-token context budget for 5 chunks. The ingestion pipeline's `_split_if_needed()` function splits oversized chunks at line boundaries before indexing. n8n does not need to handle single-chunk overflow at retrieval time.
 
-**Multi-chunk overflow:** If the assembled 5 chunks exceed the 1,200-token context budget:
+**Multi-chunk overflow:** If the assembled 5 chunks exceed the 2,200-token context budget:
 1. Drop the lowest `reranker_score` chunk
 2. Repeat until under budget
-3. If fewer than 3 chunks remain after dropping, trigger refusal — "insufficient context after token budget constraints"
+3. If fewer than 3 chunks remain after dropping, trigger refusal — `context_token_budget_insufficient`
 4. Log the overflow event to the observability layer with chunk count and token counts
 
 ---
@@ -241,7 +216,7 @@ Exact single-line string — do not paraphrase, do not split across lines in imp
 I don't have enough TPM Unite specific context to answer this confidently, try rephrasing or ask the community directly.
 ```
 
-**Implementation note:** This must be a single unbroken string in the n8n node and LLM prompt. The evaluation rubric in `evaluation-and-feedback-scoring-design.md` checks this string exactly. A newline in the middle of the string counts as a variation and fails the tone/refusal dimension. When rendering in Discord, the string may wrap visually — that is fine. The underlying string must have no embedded newline.
+**Implementation note:** This must be a single unbroken string in the n8n node and LLM prompt. The evaluation rubric in `evaluation-and-feedback-scoring-design.md` checks this string exactly. A newline in the middle of the string counts as a variation and fails the tone/refusal dimension.
 
 ### 3.3 Source and citation style
 
@@ -254,8 +229,6 @@ I don't have enough TPM Unite specific context to answer this confidently, try r
 
 ### 3.4 Uncertainty handling
 
-Two separate score signals apply at different pipeline stages:
-
 | Signal | Score type | Threshold | Handling |
 |---|---|---|---|
 | `retrieval_score < 0.55` for all Stage 1 results | Qdrant cosine similarity | 0.55 | Trigger refusal — no context found |
@@ -267,19 +240,19 @@ Two separate score signals apply at different pipeline stages:
 
 ### 3.5 Whether to mention "based on TPM Unite history"
 
-Yes — always frame answers with explicit TPM Unite attribution. This prevents the bot from sounding like a generic AI assistant and reinforces that answers come from real community discussions.
+Yes — always frame answers with explicit TPM Unite attribution.
 
 ### 3.6 Whether to include channel/thread references
 
-Yes — always include channel and thread name in citations. This lets members follow up in the original channel and validates that the answer comes from a real discussion.
+Yes — always include channel and thread name in citations.
 
 ### 3.7 Whether to invite members to continue discussion
 
-Yes — for nuanced, evolving, or role-specific answers, close with the nuance caveat (Rule 6). This invites the community to add more recent context and prevents the bot from being treated as a final authority.
+Yes — for nuanced, evolving, or role-specific answers, close with the nuance caveat (Rule 6).
 
 ### 3.8 Safety rule
 
-The bot must not answer beyond what is in the retrieved context. This is Rule 1 in the system prompt and is the non-negotiable gate in the evaluation rubric. The v1 bot was deprecated specifically for violating this rule. Any answer that adds claims not present in the retrieved context is a groundedness failure regardless of how helpful it reads.
+The bot must not answer beyond what is in the retrieved context. This is Rule 1 in the system prompt and is the non-negotiable gate in the evaluation rubric.
 
 ---
 
@@ -287,16 +260,16 @@ The bot must not answer beyond what is in the retrieved context. This is Rule 1 
 
 1. **Reranker model** — CrossEncoder `cross-encoder/ms-marco-MiniLM-L-6-v2` is the proposed default. Does the team want to evaluate alternatives before locking this in?
 
-2. **Reranker score thresholds** — starting values proposed: `> 0` for refusal gate, `> 2` for weak-signal note. Calibrate both against the 40–60 question eval set. Who owns calibration?
+2. **Reranker score thresholds** — starting values: `> 0` for refusal gate, `> 2` for weak-signal note. Calibrate both against the 40–60 question eval set. Who owns calibration?
 
-3. **Reaction-based ranking boost** — formula defined in section 1.6. Requires `reaction_count` field added to Qdrant payload during ingestion. n8n must treat missing `reaction_count` as 0 — no boost applied, no error. Team to ratify formula and confirm ingestion update ownership before implementation.
+3. **Reaction-based ranking boost** — deferred until `reaction_count` is added to Qdrant payload. Formula and ordering to be ratified in a dedicated PR. See section 1.6.
 
-4. **Discord link construction** — guild ID `853099205206999050` hardcoded. `channel_id` and `first_message_id` now in Qdrant payload (ingestion v8 — corrected per-piece). Confirm guild ID is stable — server migration invalidates all stored links.
+4. **Discord link construction** — guild ID `853099205206999050` hardcoded. `channel_id` and `first_message_id` now in Qdrant payload (ingestion v10). Confirm guild ID is stable.
 
 5. **LLM selection** — Arch Overview specifies Gemini API as current cognitive engine. This document is model-agnostic. Token budget allocations may require adjustment if model changes.
 
 6. **Passive listener retrieval** — should passive queries use a higher `retrieval_score` threshold (e.g. 0.70) to reduce noise responses?
 
-7. **root_message_id in payload (deferred to PR #5)** — full reply-root dedupe (rule 2 in section 1.5) requires `root_message_id` in the Qdrant payload. This field is deferred to PR #5. Before this PR is merged, n8n must implement a dedupe placeholder using rule 1 formula (`message_ids` overlap) after reaction boost and before context assembly. Full reply-root dedupe activates automatically when `root_message_id` arrives in PR #5 — no n8n rework required, only the ingestion update.
+7. **root_message_id in payload** — full reply-root dedupe (rule 2 in section 1.5) requires `root_message_id` in the Qdrant payload. Targeted for a future ingestion PR. Until then n8n uses rule 1 formula for both sources of duplication.
 
-8. **Context token budget recalibration** — 154 tokens/chunk average based on current 13-file dataset. Recalibrate after each major data expansion.
+8. **Context token budget recalibration** — 154 tokens/chunk average based on current 22-file dataset. Recalibrate after each major data expansion.
