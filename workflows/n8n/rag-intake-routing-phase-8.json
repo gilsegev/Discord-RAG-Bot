@@ -277,9 +277,401 @@
         },
         "workflowInputs": {
           "mappingMode": "defineBelow",
-          "value": {},
+          "value": {
+            "transaction_id": "={{ $json.transaction_id }}",
+            "created_at": "={{ $json.created_at }}",
+            "discord_message_id": "={{ $json.discord_message_id }}",
+            "channel_id": "={{ $json.channel_id }}",
+            "channel_name": "={{ $json.channel_name }}",
+            "author_id_hash": "={{ $json.author_id_hash }}",
+            "route_type": "={{ $json.route_type }}",
+            "status": "={{ $json.status }}",
+            "retrieval_status": "={{ $json.retrieval_status }}",
+            "response_status": "={{ $json.response_status }}",
+            "user_query": "={{ $json.user_query }}",
+            "normalized_query": "={{ $json.normalized_query }}",
+            "query_hash": "={{ $json.query_hash }}",
+            "trigger_source": "={{ $json.trigger_source }}",
+            "run_mode": "={{ $json.run_mode }}",
+            "response_mode": "={{ $json.response_mode }}",
+            "allow_gemini": "={{ $json.allow_gemini }}",
+            "allow_discord_post": "={{ $json.allow_discord_post }}",
+            "requested_by": "={{ $json.requested_by }}",
+            "regression_run_id": "={{ $json.regression_run_id }}",
+            "case_id": "={{ $json.case_id }}",
+            "workflow_contract_version": "={{ $json.workflow_contract_version }}",
+            "qdrant_collection": "={{ $json.qdrant_collection }}",
+            "embedding_url": "={{ $json.embedding_url }}",
+            "qdrant_base_url": "={{ $json.qdrant_base_url }}",
+            "reranker_url": "={{ $json.reranker_url }}",
+            "phoenix_collector_url": "={{ $json.phoenix_collector_url }}",
+            "phoenix_project_name": "={{ $json.phoenix_project_name }}",
+            "gemini_url": "={{ $json.gemini_url }}",
+            "discord_webhook_url": "={{ $json.discord_webhook_url }}",
+            "top_k": "={{ $json.top_k }}",
+            "context_k": "={{ $json.context_k }}",
+            "min_result_count": "={{ $json.min_result_count }}",
+            "retrieval_score_threshold": "={{ $json.retrieval_score_threshold }}",
+            "reranker_score_threshold": "={{ $json.reranker_score_threshold }}",
+            "weak_reranker_score_threshold": "={{ $json.weak_reranker_score_threshold }}",
+            "context_token_budget": "={{ $json.context_token_budget }}",
+            "dedupe_overlap_threshold": "={{ $json.dedupe_overlap_threshold }}",
+            "workflow_started_ms": "={{ $json.workflow_started_ms }}"
+          },
           "matchingColumns": [],
-          "schema": [],
+          "schema": [
+            {
+              "id": "transaction_id",
+              "displayName": "transaction_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string"
+            },
+            {
+              "id": "created_at",
+              "displayName": "created_at",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string"
+            },
+            {
+              "id": "discord_message_id",
+              "displayName": "discord_message_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string"
+            },
+            {
+              "id": "channel_id",
+              "displayName": "channel_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string"
+            },
+            {
+              "id": "channel_name",
+              "displayName": "channel_name",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string"
+            },
+            {
+              "id": "author_id_hash",
+              "displayName": "author_id_hash",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string"
+            },
+            {
+              "id": "route_type",
+              "displayName": "route_type",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string"
+            },
+            {
+              "id": "status",
+              "displayName": "status",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string"
+            },
+            {
+              "id": "retrieval_status",
+              "displayName": "retrieval_status",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string"
+            },
+            {
+              "id": "response_status",
+              "displayName": "response_status",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string"
+            },
+            {
+              "id": "user_query",
+              "displayName": "user_query",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string"
+            },
+            {
+              "id": "normalized_query",
+              "displayName": "normalized_query",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string"
+            },
+            {
+              "id": "query_hash",
+              "displayName": "query_hash",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string"
+            },
+            {
+              "id": "trigger_source",
+              "displayName": "trigger_source",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string"
+            },
+            {
+              "id": "run_mode",
+              "displayName": "run_mode",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string"
+            },
+            {
+              "id": "response_mode",
+              "displayName": "response_mode",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string"
+            },
+            {
+              "id": "allow_gemini",
+              "displayName": "allow_gemini",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "boolean"
+            },
+            {
+              "id": "allow_discord_post",
+              "displayName": "allow_discord_post",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "boolean"
+            },
+            {
+              "id": "requested_by",
+              "displayName": "requested_by",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string"
+            },
+            {
+              "id": "regression_run_id",
+              "displayName": "regression_run_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string"
+            },
+            {
+              "id": "case_id",
+              "displayName": "case_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string"
+            },
+            {
+              "id": "workflow_contract_version",
+              "displayName": "workflow_contract_version",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string"
+            },
+            {
+              "id": "qdrant_collection",
+              "displayName": "qdrant_collection",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string"
+            },
+            {
+              "id": "embedding_url",
+              "displayName": "embedding_url",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string"
+            },
+            {
+              "id": "qdrant_base_url",
+              "displayName": "qdrant_base_url",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string"
+            },
+            {
+              "id": "reranker_url",
+              "displayName": "reranker_url",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string"
+            },
+            {
+              "id": "phoenix_collector_url",
+              "displayName": "phoenix_collector_url",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string"
+            },
+            {
+              "id": "phoenix_project_name",
+              "displayName": "phoenix_project_name",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string"
+            },
+            {
+              "id": "gemini_url",
+              "displayName": "gemini_url",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string"
+            },
+            {
+              "id": "discord_webhook_url",
+              "displayName": "discord_webhook_url",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string"
+            },
+            {
+              "id": "top_k",
+              "displayName": "top_k",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "number"
+            },
+            {
+              "id": "context_k",
+              "displayName": "context_k",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "number"
+            },
+            {
+              "id": "min_result_count",
+              "displayName": "min_result_count",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "number"
+            },
+            {
+              "id": "retrieval_score_threshold",
+              "displayName": "retrieval_score_threshold",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "number"
+            },
+            {
+              "id": "reranker_score_threshold",
+              "displayName": "reranker_score_threshold",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "number"
+            },
+            {
+              "id": "weak_reranker_score_threshold",
+              "displayName": "weak_reranker_score_threshold",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "number"
+            },
+            {
+              "id": "context_token_budget",
+              "displayName": "context_token_budget",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "number"
+            },
+            {
+              "id": "dedupe_overlap_threshold",
+              "displayName": "dedupe_overlap_threshold",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "number"
+            },
+            {
+              "id": "workflow_started_ms",
+              "displayName": "workflow_started_ms",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "number"
+            }
+          ],
           "attemptToConvertTypes": false,
           "convertFieldsToString": false
         },
