@@ -343,7 +343,8 @@ The regression harness should run the curated question set from `scripts/regress
 
 It needs:
 
-- one repeatable n8n workflow or script entry point for running a batch of questions
+- one repeatable intake/routing entry point for running a batch of questions
+- a shared RAG core workflow so regression, CI, active calls, and later passive calls do not fork retrieval logic
 - support for retrieval-only evaluation so retrieval, rerank, dedupe, and context assembly can be tested without Gemini cost or variability
 - support for full answer/refusal evaluation when Gemini behavior is being tested
 - three supported run paths: maintainer manual run, no-secret CI run, and Shilpi/manual evaluator run without Gil's Discord webhook or Gemini API key
@@ -354,13 +355,24 @@ It needs:
 
 Expected outcome:
 
-The team can run the same question set after each retrieval, context, prompt, or schema change and see whether quality improved, regressed, or needs review.
+The team can run the same question set after each retrieval, context, prompt, or schema change through the same shared RAG core used by production paths, then see whether quality improved, regressed, or needs review.
+
+Workflow design:
+
+```text
+RAG Intake + Routing
+-> Shared RAG Core
+-> mode-specific output writers
+```
+
+The intake workflow identifies `trigger_source`, sets `run_mode`, sets `response_mode`, and enforces `allow_gemini` / `allow_discord_post`. The shared core owns normalization, embedding, Qdrant retrieval, reranking, dedupe, context assembly, refusal gates, optional Gemini execution, and core Phoenix checkpoints.
 
 Exit criteria:
 
 - the regression question file format is documented
 - the harness can run at least retrieval-only mode
 - retrieval-only mode can run without Gemini, Discord, or personal credentials
+- regression does not duplicate the RAG retrieval/rerank/dedupe/context logic
 - the harness can run the known Meta partnership seed case
 - each run persists enough evidence to debug failures outside the n8n editor
 - false refusal, missed refusal, no-context violation, and citation failure categories are explicit

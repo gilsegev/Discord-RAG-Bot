@@ -46,12 +46,94 @@ The v1 set has 45 cases:
 ## Design Principles
 
 - The regression harness should test the same retrieval, rerank, dedupe, context assembly, and prompt contracts used by the production active-call flow.
+- Regression must not fork or copy the RAG execution logic.
+- Active calls, passive candidates, manual regression, CI regression, and evaluator runs should enter through one intake/routing contract.
+- The shared RAG core should be the only place that owns retrieval, rerank, dedupe, context assembly, prompt construction, refusal decisions, and optional Gemini execution.
 - Retrieval-only mode must not require Gemini, Discord, or Gil's personal credentials.
 - Full-answer mode may use Gemini, but only through bot-owned credentials.
 - CI should default to a no-secret retrieval-only run.
 - Each run must produce durable evidence outside the n8n editor.
 - Regression labels are evaluation data, not live user feedback.
 - Results should be inspectable from Postgres and traceable in Phoenix.
+
+## Target Workflow Architecture
+
+Use one intake/routing workflow and one shared RAG core workflow.
+
+```text
+Discord active call
+Discord passive candidate
+Gil manual regression run
+CI regression run
+Shilpi / evaluator retrieval-only run
+        |
+        v
+RAG Intake + Routing workflow
+        |
+        v
+Shared RAG Core workflow
+        |
+        v
+Mode-specific outputs:
+- regression result rows
+- CI summary artifact
+- Discord response
+- Phoenix trace
+- Postgres transaction/eval evidence
+```
+
+### RAG Intake + Routing Workflow
+
+This workflow owns who or what is calling the system.
+
+Responsibilities:
+
+- identify `trigger_source`
+- validate the request shape
+- create or attach `transaction_id`
+- create `regression_run_id` when the request is part of a regression batch
+- set mode flags
+- call the shared RAG core workflow
+- route the returned result to the right output writers
+- prevent forbidden side effects, such as Discord posting from CI or Shilpi runs
+
+### Shared RAG Core Workflow
+
+This workflow owns the RAG behavior.
+
+Responsibilities:
+
+- normalize query
+- embed query
+- search Qdrant
+- rerank candidates
+- apply dedupe
+- assemble context
+- apply retrieval/context refusal gates
+- call Gemini only when allowed
+- return a structured result object
+- emit Phoenix checkpoints for the RAG execution path
+
+The shared core must not know whether the request came from Discord, CI, Gil, or Shilpi except through explicit mode flags. That keeps the logic reusable and prevents workflow drift.
+
+### Mode Contract
+
+Every request should carry an explicit mode object.
+
+```json
+{
+  "trigger_source": "discord_active | discord_passive | regression_manual | regression_ci | evaluator_manual",
+  "run_mode": "retrieval_only | full_answer",
+  "response_mode": "postgres_only | discord_test | discord_live | ci_artifact",
+  "allow_gemini": false,
+  "allow_discord_post": false,
+  "case_id": "RQ-001",
+  "regression_run_id": "optional",
+  "requested_by": "gil | ci | shilpi | bot"
+}
+```
+
+Allowed behavior should be enforced from the flags, not from assumptions about who clicked the workflow.
 
 ## Required Run Modes
 
@@ -68,13 +150,13 @@ Run the full path when validating answer quality, prompt behavior, Discord-safe 
 Flow:
 
 ```text
-manual trigger or n8n webhook
--> load selected regression cases
--> run each question through active-call retrieval/rerank/dedupe/context assembly
--> call Gemini when mode = full_answer
--> optionally post to a test Discord webhook
--> persist run and per-question results
--> emit Phoenix trace spans
+manual trigger
+-> RAG Intake + Routing
+-> Shared RAG Core
+-> optional Gemini when allow_gemini = true
+-> optional test Discord post when allow_discord_post = true
+-> regression result rows
+-> Phoenix trace spans
 ```
 
 Credentials:
@@ -102,8 +184,9 @@ Flow:
 ```text
 checkout repo
 -> validate regression JSONL schema
--> start required local services or restore a Qdrant snapshot
--> run retrieval-only regression harness
+-> start required local services or restore a Qdrant snapshot when available
+-> call RAG Intake + Routing with trigger_source = regression_ci
+-> Shared RAG Core runs retrieval_only
 -> write machine-readable summary artifact
 -> fail CI only on structural errors or configured hard gates
 ```
@@ -156,9 +239,9 @@ Flow:
 
 ```text
 Shilpi opens limited tunnel
--> opens n8n regression workflow
+-> opens RAG Intake + Routing workflow
 -> selects retrieval_only mode and question subset
--> runs batch
+-> runs batch through Shared RAG Core
 -> reviews Postgres/Phoenix results
 -> exports summary for threshold and label review
 ```
@@ -169,45 +252,20 @@ Credential policy:
 - No Gemini key.
 - No broad shell access required for ordinary runs.
 
-## Proposed Architecture
+## Runner Script Role
 
-Use two layers:
-
-### Regression Runner
-
-A repo-owned script should be the stable orchestration entry point for CI and local runs.
+A repo-owned script is still useful, but it should not own RAG logic.
 
 Responsibilities:
 
 - read `scripts/regression_questions.jsonl`
 - validate required fields
 - select all cases, one case, or a category
-- call an n8n regression webhook or run direct HTTP calls against services
-- persist summary output
+- call the RAG Intake + Routing workflow or its webhook entry point
+- print and save the returned summary
 - exit with a CI-friendly status code
 
-Initial recommendation:
-
-Start with the n8n webhook path because it exercises the same workflow logic we are building for production.
-
-### n8n Regression Workflow
-
-Create a retrieval-only n8n workflow first.
-
-Responsibilities:
-
-- accept one case or a batch
-- normalize the question
-- call embedder
-- query Qdrant
-- call reranker
-- apply dedupe
-- assemble context
-- classify retrieval outcome against expected behavior
-- write run/result rows
-- emit Phoenix spans
-
-Add full-answer mode later by reusing the Phase 7 active-call path and disabling Discord posting by default.
+The script is a client of the intake workflow, not a second implementation of retrieval.
 
 ## Persistence Model
 
@@ -302,31 +360,42 @@ Use explicit result categories so regressions are easy to debug:
 - Add an additive migration for the running Oracle Postgres database.
 - Index by `run_id`, `case_id`, `category`, `outcome`, and `created_at`.
 
-### Step 3: Build Retrieval-Only Workflow
+### Step 3: Build Shared Intake/Core Workflows
 
-Create `workflows/n8n/rag-regression-phase-8-retrieval-only.json`.
+Create or refactor toward:
 
-Nodes:
+- `workflows/n8n/rag-intake-routing.json`
+- `workflows/n8n/rag-core-execution.json`
+
+The first Phase 8 implementation can limit the intake workflow to regression modes, but it should use the same contract we expect active and passive calls to use later.
+
+Intake nodes:
 
 - `Manual Trigger`
-- `Set Regression Run Config`
+- `Set Request Mode`
 - `Load Regression Cases`
 - `Split In Batches`
 - `Create Regression Run`
 - `Prepare Case`
-- `Normalize Query`
-- `Emit Phoenix Case Started`
-- `Query Embedding`
-- `Qdrant Vector Search`
-- `Rerank Candidates`
-- `Dedupe And Context Decision`
-- `Assemble Context Contract`
+- `Execute RAG Core`
 - `Classify Retrieval Outcome`
 - `Write Regression Result`
 - `Emit Phoenix Case Completed`
 - `Finalize Regression Run`
 
-This workflow must not include Gemini or Discord nodes.
+Core nodes:
+
+- `Normalize Query`
+- `Emit Phoenix Core Started`
+- `Query Embedding`
+- `Qdrant Vector Search`
+- `Rerank Candidates`
+- `Dedupe And Context Decision`
+- `Assemble Context Contract`
+- `Gemini Generation` only when `allow_gemini = true`
+- `Return RAG Result`
+
+CI and Shilpi modes must set `allow_gemini = false` and `allow_discord_post = false`.
 
 ### Step 4: Add Runner Script
 
@@ -369,7 +438,7 @@ Update the developer evaluation access doc with:
 
 After retrieval-only is stable:
 
-- reuse the Phase 7 context/prompt flow
+- use the same RAG Intake + Routing and Shared RAG Core contract
 - call Gemini using bot-owned credentials
 - keep Discord posting disabled by default
 - validate refusal wording, citation presence, answer length, and caveat requirements
