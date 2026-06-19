@@ -1,0 +1,1398 @@
+{
+  "name": "RAG Intake + Routing - Phase 8 Active Call",
+  "active": false,
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "b70e59e0-c662-4277-9c33-d60eac135001",
+      "name": "Manual Trigger - Active Call Intake",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        -2680,
+        80
+      ]
+    },
+    {
+      "parameters": {
+        "mode": "manual",
+        "duplicateItem": false,
+        "assignments": {
+          "assignments": [
+            {
+              "id": "2fbf06ef-b625-4ea9-a9b2-2d31e538f5b3",
+              "name": "user_query",
+              "value": "How does the partnership interview at Meta work, and do I need technical examples for it?",
+              "type": "string"
+            },
+            {
+              "id": "5f593664-0cb6-42e4-8107-780f39328eaf",
+              "name": "discord_message_id",
+              "value": "phase-8-intake-active-call-manual",
+              "type": "string"
+            },
+            {
+              "id": "71d01889-b00a-47b9-942a-dc215d78cf4f",
+              "name": "channel_id",
+              "value": "phase-8-test",
+              "type": "string"
+            },
+            {
+              "id": "9f83c0ed-5534-4fd3-953b-25c1c1d4278d",
+              "name": "channel_name",
+              "value": "n8n-phase-8-test",
+              "type": "string"
+            },
+            {
+              "id": "68346115-ae1d-4d69-a8a2-9db3b02bdf86",
+              "name": "author_id_hash",
+              "value": "manual-test-author",
+              "type": "string"
+            },
+            {
+              "id": "a53fd67b-f4f0-4ca9-af9e-489555af249b",
+              "name": "qdrant_collection",
+              "value": "tpm_unite_history",
+              "type": "string"
+            },
+            {
+              "id": "c0dd4d89-8cce-455e-83a4-f0f0dad4ac24",
+              "name": "embedding_url",
+              "value": "http://embedder:8000/embed",
+              "type": "string"
+            },
+            {
+              "id": "5fae5328-d112-47a0-8aeb-00b4ef9871b7",
+              "name": "qdrant_base_url",
+              "value": "http://qdrant:6333",
+              "type": "string"
+            },
+            {
+              "id": "phase5-reranker-url",
+              "name": "reranker_url",
+              "value": "http://reranker:8002/rerank",
+              "type": "string"
+            },
+            {
+              "id": "97ac32f6-9e9c-4d89-b38a-0b471c3a36b6",
+              "name": "gemini_url",
+              "value": "https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash:generateContent?key=REPLACE_WITH_GEMINI_API_KEY",
+              "type": "string"
+            },
+            {
+              "id": "b865f437-fcf7-4504-8a95-d7cd0bca4bc9",
+              "name": "discord_webhook_url",
+              "value": "REPLACE_WITH_DISCORD_WEBHOOK_URL?wait=true",
+              "type": "string"
+            },
+            {
+              "id": "fd60ed59-bd90-4d65-ace1-36225e11c961",
+              "name": "top_k",
+              "value": 20,
+              "type": "number"
+            },
+            {
+              "id": "c72d0d14-4d57-4981-9f34-42fb04e671c1",
+              "name": "context_k",
+              "value": 5,
+              "type": "number"
+            },
+            {
+              "id": "cfc17fa6-0d15-4f51-a5d3-5874738bfbda",
+              "name": "min_result_count",
+              "value": 3,
+              "type": "number"
+            },
+            {
+              "id": "00ec962b-dc6e-489d-9769-08b46613917b",
+              "name": "retrieval_score_threshold",
+              "value": 0.55,
+              "type": "number"
+            },
+            {
+              "id": "phase4-phoenix-url",
+              "name": "phoenix_collector_url",
+              "value": "http://trace-emitter:8001/v1/traces",
+              "type": "string"
+            },
+            {
+              "id": "phase4-phoenix-project",
+              "name": "phoenix_project_name",
+              "value": "discord-rag-bot-phase-8",
+              "type": "string"
+            },
+            {
+              "id": "phase5-context-budget",
+              "name": "context_token_budget",
+              "value": 2200,
+              "type": "number"
+            },
+            {
+              "id": "phase5-reranker-threshold",
+              "name": "reranker_score_threshold",
+              "value": 0,
+              "type": "number"
+            },
+            {
+              "id": "phase5-weak-reranker-threshold",
+              "name": "weak_reranker_score_threshold",
+              "value": 2,
+              "type": "number"
+            },
+            {
+              "id": "phase6-dedupe-overlap-threshold",
+              "name": "dedupe_overlap_threshold",
+              "value": 0.5,
+              "type": "number"
+            },
+            {
+              "id": "phase8-trigger-source",
+              "name": "trigger_source",
+              "value": "discord_active",
+              "type": "string"
+            },
+            {
+              "id": "phase8-run-mode",
+              "name": "run_mode",
+              "value": "full_answer",
+              "type": "string"
+            },
+            {
+              "id": "phase8-response-mode",
+              "name": "response_mode",
+              "value": "discord_test",
+              "type": "string"
+            },
+            {
+              "id": "phase8-allow-gemini",
+              "name": "allow_gemini",
+              "value": true,
+              "type": "boolean"
+            },
+            {
+              "id": "phase8-allow-discord-post",
+              "name": "allow_discord_post",
+              "value": true,
+              "type": "boolean"
+            },
+            {
+              "id": "phase8-requested-by",
+              "name": "requested_by",
+              "value": "gil",
+              "type": "string"
+            },
+            {
+              "id": "phase8-regression-run-id",
+              "name": "regression_run_id",
+              "value": "",
+              "type": "string"
+            },
+            {
+              "id": "phase8-case-id",
+              "name": "case_id",
+              "value": "",
+              "type": "string"
+            },
+            {
+              "id": "phase8-workflow-contract-version",
+              "name": "workflow_contract_version",
+              "value": "phase-8-intake-v1",
+              "type": "string"
+            }
+          ]
+        },
+        "includeOtherFields": true,
+        "options": {}
+      },
+      "id": "da2e88d5-854e-4cb6-a60c-f881a3fa7b47",
+      "name": "Set Intake Active Call",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -2440,
+        80
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "INSERT INTO rag_transactions (\n  discord_message_id,\n  channel_id,\n  channel_name,\n  author_id_hash,\n  incoming_message_ts,\n  route_type,\n  status,\n  retrieval_status,\n  response_status,\n  user_query\n)\nVALUES (\n  '{{ $json.discord_message_id }}',\n  '{{ $json.channel_id }}',\n  '{{ $json.channel_name }}',\n  '{{ $json.author_id_hash }}',\n  now(),\n  'active_call',\n  'created',\n  'not_started',\n  'not_started',\n  '{{ $json.user_query }}'\n)\nRETURNING\n  transaction_id,\n  created_at,\n  discord_message_id,\n  channel_id,\n  channel_name,\n  author_id_hash,\n  route_type,\n  status,\n  retrieval_status,\n  response_status,\n  user_query;"
+      },
+      "id": "a7f88c91-2217-4ee8-b4b0-ad077ce0d488",
+      "name": "Create Transaction",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        -2200,
+        80
+      ],
+      "credentials": {
+        "postgres": {
+          "id": "JcwnINxG4CstrGKy",
+          "name": "Postgres account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "function rightRotate(value, amount) { return (value >>> amount) | (value << (32 - amount)); }\nfunction utf8Bytes(str) {\n  const bytes = [];\n  for (let i = 0; i < str.length; i++) {\n    let code = str.charCodeAt(i);\n    if (code >= 0xd800 && code <= 0xdbff && i + 1 < str.length) {\n      const next = str.charCodeAt(++i);\n      code = 0x10000 + (((code & 0x3ff) << 10) | (next & 0x3ff));\n    }\n    if (code < 0x80) bytes.push(code);\n    else if (code < 0x800) bytes.push(0xc0 | (code >> 6), 0x80 | (code & 0x3f));\n    else if (code < 0x10000) bytes.push(0xe0 | (code >> 12), 0x80 | ((code >> 6) & 0x3f), 0x80 | (code & 0x3f));\n    else bytes.push(0xf0 | (code >> 18), 0x80 | ((code >> 12) & 0x3f), 0x80 | ((code >> 6) & 0x3f), 0x80 | (code & 0x3f));\n  }\n  return bytes;\n}\nfunction sha256Hex(input) {\n  const bytes = utf8Bytes(String(input));\n  const k = [0x428a2f98,0x71374491,0xb5c0fbcf,0xe9b5dba5,0x3956c25b,0x59f111f1,0x923f82a4,0xab1c5ed5,0xd807aa98,0x12835b01,0x243185be,0x550c7dc3,0x72be5d74,0x80deb1fe,0x9bdc06a7,0xc19bf174,0xe49b69c1,0xefbe4786,0x0fc19dc6,0x240ca1cc,0x2de92c6f,0x4a7484aa,0x5cb0a9dc,0x76f988da,0x983e5152,0xa831c66d,0xb00327c8,0xbf597fc7,0xc6e00bf3,0xd5a79147,0x06ca6351,0x14292967,0x27b70a85,0x2e1b2138,0x4d2c6dfc,0x53380d13,0x650a7354,0x766a0abb,0x81c2c92e,0x92722c85,0xa2bfe8a1,0xa81a664b,0xc24b8b70,0xc76c51a3,0xd192e819,0xd6990624,0xf40e3585,0x106aa070,0x19a4c116,0x1e376c08,0x2748774c,0x34b0bcb5,0x391c0cb3,0x4ed8aa4a,0x5b9cca4f,0x682e6ff3,0x748f82ee,0x78a5636f,0x84c87814,0x8cc70208,0x90befffa,0xa4506ceb,0xbef9a3f7,0xc67178f2];\n  let h = [0x6a09e667,0xbb67ae85,0x3c6ef372,0xa54ff53a,0x510e527f,0x9b05688c,0x1f83d9ab,0x5be0cd19];\n  const bitLen = bytes.length * 8;\n  bytes.push(0x80);\n  while ((bytes.length % 64) !== 56) bytes.push(0);\n  const high = Math.floor(bitLen / 0x100000000), low = bitLen >>> 0;\n  for (const word of [high, low]) bytes.push((word >>> 24) & 255, (word >>> 16) & 255, (word >>> 8) & 255, word & 255);\n  for (let offset = 0; offset < bytes.length; offset += 64) {\n    const w = new Array(64).fill(0);\n    for (let i = 0; i < 16; i++) { const j = offset + i * 4; w[i] = ((bytes[j] << 24) | (bytes[j + 1] << 16) | (bytes[j + 2] << 8) | bytes[j + 3]) >>> 0; }\n    for (let i = 16; i < 64; i++) {\n      const s0 = (rightRotate(w[i - 15], 7) ^ rightRotate(w[i - 15], 18) ^ (w[i - 15] >>> 3)) >>> 0;\n      const s1 = (rightRotate(w[i - 2], 17) ^ rightRotate(w[i - 2], 19) ^ (w[i - 2] >>> 10)) >>> 0;\n      w[i] = (w[i - 16] + s0 + w[i - 7] + s1) >>> 0;\n    }\n    let [a,b,c,d,e,f,g,hh] = h;\n    for (let i = 0; i < 64; i++) {\n      const s1 = (rightRotate(e, 6) ^ rightRotate(e, 11) ^ rightRotate(e, 25)) >>> 0;\n      const ch = ((e & f) ^ (~e & g)) >>> 0;\n      const temp1 = (hh + s1 + ch + k[i] + w[i]) >>> 0;\n      const s0 = (rightRotate(a, 2) ^ rightRotate(a, 13) ^ rightRotate(a, 22)) >>> 0;\n      const maj = ((a & b) ^ (a & c) ^ (b & c)) >>> 0;\n      const temp2 = (s0 + maj) >>> 0;\n      hh = g; g = f; f = e; e = (d + temp1) >>> 0; d = c; c = b; b = a; a = (temp1 + temp2) >>> 0;\n    }\n    h = [(h[0]+a)>>>0,(h[1]+b)>>>0,(h[2]+c)>>>0,(h[3]+d)>>>0,(h[4]+e)>>>0,(h[5]+f)>>>0,(h[6]+g)>>>0,(h[7]+hh)>>>0];\n  }\n  return h.map(x => x.toString(16).padStart(8, '0')).join('');\n}const tx = $items('Create Transaction')[0].json;\nconst input = $items('Set Intake Active Call')[0].json;\nconst normalizedQuery = `search_query: ${tx.user_query.replace(/\\s+/g, ' ').trim()}`;\nconst now = Date.now();\nreturn [{ json: {\n  ...tx,\n  trigger_source: input.trigger_source || 'discord_active',\n  run_mode: input.run_mode || 'full_answer',\n  response_mode: input.response_mode || 'discord_test',\n  allow_gemini: input.allow_gemini === true || input.allow_gemini === 'true',\n  allow_discord_post: input.allow_discord_post === true || input.allow_discord_post === 'true',\n  requested_by: input.requested_by || 'gil',\n  regression_run_id: input.regression_run_id || '',\n  case_id: input.case_id || '',\n  workflow_contract_version: input.workflow_contract_version || 'phase-8-intake-v1',\n  qdrant_collection: input.qdrant_collection,\n  embedding_url: input.embedding_url,\n  qdrant_base_url: input.qdrant_base_url,\n  reranker_url: input.reranker_url,\n  phoenix_collector_url: input.phoenix_collector_url,\n  phoenix_project_name: input.phoenix_project_name,\n  gemini_url: input.gemini_url,\n  discord_webhook_url: input.discord_webhook_url,\n  top_k: Number(input.top_k ?? 20),\n  context_k: Number(input.context_k ?? 5),\n  min_result_count: Number(input.min_result_count ?? 3),\n  retrieval_score_threshold: Number(input.retrieval_score_threshold ?? 0.55),\n  reranker_score_threshold: Number(input.reranker_score_threshold ?? 0),\n  weak_reranker_score_threshold: Number(input.weak_reranker_score_threshold ?? 2),\n  context_token_budget: Number(input.context_token_budget ?? 2200),\n  normalized_query: normalizedQuery,\n  workflow_started_ms: now,\n  query_hash: sha256Hex(normalizedQuery)\n}}];"
+      },
+      "id": "49d5f65e-5e47-45c0-bef6-72b81cc08f77",
+      "name": "Initialize Runtime State",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -1960,
+        80
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "UPDATE rag_transactions\nSET\n  status = 'retrieving',\n  retrieval_status = 'not_started',\n  normalized_query = '{{ $json.normalized_query }}',\n  query_hash = '{{ $json.query_hash }}'\nWHERE transaction_id = '{{ $json.transaction_id }}'\nRETURNING transaction_id;"
+      },
+      "id": "943a276a-adbd-44df-a7c7-d9343e2097b94",
+      "name": "Update Transaction Started",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        -1720,
+        80
+      ],
+      "credentials": {
+        "postgres": {
+          "id": "JcwnINxG4CstrGKy",
+          "name": "Postgres account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const state = $items('Initialize Runtime State')[0].json;\nreturn [{ json: { ...state, embedding_started_ms: Date.now() } }];"
+      },
+      "id": "49963ba7-3822-4518-a1fc-ee9fbf5eb653",
+      "name": "Prepare Embedding Request",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -1480,
+        80
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $json.embedding_url }}",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ { text: $json.normalized_query } }}",
+        "options": {
+          "response": {
+            "response": {
+              "fullResponse": true,
+              "neverError": true,
+              "responseFormat": "json"
+            }
+          }
+        }
+      },
+      "id": "2803c283-af1a-4411-a31f-c8c2c692141b",
+      "name": "Embed Query",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -1240,
+        80
+      ],
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "jsCode": "const state = $items('Prepare Embedding Request')[0].json;\nconst response = $json;\nconst body = response.body ?? response;\nconst vector = body.embedding || body.vector || body.data?.[0]?.embedding || [];\nconst now = Date.now();\nreturn [{ json: {\n  ...state,\n  embedding_completed_ms: now,\n  embedding_latency_ms: Math.max(0, now - state.embedding_started_ms),\n  embedding_status_code: response.statusCode ?? response.status ?? 0,\n  query_vector: vector,\n  embedding_ok: Array.isArray(vector) && vector.length === 768\n}}];"
+      },
+      "id": "d4d18d8e-2755-4729-8bda-7811d9d6d95c",
+      "name": "Build Embedding Result",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -1000,
+        80
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const state = $items('Build Embedding Result')[0].json;\nreturn [{ json: { ...state, qdrant_started_ms: Date.now() } }];"
+      },
+      "id": "b1ac2688-0123-44a7-af08-ae3c476cb97e",
+      "name": "Prepare Qdrant Search",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -520,
+        80
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $json.qdrant_base_url }}/collections/{{ $json.qdrant_collection }}/points/search",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ { vector: $json.query_vector, limit: $json.top_k, with_payload: true, with_vector: false } }}",
+        "options": {
+          "response": {
+            "response": {
+              "fullResponse": true,
+              "neverError": true,
+              "responseFormat": "json"
+            }
+          }
+        }
+      },
+      "id": "41a6334e-a3e0-4de0-a9fa-a90ce41b3260",
+      "name": "Qdrant Vector Search",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -280,
+        80
+      ],
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "jsCode": "function rightRotate(value, amount) { return (value >>> amount) | (value << (32 - amount)); }\nfunction utf8Bytes(str) {\n  const bytes = [];\n  for (let i = 0; i < str.length; i++) {\n    let code = str.charCodeAt(i);\n    if (code >= 0xd800 && code <= 0xdbff && i + 1 < str.length) {\n      const next = str.charCodeAt(++i);\n      code = 0x10000 + (((code & 0x3ff) << 10) | (next & 0x3ff));\n    }\n    if (code < 0x80) bytes.push(code);\n    else if (code < 0x800) bytes.push(0xc0 | (code >> 6), 0x80 | (code & 0x3f));\n    else if (code < 0x10000) bytes.push(0xe0 | (code >> 12), 0x80 | ((code >> 6) & 0x3f), 0x80 | (code & 0x3f));\n    else bytes.push(0xf0 | (code >> 18), 0x80 | ((code >> 12) & 0x3f), 0x80 | ((code >> 6) & 0x3f), 0x80 | (code & 0x3f));\n  }\n  return bytes;\n}\nfunction sha256Hex(input) {\n  const bytes = utf8Bytes(String(input));\n  const k = [0x428a2f98,0x71374491,0xb5c0fbcf,0xe9b5dba5,0x3956c25b,0x59f111f1,0x923f82a4,0xab1c5ed5,0xd807aa98,0x12835b01,0x243185be,0x550c7dc3,0x72be5d74,0x80deb1fe,0x9bdc06a7,0xc19bf174,0xe49b69c1,0xefbe4786,0x0fc19dc6,0x240ca1cc,0x2de92c6f,0x4a7484aa,0x5cb0a9dc,0x76f988da,0x983e5152,0xa831c66d,0xb00327c8,0xbf597fc7,0xc6e00bf3,0xd5a79147,0x06ca6351,0x14292967,0x27b70a85,0x2e1b2138,0x4d2c6dfc,0x53380d13,0x650a7354,0x766a0abb,0x81c2c92e,0x92722c85,0xa2bfe8a1,0xa81a664b,0xc24b8b70,0xc76c51a3,0xd192e819,0xd6990624,0xf40e3585,0x106aa070,0x19a4c116,0x1e376c08,0x2748774c,0x34b0bcb5,0x391c0cb3,0x4ed8aa4a,0x5b9cca4f,0x682e6ff3,0x748f82ee,0x78a5636f,0x84c87814,0x8cc70208,0x90befffa,0xa4506ceb,0xbef9a3f7,0xc67178f2];\n  let h = [0x6a09e667,0xbb67ae85,0x3c6ef372,0xa54ff53a,0x510e527f,0x9b05688c,0x1f83d9ab,0x5be0cd19];\n  const bitLen = bytes.length * 8;\n  bytes.push(0x80);\n  while ((bytes.length % 64) !== 56) bytes.push(0);\n  const high = Math.floor(bitLen / 0x100000000), low = bitLen >>> 0;\n  for (const word of [high, low]) bytes.push((word >>> 24) & 255, (word >>> 16) & 255, (word >>> 8) & 255, word & 255);\n  for (let offset = 0; offset < bytes.length; offset += 64) {\n    const w = new Array(64).fill(0);\n    for (let i = 0; i < 16; i++) { const j = offset + i * 4; w[i] = ((bytes[j] << 24) | (bytes[j + 1] << 16) | (bytes[j + 2] << 8) | bytes[j + 3]) >>> 0; }\n    for (let i = 16; i < 64; i++) {\n      const s0 = (rightRotate(w[i - 15], 7) ^ rightRotate(w[i - 15], 18) ^ (w[i - 15] >>> 3)) >>> 0;\n      const s1 = (rightRotate(w[i - 2], 17) ^ rightRotate(w[i - 2], 19) ^ (w[i - 2] >>> 10)) >>> 0;\n      w[i] = (w[i - 16] + s0 + w[i - 7] + s1) >>> 0;\n    }\n    let [a,b,c,d,e,f,g,hh] = h;\n    for (let i = 0; i < 64; i++) {\n      const s1 = (rightRotate(e, 6) ^ rightRotate(e, 11) ^ rightRotate(e, 25)) >>> 0;\n      const ch = ((e & f) ^ (~e & g)) >>> 0;\n      const temp1 = (hh + s1 + ch + k[i] + w[i]) >>> 0;\n      const s0 = (rightRotate(a, 2) ^ rightRotate(a, 13) ^ rightRotate(a, 22)) >>> 0;\n      const maj = ((a & b) ^ (a & c) ^ (b & c)) >>> 0;\n      const temp2 = (s0 + maj) >>> 0;\n      hh = g; g = f; f = e; e = (d + temp1) >>> 0; d = c; c = b; b = a; a = (temp1 + temp2) >>> 0;\n    }\n    h = [(h[0]+a)>>>0,(h[1]+b)>>>0,(h[2]+c)>>>0,(h[3]+d)>>>0,(h[4]+e)>>>0,(h[5]+f)>>>0,(h[6]+g)>>>0,(h[7]+hh)>>>0];\n  }\n  return h.map(x => x.toString(16).padStart(8, '0')).join('');\n}function estimateTokens(text) { return Math.ceil(String(text || '').length / 4); }\nfunction stablePointId(value) { return String(value ?? ''); }\nfunction uniqueIds(ids) {\n  if (!Array.isArray(ids)) return [];\n  return [...new Set(ids.map(id => String(id)).filter(Boolean))];\n}\nfunction overlapStats(aIds, bIds) {\n  const a = uniqueIds(aIds);\n  const b = uniqueIds(bIds);\n  if (a.length === 0 || b.length === 0) {\n    return { ratio: 0, sharedCount: 0, sharedIds: [] };\n  }\n  const bSet = new Set(b);\n  const sharedIds = a.filter(id => bSet.has(id));\n  return {\n    ratio: sharedIds.length / Math.min(a.length, b.length),\n    sharedCount: sharedIds.length,\n    sharedIds,\n  };\n}\nfunction compareCandidates(a, b) {\n  const scoreDiff = Number(b.reranker_score ?? -Infinity) - Number(a.reranker_score ?? -Infinity);\n  if (scoreDiff !== 0) return scoreDiff;\n  const rankDiff = Number(a.rerank_rank ?? Number.MAX_SAFE_INTEGER) - Number(b.rerank_rank ?? Number.MAX_SAFE_INTEGER);\n  if (rankDiff !== 0) return rankDiff;\n  return stablePointId(a.qdrant_point_id).localeCompare(stablePointId(b.qdrant_point_id));\n}\nfunction applyDedupe(candidates, overlapThreshold) {\n  const started = Date.now();\n  const sorted = [...candidates].sort(compareCandidates);\n  const kept = [];\n  const dropped = [];\n  const annotated = new Map();\n  const missingPointIds = [];\n  let pairwiseComparisonCount = 0;\n\n  for (const candidate of sorted) {\n    const candidateIds = uniqueIds(candidate.message_ids);\n    let bestMatch = null;\n\n    if (candidateIds.length === 0) {\n      const keptCandidate = {\n        ...candidate,\n        dedupe_status: 'not_comparable_missing_message_ids',\n        dedupe_reason: 'missing_message_ids',\n        dedupe_matched_chunk_id: null,\n        dedupe_overlap_ratio: null,\n        dedupe_shared_message_count: 0,\n        dedupe_missing_message_ids_warning: true,\n      };\n      kept.push(keptCandidate);\n      annotated.set(candidate.qdrant_point_id, keptCandidate);\n      missingPointIds.push(candidate.qdrant_point_id);\n      continue;\n    }\n\n    for (const keptCandidate of kept) {\n      const keptIds = uniqueIds(keptCandidate.message_ids);\n      if (keptIds.length === 0) continue;\n      pairwiseComparisonCount += 1;\n      const stats = overlapStats(candidateIds, keptIds);\n      if (!bestMatch || stats.ratio > bestMatch.ratio) {\n        bestMatch = { ...stats, keptCandidate };\n      }\n    }\n\n    if (bestMatch && bestMatch.ratio > overlapThreshold) {\n      const droppedCandidate = {\n        ...candidate,\n        dedupe_status: 'dropped',\n        dedupe_reason: 'message_overlap',\n        dedupe_matched_chunk_id: bestMatch.keptCandidate.qdrant_point_id,\n        dedupe_overlap_ratio: Number(bestMatch.ratio.toFixed(6)),\n        dedupe_shared_message_count: bestMatch.sharedCount,\n        dedupe_missing_message_ids_warning: false,\n      };\n      dropped.push(droppedCandidate);\n      annotated.set(candidate.qdrant_point_id, droppedCandidate);\n      continue;\n    }\n\n    const keptCandidate = {\n      ...candidate,\n      dedupe_status: 'kept',\n      dedupe_reason: 'no_overlap',\n      dedupe_matched_chunk_id: null,\n      dedupe_overlap_ratio: bestMatch ? Number(bestMatch.ratio.toFixed(6)) : 0,\n      dedupe_shared_message_count: bestMatch ? bestMatch.sharedCount : 0,\n      dedupe_missing_message_ids_warning: false,\n    };\n    kept.push(keptCandidate);\n    annotated.set(candidate.qdrant_point_id, keptCandidate);\n  }\n\n  kept.forEach((candidate, index) => {\n    candidate.rank_after_dedupe = index + 1;\n    annotated.set(candidate.qdrant_point_id, candidate);\n  });\n\n  return {\n    kept,\n    dropped,\n    annotated,\n    missingPointIds,\n    inputCount: candidates.length,\n    keptCount: kept.length,\n    droppedCount: dropped.length,\n    missingCount: missingPointIds.length,\n    pairwiseComparisonCount,\n    latencyMs: Math.max(0, Date.now() - started),\n  };\n}\nconst base = $items('Prepare Reranker Request')[0].json;\nconst response = $json;\nconst now = Date.now();\nconst rerankerStatusCode = response.statusCode ?? response.status ?? 0;\nconst body = response.body ?? response;\nconst rerankerResults = Array.isArray(body.results) ? body.results : [];\nconst rerankerThreshold = Number(base.reranker_score_threshold ?? 0);\nconst weakRerankerThreshold = Number(base.weak_reranker_score_threshold ?? 2);\nconst dedupeOverlapThreshold = Number(base.dedupe_overlap_threshold ?? 0.5);\nconst byId = new Map((base.passed_stage_1_candidates || []).map(candidate => [candidate.qdrant_point_id, candidate]));\nconst ranked = rerankerResults.map((result, index) => {\n  const candidate = byId.get(String(result.id));\n  if (!candidate) return null;\n  return { ...candidate, reranker_score: Number(result.reranker_score), rerank_rank: index + 1 };\n}).filter(Boolean);\nconst rerankerPassed = ranked.filter(candidate => candidate.reranker_score > rerankerThreshold);\nconst dedupe = applyDedupe(rerankerPassed, dedupeOverlapThreshold);\nconst contextTokenBudget = Number(base.context_token_budget ?? 2200);\nconst guildId = '853099205206999050';\nconst refusalText = \"I don't have enough TPM Unite specific context to answer this confidently, try rephrasing or ask the community directly.\";\nlet rerankerRefusalReason = null;\nif (base.refusal_reason) rerankerRefusalReason = base.refusal_reason;\nelse if (rerankerStatusCode < 200 || rerankerStatusCode >= 300) rerankerRefusalReason = 'reranker_failed';\nelse if (ranked.length === 0) rerankerRefusalReason = 'reranker_no_results';\nelse if (rerankerPassed.length < base.min_result_count) rerankerRefusalReason = 'reranker_score_below_threshold';\nlet dedupeRefusalReason = null;\nif (!rerankerRefusalReason && dedupe.keptCount < base.min_result_count) {\n  dedupeRefusalReason = 'context_after_dedupe_insufficient';\n}\nfunction buildContextBlock(selected) {\n  return selected.map((c, idx) => {\n    const dateStart = c.start_ts ? String(c.start_ts).slice(0, 10) : 'unknown';\n    const dateEnd = c.end_ts ? String(c.end_ts).slice(0, 10) : 'unknown';\n    const link = c.channel_id && c.first_message_id ? 'https://discord.com/channels/' + guildId + '/' + c.channel_id + '/' + c.first_message_id : 'N/A';\n    const authors = Array.isArray(c.payload.authors) ? c.payload.authors.join(', ') : 'N/A';\n    return '--- Context chunk ' + (idx + 1) + ' of ' + selected.length + ' ---\\n' +\n      'Channel:      #' + (c.channel_name || 'unknown') + '\\n' +\n      'Thread:       ' + (c.thread_name || 'N/A') + '\\n' +\n      'Date range:   ' + dateStart + ' to ' + dateEnd + '\\n' +\n      'Authors:      ' + authors + '\\n' +\n      'Score:        ' + c.reranker_score.toFixed(2) + '\\n' +\n      'Message IDs:  ' + uniqueIds(c.message_ids).join(', ') + '\\n' +\n      'Discord link: ' + link + '\\n\\n' + c.text;\n  }).join('\\n\\n');\n}\nlet selected = (rerankerRefusalReason || dedupeRefusalReason) ? [] : dedupe.kept.slice(0, base.context_k);\nconst selectedBeforeBudget = selected.length;\nlet contextBlock = buildContextBlock(selected);\nconst contextTokenEstimateBeforeBudget = estimateTokens(contextBlock);\nlet contextTokenEstimate = contextTokenEstimateBeforeBudget;\nlet contextDroppedForBudgetCount = 0;\nlet contextOverflowDetected = contextTokenEstimate > contextTokenBudget;\nwhile (!rerankerRefusalReason && !dedupeRefusalReason && selected.length > base.min_result_count && contextTokenEstimate > contextTokenBudget) {\n  selected.pop();\n  contextDroppedForBudgetCount += 1;\n  contextBlock = buildContextBlock(selected);\n  contextTokenEstimate = estimateTokens(contextBlock);\n}\n// Phase 7 moves context-token budget enforcement to the Assemble Context Contract node.\n// This node only owns reranker and dedupe sufficiency decisions.\nlet contextRefusalReason = null;\nconst weakRerankerSignal = selected.length > 0 && selected.every(candidate => candidate.reranker_score > rerankerThreshold && candidate.reranker_score < weakRerankerThreshold);\nconst weakSignalNote = weakRerankerSignal ? 'Note: retrieved context may not be a strong match for this question.\\n\\n' : '';\nconst refusalReason = rerankerRefusalReason || dedupeRefusalReason || contextRefusalReason;\nconst shouldGenerate = !refusalReason;\nconst systemPrompt = [\n  'You are an assistant for the TPM Unite Discord community.',\n  \"You have access to retrieved excerpts from real TPM Unite conversations spanning the community's history.\",\n  '',\n  'RULES - follow exactly, in priority order:',\n  '1. GROUNDING: Answer ONLY from the provided context blocks. Never use general knowledge, personal opinions, or external sources. Every claim must be traceable to a specific context block.',\n  '2. REFUSAL: Before answering, check whether the context directly answers the user\\'s specific question. Semantic similarity is not enough. If the provided context does not contain direct evidence for the specific company, role, interview, or topic asked about, respond with exactly: \"' + refusalText + '\" Then stop. Do not add caveats, partial answers, or suggestions.',\n  '3. CITATION: Every non-refusal answer must include at least one citation, and every key claim must cite the source in this format: (#{channel}, {YYYY-MM-DD}). For forum threads: (#{channel} > {thread_name}, {YYYY-MM-DD}). If you cannot cite the answer from the provided context, refuse.',\n  '4. FRAMING: Frame answers as community wisdom, not authoritative rulings. Use language like \"TPM Unite members have discussed...\", \"The community has shared...\", \"Past discussions suggest...\" Never say \"You should...\" or \"The answer is...\"',\n  '5. TEMPORAL HONESTY: If context is older than 12 months, note it.',\n  '6. NUANCE CAVEAT: For subjective, evolving, or role-specific topics, close with: \"This reflects past TPM Unite discussions - the community may have more recent or personal context to add.\"',\n  '7. SAFETY: Do not surface personal identifying information from the context even if present.'\n].join('\\n');\nconst prompt = systemPrompt + '\\n\\nRetrieved context:\\n' + contextBlock + '\\n\\nUser question:\\n' + base.user_query;\nconst selectedIds = new Set(selected.map(c => c.qdrant_point_id));\nconst rerankerById = new Map(ranked.map(c => [c.qdrant_point_id, c]));\nconst selectedRankById = new Map(selected.map((c, index) => [c.qdrant_point_id, index + 1]));\nconst retrievalRows = (base.candidates || []).map(c => {\n  const rankedCandidate = rerankerById.get(c.qdrant_point_id);\n  const dedupeCandidate = dedupe.annotated.get(c.qdrant_point_id);\n  return {\n    qdrant_point_id: c.qdrant_point_id,\n    rank: c.rank,\n    rank_after: rankedCandidate?.rerank_rank ?? null,\n    retrieval_score: c.retrieval_score,\n    reranker_score: rankedCandidate?.reranker_score ?? null,\n    channel_id: c.channel_id,\n    channel_name: c.channel_name,\n    thread_name: c.thread_name,\n    first_message_id: c.first_message_id,\n    message_ids: c.message_ids,\n    start_ts: c.start_ts,\n    end_ts: c.end_ts,\n    dedupe_status: dedupeCandidate?.dedupe_status ?? (rankedCandidate ? 'not_applied' : null),\n    dedupe_reason: dedupeCandidate?.dedupe_reason ?? null,\n    dedupe_matched_chunk_id: dedupeCandidate?.dedupe_matched_chunk_id ?? null,\n    dedupe_overlap_ratio: dedupeCandidate?.dedupe_overlap_ratio ?? null,\n    dedupe_shared_message_count: dedupeCandidate?.dedupe_shared_message_count ?? null,\n    rank_after_dedupe: dedupeCandidate?.rank_after_dedupe ?? null,\n    selected_for_context: selectedIds.has(c.qdrant_point_id),\n    payload: {\n      ...c.payload,\n      selected_for_context: selectedIds.has(c.qdrant_point_id),\n      stage_1_gate_status: base.stage_1_gate_status,\n      stage_1_gate_reason: base.stage_1_gate_reason,\n      reranker_score: rankedCandidate?.reranker_score ?? null,\n      rank_after: rankedCandidate?.rerank_rank ?? null,\n      dedupe_status: dedupeCandidate?.dedupe_status ?? (rankedCandidate ? 'not_applied' : null),\n      dedupe_reason: dedupeCandidate?.dedupe_reason ?? null,\n      dedupe_matched_chunk_id: dedupeCandidate?.dedupe_matched_chunk_id ?? null,\n      dedupe_overlap_ratio: dedupeCandidate?.dedupe_overlap_ratio ?? null,\n      dedupe_shared_message_count: dedupeCandidate?.dedupe_shared_message_count ?? null,\n      rank_after_dedupe: dedupeCandidate?.rank_after_dedupe ?? null,\n      selected_context_rank: selectedRankById.get(c.qdrant_point_id) ?? null,\n      missing_message_ids_warning: dedupeCandidate?.dedupe_missing_message_ids_warning ?? false,\n      missing_message_ids_qdrant_point_id: dedupeCandidate?.dedupe_missing_message_ids_warning ? c.qdrant_point_id : null,\n    }\n  };\n});\nreturn [{ json: {\n  ...base,\n  reranker_completed_ms: now,\n  reranker_latency_ms: Math.max(0, now - base.reranker_started_ms),\n  reranker_service_latency_ms: body.latency_ms ?? null,\n  reranker_status_code: rerankerStatusCode,\n  reranker_model: body.model || 'cross-encoder/ms-marco-MiniLM-L-6-v2',\n  reranker_score_threshold: rerankerThreshold,\n  weak_reranker_score_threshold: weakRerankerThreshold,\n  reranker_candidate_count: ranked.length,\n  reranker_passed_count: rerankerPassed.length,\n  reranked_candidates: ranked,\n  dedupe_started_ms: now,\n  dedupe_completed_ms: now + dedupe.latencyMs,\n  dedupe_latency_ms: dedupe.latencyMs,\n  dedupe_overlap_threshold: dedupeOverlapThreshold,\n  dedupe_input_count: dedupe.inputCount,\n  dedupe_kept_count: dedupe.keptCount,\n  dedupe_dropped_count: dedupe.droppedCount,\n  dedupe_missing_message_ids_count: dedupe.missingCount,\n  dedupe_missing_message_ids_qdrant_point_ids: dedupe.missingPointIds,\n  dedupe_pairwise_comparison_count: dedupe.pairwiseComparisonCount,\n  deduped_candidates: dedupe.kept,\n  dropped_dedupe_candidates: dedupe.dropped,\n  selected_context_count_before_budget: selectedBeforeBudget,\n  selected_context_count: selected.length,\n  context_token_budget: contextTokenBudget,\n  context_token_estimate_before_budget: contextTokenEstimateBeforeBudget,\n  context_token_estimate: contextTokenEstimate,\n  context_overflow_detected: contextOverflowDetected,\n  context_dropped_for_budget_count: contextDroppedForBudgetCount,\n  selected_context: selected,\n  context_block: contextBlock,\n  prompt,\n  prompt_hash: sha256Hex(prompt),\n  retrieval_results_sql_json: JSON.stringify(retrievalRows).replace(/'/g, \"''\"),\n  should_generate: shouldGenerate,\n  should_generate_int: shouldGenerate ? 1 : 0,\n  refusal_reason: refusalReason,\n  retrieval_status: shouldGenerate ? 'context_found' : 'no_context',\n  final_status: shouldGenerate ? 'answered' : 'refused',\n  refusal_text: refusalText,\n  weak_reranker_signal: weakRerankerSignal,\n  weak_signal_note: weakSignalNote,\n  score_source: 'reranker_score_after_dedupe',\n  phase_7_scope: 'context_prompt_contract_after_dedupe'\n}}];"
+      },
+      "id": "5488f111-adf8-4218-9802-8d72ea7cfd82",
+      "name": "Build Dedupe And Context Decision",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        680,
+        80
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "WITH rows AS (\n  SELECT *\n  FROM jsonb_to_recordset('{{ $json.retrieval_results_sql_json }}'::jsonb)\n  AS x(\n    qdrant_point_id text,\n    rank integer,\n    retrieval_score double precision,\n    reranker_score double precision,\n    channel_id text,\n    channel_name text,\n    thread_name text,\n    first_message_id text,\n    message_ids text[],\n    start_ts timestamptz,\n    end_ts timestamptz,\n    dedupe_status text,\n    dedupe_reason text,\n    dedupe_matched_chunk_id text,\n    dedupe_overlap_ratio double precision,\n    dedupe_shared_message_count integer,\n    rank_after_dedupe integer,\n    selected_for_context boolean,\n    payload jsonb\n  )\n), inserted AS (\n  INSERT INTO rag_retrieval_results (\n    transaction_id,\n    qdrant_point_id,\n    rank,\n    retrieval_score,\n    reranker_score,\n    channel_id,\n    channel_name,\n    thread_name,\n    first_message_id,\n    message_ids,\n    start_ts,\n    end_ts,\n    dedupe_status,\n    dedupe_reason,\n    dedupe_matched_chunk_id,\n    dedupe_overlap_ratio,\n    dedupe_shared_message_count,\n    rank_after_dedupe,\n    selected_for_context,\n    payload\n  )\n  SELECT\n    '{{ $json.transaction_id }}',\n    qdrant_point_id,\n    rank,\n    retrieval_score,\n    reranker_score,\n    channel_id,\n    channel_name,\n    thread_name,\n    first_message_id,\n    message_ids,\n    start_ts,\n    end_ts,\n    dedupe_status,\n    dedupe_reason,\n    dedupe_matched_chunk_id,\n    dedupe_overlap_ratio,\n    dedupe_shared_message_count,\n    rank_after_dedupe,\n    selected_for_context,\n    payload\n  FROM rows\n  RETURNING 1\n)\nSELECT '{{ $json.transaction_id }}'::uuid AS transaction_id, count(*) AS inserted_count\nFROM inserted;"
+      },
+      "id": "e5cc87e9-3160-47df-94d0-a43104d7817c",
+      "name": "Store Retrieval Results",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        1160,
+        80
+      ],
+      "credentials": {
+        "postgres": {
+          "id": "JcwnINxG4CstrGKy",
+          "name": "Postgres account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "b51e6580-eec3-4e87-9ed0-bfd88ed4487d",
+              "leftValue": "={{ $items('Assemble Context Contract')[0].json.should_generate_int }}",
+              "rightValue": 1,
+              "operator": {
+                "type": "number",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "2c5655a7-e2b9-442a-81f2-8bdf749169a5",
+      "name": "Context Found?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        1640,
+        80
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const state = $items('Assemble Context Contract')[0].json;\nif (!state.allow_gemini || state.run_mode === 'retrieval_only') {\n  return [{ json: {\n    ...state,\n    generation_failed: false,\n    model_refusal: true,\n    gemini_response_text: '',\n    final_status: state.should_generate ? 'retrieving' : 'refused',\n    retrieval_status: state.should_generate ? 'context_found' : 'no_context',\n    response_status: 'not_posted',\n    refusal_reason: state.refusal_reason || null,\n    gemini_skipped: true,\n    gemini_skip_reason: 'gemini_not_allowed_for_run_mode'\n  } }];\n}\nreturn [{ json: { ...state, gemini_started_ms: Date.now(), gemini_skipped: false } }];"
+      },
+      "id": "37b526a1-7842-43d9-8417-406ca702d714",
+      "name": "Prepare Gemini Request",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1880,
+        -140
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $items('Prepare Gemini Request')[0].json.gemini_url }}",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ { contents: [{ role: 'user', parts: [{ text: $items('Prepare Gemini Request')[0].json.prompt }] }], generationConfig: { temperature: 0.1, maxOutputTokens: 5000 } } }}",
+        "options": {
+          "response": {
+            "response": {
+              "fullResponse": true,
+              "neverError": true,
+              "responseFormat": "json"
+            }
+          }
+        }
+      },
+      "id": "1a8c6239-5286-42a6-b4e9-5f08062a2c0c",
+      "name": "Gemini Generation",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        2360,
+        -140
+      ],
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "jsCode": "const state = $items('Prepare Gemini Request')[0].json;\nconst response = $json;\nconst now = Date.now();\n\nconst statusCode = response.statusCode ?? response.status ?? 0;\nconst body = response.body ?? response;\nconst candidate = body.candidates?.[0];\nconst finishReason = candidate?.finishReason || null;\nconst usageMetadata = body.usageMetadata || {};\n\nconst rawText = candidate?.content?.parts\n  ?.map(part => part.text || '')\n  .join('\\n')\n  .trim() || '';\n\nconst DISCORD_MAX_LENGTH = 2000;\nconst SAFE_RESPONSE_LENGTH = 1900;\n\nfunction fitForDiscord(text, maxLength) {\n  if (text.length <= maxLength) {\n    return { text, truncated: false };\n  }\n\n  const shortened = text.slice(0, maxLength - 1);\n  const sentenceEnd = Math.max(\n    shortened.lastIndexOf('. '),\n    shortened.lastIndexOf('! '),\n    shortened.lastIndexOf('? '),\n    shortened.lastIndexOf('\\n')\n  );\n\n  if (sentenceEnd >= Math.floor(maxLength * 0.6)) {\n    return {\n      text: shortened.slice(0, sentenceEnd + 1).trim(),\n      truncated: true,\n    };\n  }\n\n  const wordEnd = shortened.lastIndexOf(' ');\n  return {\n    text: shortened.slice(0, wordEnd > 0 ? wordEnd : shortened.length).trim() + '...',\n    truncated: true,\n  };\n}\n\nlet generationFailed =\n  statusCode < 200 ||\n  statusCode >= 300 ||\n  !rawText;\n\nlet failureReason = null;\nif (generationFailed) {\n  if (statusCode === 404) failureReason = 'gemini_model_not_found';\n  else if (statusCode === 401 || statusCode === 403) failureReason = 'gemini_auth_failed';\n  else if (!rawText && statusCode >= 200 && statusCode < 300) failureReason = 'gemini_malformed_response';\n  else failureReason = 'gemini_api_failed';\n}\n\nconst fitted = fitForDiscord(rawText, SAFE_RESPONSE_LENGTH);\nconst text = fitted.text;\nconst isModelRefusal = text === state.refusal_text;\nconst citationPattern = /\\(#[^)]+,\\s*\\d{4}-\\d{2}-\\d{2}\\)|\\(#[^)]+>[^)]*,\\s*\\d{4}-\\d{2}-\\d{2}\\)/;\nconst hasCitation = citationPattern.test(text);\nconst failedCitationGuard = !generationFailed && !isModelRefusal && !hasCitation;\nconst effectiveModelRefusal = isModelRefusal || failedCitationGuard;\nconst effectiveResponseText = failedCitationGuard ? state.refusal_text : text;\nconst effectiveRefusalReason = isModelRefusal\n  ? 'gemini_context_insufficient'\n  : failedCitationGuard\n    ? 'gemini_uncited_answer'\n    : null;\n\nreturn [{\n  json: {\n    ...state,\n    gemini_completed_ms: now,\n    gemini_latency_ms: Math.max(0, now - state.gemini_started_ms),\n    gemini_status_code: statusCode,\n    gemini_finish_reason: finishReason,\n    gemini_prompt_token_count: usageMetadata.promptTokenCount ?? null,\n    gemini_candidate_token_count: usageMetadata.candidatesTokenCount ?? null,\n    gemini_thoughts_token_count: usageMetadata.thoughtsTokenCount ?? null,\n    gemini_total_token_count: usageMetadata.totalTokenCount ?? null,\n    gemini_response_text: rawText,\n    discord_response_text: generationFailed ? '' : effectiveResponseText,\n    discord_response_character_count: generationFailed ? 0 : effectiveResponseText.length,\n    discord_response_max_characters: DISCORD_MAX_LENGTH,\n    discord_response_truncated: fitted.truncated,\n    generation_failed: generationFailed,\n    generation_failed_int: generationFailed ? 1 : 0,\n    gemini_failure_reason: failureReason,\n    model_refusal: effectiveModelRefusal,\n    citation_guard_failed: failedCitationGuard,\n    has_citation: hasCitation,\n    final_status: generationFailed ? 'failed' : (effectiveModelRefusal ? 'refused' : 'answered'),\n    retrieval_status: generationFailed ? state.retrieval_status : (effectiveModelRefusal ? 'no_context' : 'context_found'),\n    refusal_reason: generationFailed ? failureReason : effectiveRefusalReason,\n  },\n}];"
+      },
+      "id": "e99ae61f-abaa-48bd-8576-060607a44267",
+      "name": "Build Gemini Result",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2600,
+        -140
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "c414183c-f37a-41f8-bbc8-4f1661e635dc",
+              "leftValue": "={{ $items('Build Gemini Result')[0].json.generation_failed_int }}",
+              "rightValue": 1,
+              "operator": {
+                "type": "number",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "24fed6aa-5e62-4735-b75d-7275c72f5f86",
+      "name": "Gemini Failed?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        3080,
+        -140
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const state = $items('Build Gemini Result')[0].json;\nconst {\n  query_vector,\n  candidates,\n  passed_stage_1_candidates,\n  reranked_candidates,\n  deduped_candidates,\n  dropped_dedupe_candidates,\n  selected_context,\n  context_block,\n  prompt,\n  retrieval_results_sql_json,\n  ...safeState\n} = state;\nif (!safeState.allow_discord_post) {\n  return [{ json: {\n    ...safeState,\n    discord_started_ms: Date.now(),\n    discord_completed_ms: Date.now(),\n    discord_status_code: null,\n    discord_response_message_id: '',\n    response_status: 'not_posted',\n    discord_skipped: true,\n    discord_skip_reason: 'discord_post_not_allowed_for_response_mode'\n  } }];\n}\nreturn [{ json: { ...safeState, discord_started_ms: Date.now(), discord_skipped: false } }];"
+      },
+      "id": "d6a6cbb2-a92b-4414-900e-834b85782976",
+      "name": "Prepare Discord Answer",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        3320,
+        -240
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $json.discord_webhook_url }}",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ { content: $json.discord_response_text, allowed_mentions: { parse: [] } } }}",
+        "options": {
+          "response": {
+            "response": {
+              "fullResponse": true,
+              "neverError": true,
+              "responseFormat": "json"
+            }
+          }
+        }
+      },
+      "id": "d8810c03-8708-47b3-9fd8-9219753af95d",
+      "name": "Post Discord Answer",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        3560,
+        -240
+      ],
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "jsCode": "const state = $items('Prepare Discord Answer')[0].json;\nconst response = $json;\nconst now = Date.now();\nconst statusCode = response.statusCode ?? response.status ?? 0;\nconst ok = statusCode >= 200 && statusCode < 300;\nreturn [{ json: { ...state, discord_completed_ms: now, discord_latency_ms: Math.max(0, now - state.discord_started_ms), discord_status_code: statusCode, discord_response_message_id: response.body?.id || '', response_status: ok ? 'posted' : 'failed' } }];"
+      },
+      "id": "981ad98d-70d3-4f41-a5a0-bc3b5013077b",
+      "name": "Build Discord Answer Result",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        3800,
+        -240
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const state = $items('Assemble Context Contract')[0].json;\nconst {\n  query_vector,\n  candidates,\n  passed_stage_1_candidates,\n  reranked_candidates,\n  deduped_candidates,\n  dropped_dedupe_candidates,\n  selected_context,\n  context_block,\n  prompt,\n  retrieval_results_sql_json,\n  ...safeState\n} = state;\nreturn [{ json: { ...safeState, discord_response_text: state.refusal_text, discord_started_ms: Date.now() } }];"
+      },
+      "id": "ba5e467e-316e-4ab9-bc81-4ea34c0ab5e3",
+      "name": "Prepare Discord Refusal",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1880,
+        320
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $json.discord_webhook_url }}",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ { content: $json.discord_response_text, allowed_mentions: { parse: [] } } }}",
+        "options": {
+          "response": {
+            "response": {
+              "fullResponse": true,
+              "neverError": true,
+              "responseFormat": "json"
+            }
+          }
+        }
+      },
+      "id": "70d4640c-28c9-47d4-9f91-76f23a868e72",
+      "name": "Post Discord Refusal",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        2120,
+        320
+      ],
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "jsCode": "const state = $items('Prepare Discord Refusal')[0].json;\nconst response = $json;\nconst now = Date.now();\nconst statusCode = response.statusCode ?? response.status ?? 0;\nconst ok = statusCode >= 200 && statusCode < 300;\nreturn [{ json: { ...state, final_status: 'refused', retrieval_status: state.retrieval_status, discord_completed_ms: now, discord_latency_ms: Math.max(0, now - state.discord_started_ms), discord_status_code: statusCode, discord_response_message_id: response.body?.id || '', response_status: ok ? 'posted' : 'failed' } }];"
+      },
+      "id": "681f20c9-8509-4885-89c5-754ae2895ec8",
+      "name": "Build Discord Refusal Result",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2360,
+        320
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "UPDATE rag_transactions\nSET\n  status = 'failed',\n  retrieval_status = 'context_found',\n  response_status = 'failed',\n  refusal_reason = '{{ $items(\"Build Gemini Result\")[0].json.gemini_failure_reason }}',\n  completed_at = now(),\n  latency_ms = GREATEST(1, EXTRACT(EPOCH FROM (now() - created_at))::int * 1000)\nWHERE transaction_id = '{{ $items(\"Build Gemini Result\")[0].json.transaction_id }}'\nRETURNING transaction_id, status, retrieval_status, response_status, refusal_reason, discord_response_message_id, latency_ms;"
+      },
+      "id": "2f08c991-3977-409b-a145-fe1bdcb0d079",
+      "name": "Finalize Gemini Failure",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        3320,
+        0
+      ],
+      "credentials": {
+        "postgres": {
+          "id": "JcwnINxG4CstrGKy",
+          "name": "Postgres account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "UPDATE rag_transactions\nSET\n  status = '{{ $json.final_status }}',\n  retrieval_status = '{{ $json.retrieval_status }}',\n  response_status = '{{ $json.response_status }}',\n  discord_response_message_id = NULLIF('{{ $json.discord_response_message_id }}', ''),\n  refusal_reason = NULLIF(NULLIF('{{ $json.refusal_reason }}', ''), 'null'),\n  completed_at = now(),\n  latency_ms = GREATEST(1, EXTRACT(EPOCH FROM (now() - created_at))::int * 1000)\nWHERE transaction_id = '{{ $json.transaction_id }}'\nRETURNING transaction_id, status, retrieval_status, response_status, refusal_reason, discord_response_message_id, latency_ms;"
+      },
+      "id": "481c3807-7068-4bb6-a5fd-2ce0bc836e04",
+      "name": "Finalize Posted Transaction",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        4040,
+        40
+      ],
+      "credentials": {
+        "postgres": {
+          "id": "JcwnINxG4CstrGKy",
+          "name": "Postgres account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT\n  transaction_id,\n  route_type,\n  status,\n  retrieval_status,\n  response_status,\n  refusal_reason,\n  failure_reason,\n  discord_response_message_id,\n  user_query,\n  normalized_query,\n  query_hash,\n  created_at,\n  completed_at,\n  latency_ms\nFROM rag_transactions\nWHERE transaction_id = '{{ $items(\"Build Phoenix Final Checkpoint\")[0].json.transaction_id }}';"
+      },
+      "id": "3859ba1a-7980-4820-b5fb-162aa1833c77",
+      "name": "Read Final Transaction",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        4760,
+        40
+      ],
+      "credentials": {
+        "postgres": {
+          "id": "JcwnINxG4CstrGKy",
+          "name": "Postgres account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "function getNode(name) { try { return $items(name)[0]?.json || null; } catch (e) { return null; } }\nfunction hexToBase64(hex) { let binary = ''; for (let i = 0; i < hex.length; i += 2) binary += String.fromCharCode(parseInt(hex.slice(i, i + 2), 16)); return btoa(binary); }\nfunction value(v) { if (v === null || v === undefined) return { stringValue: '' }; if (typeof v === 'boolean') return { boolValue: v }; if (typeof v === 'number') return Number.isInteger(v) ? { intValue: String(v) } : { doubleValue: v }; return { stringValue: String(v) }; }\nfunction attrs(obj) { return Object.entries(obj).filter(([, v]) => v !== undefined).map(([key, val]) => ({ key, value: value(val) })); }\nfunction ns(ms) { return String(Math.max(0, Math.floor(ms || Date.now())) * 1000000); }\nfunction spanId(seed) { return hexToBase64(seed.padEnd(16, '0').slice(0, 16)); }\nfunction makeSpan(name, idSeed, parentId, start, end, attributes, statusCode) { const span = { traceId, spanId: spanId(idSeed), name, kind: 1, startTimeUnixNano: ns(start), endTimeUnixNano: ns(end || start), attributes: attrs(attributes), status: { code: statusCode || 1 } }; if (parentId) span.parentSpanId = parentId; return span; }\nfunction payload(spans, projectName) { return { resourceSpans: [{ resource: { attributes: attrs({ 'service.name': 'discord-rag-bot', 'deployment.environment': 'phase0', 'phoenix.project.name': projectName, 'project.name': projectName, 'openinference.project.name': projectName }) }, scopeSpans: [{ scope: { name: 'n8n.phase8.workflow', version: '1.0.0' }, spans }] }] }; }\nconst init = getNode('Initialize Runtime State') || $json || {};\nconst projectName = init.phoenix_project_name || 'discord-rag-bot-phase-8';\nconst collectorUrl = init.phoenix_collector_url || 'http://trace-emitter:8001/v1/traces';\nconst traceSeed = String(init.query_hash || init.transaction_id || '').replace(/-/g, '').padEnd(32, '0').slice(0, 32);\nconst traceId = hexToBase64(traceSeed);\nconst rootSpanId = spanId('1000000000000000');\nconst startMs = init.workflow_started_ms || Date.now();\nconst state = init;\nconst spans = [\n  makeSpan('rag.active_call.started', '1100000000000000', null, startMs, Date.now(), { 'transaction_id': state.transaction_id, 'openinference.span.kind': 'chain', 'phoenix.project.name': projectName, 'route_type': state.route_type, 'channel_id': state.channel_id, 'channel_name': state.channel_name, 'query_hash': state.query_hash, 'status': 'retrieving' }),\n  makeSpan('discord.event_received', '2000000000000000', rootSpanId, startMs, startMs, { 'discord_message_id': state.discord_message_id, 'channel_id': state.channel_id, 'channel_name': state.channel_name, 'route_type': state.route_type }),\n  makeSpan('routing.active_call', '2100000000000000', rootSpanId, startMs, startMs, { 'route_type': state.route_type, 'reason': 'manual_phase_5_reranker_test' }),\n  makeSpan('query.normalized', '3000000000000000', rootSpanId, startMs, startMs, { 'query_hash': state.query_hash, 'query_prefix': 'search_query:', 'normalized_query': state.normalized_query })\n];\nreturn [{ json: { ...state, phoenix_collector_url: collectorUrl, phoenix_trace_payload: payload(spans, projectName), phoenix_checkpoint: 'start', phoenix_span_count: spans.length } }];"
+      },
+      "id": "phase3b-build-phoenix-start",
+      "name": "Build Phoenix Start Checkpoint",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -1480,
+        -180
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $json.phoenix_collector_url }}",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ $json.phoenix_trace_payload }}",
+        "options": {
+          "response": {
+            "response": {
+              "fullResponse": true,
+              "neverError": true,
+              "responseFormat": "json"
+            }
+          }
+        }
+      },
+      "id": "phase3b-send-phoenix-start",
+      "name": "Send Phoenix Start Checkpoint",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -1240,
+        -180
+      ],
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "jsCode": "function getNode(name) { try { return $items(name)[0]?.json || null; } catch (e) { return null; } }\nfunction hexToBase64(hex) { let binary = ''; for (let i = 0; i < hex.length; i += 2) binary += String.fromCharCode(parseInt(hex.slice(i, i + 2), 16)); return btoa(binary); }\nfunction value(v) { if (v === null || v === undefined) return { stringValue: '' }; if (typeof v === 'boolean') return { boolValue: v }; if (typeof v === 'number') return Number.isInteger(v) ? { intValue: String(v) } : { doubleValue: v }; return { stringValue: String(v) }; }\nfunction attrs(obj) { return Object.entries(obj).filter(([, v]) => v !== undefined).map(([key, val]) => ({ key, value: value(val) })); }\nfunction ns(ms) { return String(Math.max(0, Math.floor(ms || Date.now())) * 1000000); }\nfunction spanId(seed) { return hexToBase64(seed.padEnd(16, '0').slice(0, 16)); }\nfunction makeSpan(name, idSeed, parentId, start, end, attributes, statusCode) { const span = { traceId, spanId: spanId(idSeed), name, kind: 1, startTimeUnixNano: ns(start), endTimeUnixNano: ns(end || start), attributes: attrs(attributes), status: { code: statusCode || 1 } }; if (parentId) span.parentSpanId = parentId; return span; }\nfunction payload(spans, projectName) { return { resourceSpans: [{ resource: { attributes: attrs({ 'service.name': 'discord-rag-bot', 'deployment.environment': 'phase0', 'phoenix.project.name': projectName, 'project.name': projectName, 'openinference.project.name': projectName }) }, scopeSpans: [{ scope: { name: 'n8n.phase8.workflow', version: '1.0.0' }, spans }] }] }; }\nconst init = getNode('Initialize Runtime State') || $json || {};\nconst projectName = init.phoenix_project_name || 'discord-rag-bot-phase-8';\nconst collectorUrl = init.phoenix_collector_url || 'http://trace-emitter:8001/v1/traces';\nconst traceSeed = String(init.query_hash || init.transaction_id || '').replace(/-/g, '').padEnd(32, '0').slice(0, 32);\nconst traceId = hexToBase64(traceSeed);\nconst rootSpanId = spanId('1000000000000000');\nconst startMs = init.workflow_started_ms || Date.now();\nconst state = getNode('Build Embedding Result') || init;\nconst spans = [makeSpan('query.embedding_completed', '4000000000000000', rootSpanId, state.embedding_started_ms, state.embedding_completed_ms, { 'model': 'nomic-ai/nomic-embed-text-v1.5', 'embedding_ok': state.embedding_ok, 'embedding_dimension': Array.isArray(state.query_vector) ? state.query_vector.length : 0, 'embedding_status_code': state.embedding_status_code, 'latency_ms': state.embedding_latency_ms, 'query_hash': state.query_hash }, state.embedding_ok ? 1 : 2)];\nreturn [{ json: { ...state, phoenix_collector_url: collectorUrl, phoenix_trace_payload: payload(spans, projectName), phoenix_checkpoint: 'embedding', phoenix_span_count: spans.length } }];"
+      },
+      "id": "phase3b-build-phoenix-embedding",
+      "name": "Build Phoenix Embedding Checkpoint",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -760,
+        -180
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $json.phoenix_collector_url }}",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ $json.phoenix_trace_payload }}",
+        "options": {
+          "response": {
+            "response": {
+              "fullResponse": true,
+              "neverError": true,
+              "responseFormat": "json"
+            }
+          }
+        }
+      },
+      "id": "phase3b-send-phoenix-embedding",
+      "name": "Send Phoenix Embedding Checkpoint",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -520,
+        -180
+      ],
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "jsCode": "function getNode(name) { try { return $items(name)[0]?.json || null; } catch (e) { return null; } }\nfunction hexToBase64(hex) { let binary = ''; for (let i = 0; i < hex.length; i += 2) binary += String.fromCharCode(parseInt(hex.slice(i, i + 2), 16)); return btoa(binary); }\nfunction value(v) { if (v === null || v === undefined) return { stringValue: '' }; if (typeof v === 'boolean') return { boolValue: v }; if (typeof v === 'number') return Number.isInteger(v) ? { intValue: String(v) } : { doubleValue: v }; return { stringValue: String(v) }; }\nfunction attrs(obj) { return Object.entries(obj).filter(([, v]) => v !== undefined).map(([key, val]) => ({ key, value: value(val) })); }\nfunction ns(ms) { return String(Math.max(0, Math.floor(ms || Date.now())) * 1000000); }\nfunction spanId(seed) { return hexToBase64(seed.padEnd(16, '0').slice(0, 16)); }\nfunction makeSpan(name, idSeed, parentId, start, end, attributes, statusCode) { const span = { traceId, spanId: spanId(idSeed), name, kind: 1, startTimeUnixNano: ns(start), endTimeUnixNano: ns(end || start), attributes: attrs(attributes), status: { code: statusCode || 1 } }; if (parentId) span.parentSpanId = parentId; return span; }\nfunction payload(spans, projectName) { return { resourceSpans: [{ resource: { attributes: attrs({ 'service.name': 'discord-rag-bot', 'deployment.environment': 'phase0', 'phoenix.project.name': projectName, 'project.name': projectName, 'openinference.project.name': projectName }) }, scopeSpans: [{ scope: { name: 'n8n.phase8.workflow', version: '1.0.0' }, spans }] }] }; }\nconst init = getNode('Initialize Runtime State') || $json || {};\nconst projectName = init.phoenix_project_name || 'discord-rag-bot-phase-8';\nconst collectorUrl = init.phoenix_collector_url || 'http://trace-emitter:8001/v1/traces';\nconst traceSeed = String(init.query_hash || init.transaction_id || '').replace(/-/g, '').padEnd(32, '0').slice(0, 32);\nconst traceId = hexToBase64(traceSeed);\nconst rootSpanId = spanId('1000000000000000');\nconst state = getNode('Assemble Context Contract') || getNode('Build Dedupe And Context Decision') || init;\nconst rerankName = state.reranker_passed_count >= state.min_result_count ? 'rerank.completed' : 'rerank.low_confidence';\nconst stage1Name = state.stage_1_gate_status === 'passed' ? 'retrieval.stage1_gate_passed' : 'retrieval.stage1_gate_refused';\nconst contextStatusCode = state.should_generate ? 1 : 2;\nconst spans = [\n  makeSpan('qdrant.query_completed', '5000000000000000', rootSpanId, state.qdrant_started_ms, state.qdrant_completed_ms, { 'transaction_id': state.transaction_id, 'route_type': state.route_type, 'channel_id': state.channel_id, 'query_hash': state.query_hash, 'status': state.qdrant_status_code >= 200 && state.qdrant_status_code < 300 ? 'completed' : 'failed', 'qdrant_collection': state.qdrant_collection, 'qdrant_status_code': state.qdrant_status_code, 'raw_candidate_count': state.raw_candidate_count, 'passed_candidate_count': state.passed_candidate_count, 'retrieval_score_threshold': state.retrieval_score_threshold, 'min_result_count': state.min_result_count, 'latency_ms': state.qdrant_latency_ms }, state.qdrant_status_code >= 200 && state.qdrant_status_code < 300 ? 1 : 2),\n  makeSpan(stage1Name, '5100000000000000', rootSpanId, state.qdrant_completed_ms, state.qdrant_completed_ms, { 'transaction_id': state.transaction_id, 'route_type': state.route_type, 'channel_id': state.channel_id, 'query_hash': state.query_hash, 'status': state.stage_1_gate_status, 'stage_1_gate_reason': state.stage_1_gate_reason, 'stage_1_gate_threshold': state.stage_1_gate_threshold, 'stage_1_gate_min_result_count': state.stage_1_gate_min_result_count, 'raw_candidate_count': state.raw_candidate_count, 'passed_candidate_count': state.passed_candidate_count, 'phase_7_scope': state.phase_7_scope }, state.stage_1_gate_status === 'passed' ? 1 : 2),\n  makeSpan(rerankName, '5500000000000000', rootSpanId, state.reranker_started_ms, state.reranker_completed_ms, { 'transaction_id': state.transaction_id, 'route_type': state.route_type, 'channel_id': state.channel_id, 'query_hash': state.query_hash, 'status': state.reranker_passed_count >= state.min_result_count ? 'completed' : 'low_confidence', 'reranker_model': state.reranker_model, 'reranker_status_code': state.reranker_status_code, 'reranker_score_threshold': state.reranker_score_threshold, 'weak_reranker_score_threshold': state.weak_reranker_score_threshold, 'reranker_candidate_count': state.reranker_candidate_count, 'reranker_passed_count': state.reranker_passed_count, 'latency_ms': state.reranker_latency_ms, 'service_latency_ms': state.reranker_service_latency_ms, 'refusal_reason': state.refusal_reason }, state.reranker_passed_count >= state.min_result_count ? 1 : 2),\n  makeSpan('dedupe.completed', '5800000000000000', rootSpanId, state.dedupe_started_ms, state.dedupe_completed_ms, { 'transaction_id': state.transaction_id, 'route_type': state.route_type, 'channel_id': state.channel_id, 'query_hash': state.query_hash, 'status': 'completed', 'dedupe_input_count': state.dedupe_input_count, 'dedupe_kept_count': state.dedupe_kept_count, 'dedupe_dropped_count': state.dedupe_dropped_count, 'dedupe_missing_message_ids_count': state.dedupe_missing_message_ids_count, 'dedupe_missing_message_ids_qdrant_point_ids': Array.isArray(state.dedupe_missing_message_ids_qdrant_point_ids) ? state.dedupe_missing_message_ids_qdrant_point_ids.join(',') : '', 'dedupe_pairwise_comparison_count': state.dedupe_pairwise_comparison_count, 'dedupe_overlap_threshold': state.dedupe_overlap_threshold, 'latency_ms': state.dedupe_latency_ms, 'refusal_reason': state.refusal_reason }, state.refusal_reason === 'context_after_dedupe_insufficient' ? 2 : 1),\n  makeSpan('context.assembled', '6000000000000000', rootSpanId, state.context_assembly_started_ms, state.context_assembly_completed_ms, { 'transaction_id': state.transaction_id, 'route_type': state.route_type, 'channel_id': state.channel_id, 'query_hash': state.query_hash, 'status': state.context_budget_gate_status === 'skipped_prior_refusal' ? 'skipped' : 'completed', 'context_contract_version': state.context_contract_version, 'score_source': state.score_source, 'prompt_hash': state.prompt_hash, 'selected_context_count_before_budget': state.selected_context_count_before_budget, 'selected_context_count': state.selected_context_count, 'context_token_budget': state.context_token_budget, 'context_token_estimate_before_budget': state.context_token_estimate_before_budget, 'context_token_estimate': state.context_token_estimate, 'latency_ms': state.context_assembly_latency_ms }, state.context_budget_gate_status === 'skipped_prior_refusal' ? 2 : 1),\n  makeSpan(state.context_event_name || 'context.insufficient', '6100000000000000', rootSpanId, state.context_assembly_started_ms, state.context_assembly_completed_ms, { 'transaction_id': state.transaction_id, 'route_type': state.route_type, 'channel_id': state.channel_id, 'query_hash': state.query_hash, 'status': state.context_budget_gate_status, 'context_token_budget': state.context_token_budget, 'context_token_estimate_before_budget': state.context_token_estimate_before_budget, 'context_token_estimate': state.context_token_estimate, 'context_dropped_for_budget_count': state.context_dropped_for_budget_count, 'context_overflow_detected': state.context_overflow_detected, 'selected_context_count_before_budget': state.selected_context_count_before_budget, 'selected_context_count': state.selected_context_count, 'refusal_reason': state.refusal_reason, 'failure_reason': state.failure_reason }, contextStatusCode)\n];\nreturn [{ json: { ...state, phoenix_collector_url: collectorUrl, phoenix_trace_payload: payload(spans, projectName), phoenix_checkpoint: 'retrieval_context', phoenix_span_count: spans.length } }];"
+      },
+      "id": "phase3b-build-phoenix-retrieval",
+      "name": "Build Phoenix Retrieval Context Checkpoint",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1400,
+        -180
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $json.phoenix_collector_url }}",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ $json.phoenix_trace_payload }}",
+        "options": {
+          "response": {
+            "response": {
+              "fullResponse": true,
+              "neverError": true,
+              "responseFormat": "json"
+            }
+          }
+        }
+      },
+      "id": "phase3b-send-phoenix-retrieval",
+      "name": "Send Phoenix Retrieval Context Checkpoint",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1640,
+        -180
+      ],
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "jsCode": "function getNode(name) { try { return $items(name)[0]?.json || null; } catch (e) { return null; } }\nfunction hexToBase64(hex) { let binary = ''; for (let i = 0; i < hex.length; i += 2) binary += String.fromCharCode(parseInt(hex.slice(i, i + 2), 16)); return btoa(binary); }\nfunction value(v) { if (v === null || v === undefined) return { stringValue: '' }; if (typeof v === 'boolean') return { boolValue: v }; if (typeof v === 'number') return Number.isInteger(v) ? { intValue: String(v) } : { doubleValue: v }; return { stringValue: String(v) }; }\nfunction attrs(obj) { return Object.entries(obj).filter(([, v]) => v !== undefined).map(([key, val]) => ({ key, value: value(val) })); }\nfunction ns(ms) { return String(Math.max(0, Math.floor(ms || Date.now())) * 1000000); }\nfunction spanId(seed) { return hexToBase64(seed.padEnd(16, '0').slice(0, 16)); }\nfunction makeSpan(name, idSeed, parentId, start, end, attributes, statusCode) { const span = { traceId, spanId: spanId(idSeed), name, kind: 1, startTimeUnixNano: ns(start), endTimeUnixNano: ns(end || start), attributes: attrs(attributes), status: { code: statusCode || 1 } }; if (parentId) span.parentSpanId = parentId; return span; }\nfunction payload(spans, projectName) { return { resourceSpans: [{ resource: { attributes: attrs({ 'service.name': 'discord-rag-bot', 'deployment.environment': 'phase0', 'phoenix.project.name': projectName, 'project.name': projectName, 'openinference.project.name': projectName }) }, scopeSpans: [{ scope: { name: 'n8n.phase8.workflow', version: '1.0.0' }, spans }] }] }; }\nconst init = getNode('Initialize Runtime State') || $json || {};\nconst projectName = init.phoenix_project_name || 'discord-rag-bot-phase-8';\nconst collectorUrl = init.phoenix_collector_url || 'http://trace-emitter:8001/v1/traces';\nconst traceSeed = String(init.query_hash || init.transaction_id || '').replace(/-/g, '').padEnd(32, '0').slice(0, 32);\nconst traceId = hexToBase64(traceSeed);\nconst rootSpanId = spanId('1000000000000000');\nconst startMs = init.workflow_started_ms || Date.now();\nconst state = getNode('Build Gemini Result') || init;\nconst spans = [makeSpan(state.generation_failed ? 'gemini.failed' : 'gemini.response_completed', '7000000000000000', rootSpanId, state.gemini_started_ms, state.gemini_completed_ms, { 'model': 'gemini-3.5-flash', 'prompt_hash': state.prompt_hash, 'gemini_status_code': state.gemini_status_code, 'generation_failed': state.generation_failed, 'failure_reason': state.gemini_failure_reason, 'model_refusal': state.model_refusal, 'response_char_count': String(state.gemini_response_text || '').length, 'latency_ms': state.gemini_latency_ms, 'query_hash': state.query_hash }, state.generation_failed ? 2 : 1)];\nreturn [{ json: { ...state, phoenix_collector_url: collectorUrl, phoenix_trace_payload: payload(spans, projectName), phoenix_checkpoint: 'gemini', phoenix_span_count: spans.length } }];"
+      },
+      "id": "phase3b-build-phoenix-gemini",
+      "name": "Build Phoenix Gemini Checkpoint",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2840,
+        -440
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $json.phoenix_collector_url }}",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ $json.phoenix_trace_payload }}",
+        "options": {
+          "response": {
+            "response": {
+              "fullResponse": true,
+              "neverError": true,
+              "responseFormat": "json"
+            }
+          }
+        }
+      },
+      "id": "phase3b-send-phoenix-gemini",
+      "name": "Send Phoenix Gemini Checkpoint",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        3080,
+        -440
+      ],
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "jsCode": "function getNode(name) { try { return $items(name)[0]?.json || null; } catch (e) { return null; } }\nfunction hexToBase64(hex) { let binary = ''; for (let i = 0; i < hex.length; i += 2) binary += String.fromCharCode(parseInt(hex.slice(i, i + 2), 16)); return btoa(binary); }\nfunction value(v) { if (v === null || v === undefined) return { stringValue: '' }; if (typeof v === 'boolean') return { boolValue: v }; if (typeof v === 'number') return Number.isInteger(v) ? { intValue: String(v) } : { doubleValue: v }; return { stringValue: String(v) }; }\nfunction attrs(obj) { return Object.entries(obj).filter(([, v]) => v !== undefined).map(([key, val]) => ({ key, value: value(val) })); }\nfunction ns(ms) { return String(Math.max(0, Math.floor(ms || Date.now())) * 1000000); }\nfunction spanId(seed) { return hexToBase64(seed.padEnd(16, '0').slice(0, 16)); }\nfunction makeSpan(name, idSeed, parentId, start, end, attributes, statusCode) { const span = { traceId, spanId: spanId(idSeed), name, kind: 1, startTimeUnixNano: ns(start), endTimeUnixNano: ns(end || start), attributes: attrs(attributes), status: { code: statusCode || 1 } }; if (parentId) span.parentSpanId = parentId; return span; }\nfunction payload(spans, projectName) { return { resourceSpans: [{ resource: { attributes: attrs({ 'service.name': 'discord-rag-bot', 'deployment.environment': 'phase0', 'phoenix.project.name': projectName, 'project.name': projectName, 'openinference.project.name': projectName }) }, scopeSpans: [{ scope: { name: 'n8n.phase8.workflow', version: '1.0.0' }, spans }] }] }; }\nconst init = getNode('Initialize Runtime State') || $json || {};\nconst projectName = init.phoenix_project_name || 'discord-rag-bot-phase-8';\nconst collectorUrl = init.phoenix_collector_url || 'http://trace-emitter:8001/v1/traces';\nconst traceSeed = String(init.query_hash || init.transaction_id || '').replace(/-/g, '').padEnd(32, '0').slice(0, 32);\nconst traceId = hexToBase64(traceSeed);\nconst rootSpanId = spanId('1000000000000000');\nconst startMs = init.workflow_started_ms || Date.now();\nconst finalTx = $json || {}; const answer = getNode('Build Discord Answer Result'); const refusal = getNode('Build Discord Refusal Result'); const discord = answer || refusal || finalTx; const retrieval = getNode('Assemble Context Contract') || getNode('Build Dedupe And Context Decision') || {}; const gemini = getNode('Build Gemini Result');\nconst finalStatus = finalTx.status || retrieval.final_status || 'unknown';\nconst refusalReason = finalTx.refusal_reason || retrieval.refusal_reason || '';\nconst failureReason = finalTx.failure_reason || gemini?.gemini_failure_reason || discord?.failure_reason || '';\nconst endMs = Date.now();\nconst spans = [makeSpan('rag.active_call', '1000000000000000', null, startMs, endMs, { 'transaction_id': init.transaction_id || finalTx.transaction_id, 'openinference.span.kind': 'chain', 'phoenix.project.name': projectName, 'route_type': init.route_type, 'channel_id': init.channel_id, 'channel_name': init.channel_name, 'query_hash': init.query_hash, 'status': finalStatus, 'refusal_reason': refusalReason, 'failure_reason': failureReason }, finalStatus === 'failed' ? 2 : 1)];\nif (discord && discord.discord_started_ms) {\n  spans.push(makeSpan(discord.response_status === 'posted' ? 'discord.response_sent' : 'discord.response_failed', '8000000000000000', rootSpanId, discord.discord_started_ms, discord.discord_completed_ms, { 'discord_status_code': discord.discord_status_code, 'discord_response_message_id': discord.discord_response_message_id, 'response_status': discord.response_status, 'latency_ms': discord.discord_latency_ms }, discord.response_status === 'posted' ? 1 : 2));\n}\nreturn [{ json: { ...finalTx, phoenix_collector_url: collectorUrl, phoenix_trace_payload: payload(spans, projectName), phoenix_checkpoint: 'final', phoenix_span_count: spans.length } }];"
+      },
+      "id": "phase3b-build-phoenix-final",
+      "name": "Build Phoenix Final Checkpoint",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        4280,
+        40
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $json.phoenix_collector_url }}",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ $json.phoenix_trace_payload }}",
+        "options": {
+          "response": {
+            "response": {
+              "fullResponse": true,
+              "neverError": true,
+              "responseFormat": "json"
+            }
+          }
+        }
+      },
+      "id": "phase3b-send-phoenix-final",
+      "name": "Send Phoenix Final Checkpoint",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        4520,
+        40
+      ],
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "jsCode": "const base = $items('Prepare Qdrant Search')[0].json;\nconst response = $json;\nconst now = Date.now();\nconst statusCode = response.statusCode ?? response.status ?? 0;\nconst raw = response.body?.result || response.result || [];\nconst threshold = Number(base.retrieval_score_threshold ?? 0.55);\nconst minResultCount = Number(base.min_result_count ?? 3);\nconst candidates = Array.isArray(raw) ? raw.map((hit, i) => {\n  const p = hit.payload || {};\n  return {\n    qdrant_point_id: String(hit.id),\n    rank: i + 1,\n    retrieval_score: Number(hit.score || 0),\n    channel_id: p.channel_id || '',\n    channel_name: p.channel || '',\n    thread_name: p.thread_name || '',\n    first_message_id: p.first_message_id || '',\n    message_ids: Array.isArray(p.message_ids) ? p.message_ids.map(String) : [],\n    start_ts: p.start_ts || null,\n    end_ts: p.end_ts || null,\n    text: p.text || '',\n    payload: p\n  };\n}) : [];\nconst passed = candidates\n  .filter(c => c.retrieval_score >= threshold)\n  .sort((a, b) => b.retrieval_score - a.retrieval_score);\nlet stage1GateReason = 'stage_1_retrieval_passed';\nlet stage1GateStatus = 'passed';\nlet refusalReason = null;\nif (!base.embedding_ok) {\n  stage1GateStatus = 'refused';\n  stage1GateReason = 'query_embedding_failed';\n  refusalReason = 'query_embedding_failed';\n} else if (statusCode < 200 || statusCode >= 300) {\n  stage1GateStatus = 'refused';\n  stage1GateReason = 'qdrant_query_failed';\n  refusalReason = 'qdrant_query_failed';\n} else if (candidates.length === 0) {\n  stage1GateStatus = 'refused';\n  stage1GateReason = 'no_qdrant_results';\n  refusalReason = 'no_qdrant_results';\n} else if (passed.length < minResultCount) {\n  stage1GateStatus = 'refused';\n  stage1GateReason = 'fewer_than_min_stage_1_results';\n  refusalReason = 'fewer_than_min_stage_1_results';\n}\nreturn [{ json: {\n  ...base,\n  qdrant_completed_ms: now,\n  qdrant_latency_ms: Math.max(0, now - base.qdrant_started_ms),\n  qdrant_status_code: statusCode,\n  raw_candidate_count: candidates.length,\n  passed_candidate_count: passed.length,\n  candidates,\n  passed_stage_1_candidates: passed,\n  stage_1_gate_status: stage1GateStatus,\n  stage_1_gate_reason: stage1GateReason,\n  stage_1_gate_threshold: threshold,\n  stage_1_gate_min_result_count: minResultCount,\n  should_continue_to_context: stage1GateStatus === 'passed',\n  refusal_reason: refusalReason,\n  retrieval_status: stage1GateStatus === 'passed' ? 'stage_1_context_candidates_found' : 'no_context',\n  final_status: stage1GateStatus === 'passed' ? 'retrieving' : 'refused'\n}}];"
+      },
+      "id": "f1c0935c-bfa9-442b-ba30-ef0f7b8bd25a",
+      "name": "Build Stage 1 Retrieval Gate",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -40,
+        80
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const state = $items('Build Stage 1 Retrieval Gate')[0].json;\nconst candidates = (state.passed_stage_1_candidates || []).map(candidate => ({\n  id: candidate.qdrant_point_id,\n  text: candidate.text,\n  metadata: {\n    qdrant_point_id: candidate.qdrant_point_id,\n    rank: candidate.rank,\n    retrieval_score: candidate.retrieval_score,\n    channel_id: candidate.channel_id,\n    channel_name: candidate.channel_name,\n    thread_name: candidate.thread_name,\n    first_message_id: candidate.first_message_id,\n    message_ids: candidate.message_ids,\n    start_ts: candidate.start_ts,\n    end_ts: candidate.end_ts\n  }\n}));\nreturn [{ json: { ...state, reranker_started_ms: Date.now(), reranker_request_candidate_count: candidates.length, reranker_request: { query: state.user_query, candidates } } }];"
+      },
+      "id": "4514d235-9e77-44ba-8cfc-f240910cb80c",
+      "name": "Prepare Reranker Request",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        200,
+        80
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $json.reranker_url }}",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ $json.reranker_request }}",
+        "options": {
+          "response": {
+            "response": {
+              "fullResponse": true,
+              "neverError": true,
+              "responseFormat": "json"
+            }
+          }
+        }
+      },
+      "id": "10fa01e4-f1d5-47f4-96c4-2b969cc3b787",
+      "name": "CrossEncoder Rerank",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        440,
+        80
+      ],
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "jsCode": "function rightRotate(value, amount) { return (value >>> amount) | (value << (32 - amount)); }\nfunction utf8Bytes(str) {\n  const bytes = [];\n  for (let i = 0; i < str.length; i++) {\n    let code = str.charCodeAt(i);\n    if (code >= 0xd800 && code <= 0xdbff && i + 1 < str.length) {\n      const next = str.charCodeAt(++i);\n      code = 0x10000 + (((code & 0x3ff) << 10) | (next & 0x3ff));\n    }\n    if (code < 0x80) bytes.push(code);\n    else if (code < 0x800) bytes.push(0xc0 | (code >> 6), 0x80 | (code & 0x3f));\n    else if (code < 0x10000) bytes.push(0xe0 | (code >> 12), 0x80 | ((code >> 6) & 0x3f), 0x80 | (code & 0x3f));\n    else bytes.push(0xf0 | (code >> 18), 0x80 | ((code >> 12) & 0x3f), 0x80 | ((code >> 6) & 0x3f), 0x80 | (code & 0x3f));\n  }\n  return bytes;\n}\nfunction sha256Hex(input) {\n  const bytes = utf8Bytes(String(input));\n  const k = [0x428a2f98,0x71374491,0xb5c0fbcf,0xe9b5dba5,0x3956c25b,0x59f111f1,0x923f82a4,0xab1c5ed5,0xd807aa98,0x12835b01,0x243185be,0x550c7dc3,0x72be5d74,0x80deb1fe,0x9bdc06a7,0xc19bf174,0xe49b69c1,0xefbe4786,0x0fc19dc6,0x240ca1cc,0x2de92c6f,0x4a7484aa,0x5cb0a9dc,0x76f988da,0x983e5152,0xa831c66d,0xb00327c8,0xbf597fc7,0xc6e00bf3,0xd5a79147,0x06ca6351,0x14292967,0x27b70a85,0x2e1b2138,0x4d2c6dfc,0x53380d13,0x650a7354,0x766a0abb,0x81c2c92e,0x92722c85,0xa2bfe8a1,0xa81a664b,0xc24b8b70,0xc76c51a3,0xd192e819,0xd6990624,0xf40e3585,0x106aa070,0x19a4c116,0x1e376c08,0x2748774c,0x34b0bcb5,0x391c0cb3,0x4ed8aa4a,0x5b9cca4f,0x682e6ff3,0x748f82ee,0x78a5636f,0x84c87814,0x8cc70208,0x90befffa,0xa4506ceb,0xbef9a3f7,0xc67178f2];\n  let h = [0x6a09e667,0xbb67ae85,0x3c6ef372,0xa54ff53a,0x510e527f,0x9b05688c,0x1f83d9ab,0x5be0cd19];\n  const bitLen = bytes.length * 8;\n  bytes.push(0x80);\n  while ((bytes.length % 64) !== 56) bytes.push(0);\n  const high = Math.floor(bitLen / 0x100000000), low = bitLen >>> 0;\n  for (const word of [high, low]) bytes.push((word >>> 24) & 255, (word >>> 16) & 255, (word >>> 8) & 255, word & 255);\n  for (let offset = 0; offset < bytes.length; offset += 64) {\n    const w = new Array(64).fill(0);\n    for (let i = 0; i < 16; i++) { const j = offset + i * 4; w[i] = ((bytes[j] << 24) | (bytes[j + 1] << 16) | (bytes[j + 2] << 8) | bytes[j + 3]) >>> 0; }\n    for (let i = 16; i < 64; i++) {\n      const s0 = (rightRotate(w[i - 15], 7) ^ rightRotate(w[i - 15], 18) ^ (w[i - 15] >>> 3)) >>> 0;\n      const s1 = (rightRotate(w[i - 2], 17) ^ rightRotate(w[i - 2], 19) ^ (w[i - 2] >>> 10)) >>> 0;\n      w[i] = (w[i - 16] + s0 + w[i - 7] + s1) >>> 0;\n    }\n    let [a,b,c,d,e,f,g,hh] = h;\n    for (let i = 0; i < 64; i++) {\n      const s1 = (rightRotate(e, 6) ^ rightRotate(e, 11) ^ rightRotate(e, 25)) >>> 0;\n      const ch = ((e & f) ^ (~e & g)) >>> 0;\n      const temp1 = (hh + s1 + ch + k[i] + w[i]) >>> 0;\n      const s0 = (rightRotate(a, 2) ^ rightRotate(a, 13) ^ rightRotate(a, 22)) >>> 0;\n      const maj = ((a & b) ^ (a & c) ^ (b & c)) >>> 0;\n      const temp2 = (s0 + maj) >>> 0;\n      hh = g; g = f; f = e; e = (d + temp1) >>> 0; d = c; c = b; b = a; a = (temp1 + temp2) >>> 0;\n    }\n    h = [(h[0]+a)>>>0,(h[1]+b)>>>0,(h[2]+c)>>>0,(h[3]+d)>>>0,(h[4]+e)>>>0,(h[5]+f)>>>0,(h[6]+g)>>>0,(h[7]+hh)>>>0];\n  }\n  return h.map(x => x.toString(16).padStart(8, '0')).join('');\n}\nfunction estimateTokens(text) { return Math.ceil(String(text || '').length / 4); }\nfunction uniqueIds(ids) {\n  if (!Array.isArray(ids)) return [];\n  return [...new Set(ids.map(id => String(id)).filter(Boolean))];\n}\nfunction candidateSort(a, b) {\n  const rankA = Number(a.rank_after_dedupe ?? a.rerank_rank ?? a.rank_after ?? a.rank ?? Number.MAX_SAFE_INTEGER);\n  const rankB = Number(b.rank_after_dedupe ?? b.rerank_rank ?? b.rank_after ?? b.rank ?? Number.MAX_SAFE_INTEGER);\n  if (rankA !== rankB) return rankA - rankB;\n  return Number(b.reranker_score ?? -Infinity) - Number(a.reranker_score ?? -Infinity);\n}\nfunction dateOnly(value) {\n  return value ? String(value).slice(0, 10) : 'unknown';\n}\nfunction buildContextBlock(selected, guildId) {\n  return selected.map((c, idx) => {\n    const authors = Array.isArray(c.payload?.authors) ? c.payload.authors.join(', ') : 'N/A';\n    const thread = c.thread_name || 'N/A';\n    const score = Number(c.reranker_score ?? 0).toFixed(2);\n    const ids = uniqueIds(c.message_ids).join(', ');\n    const link = c.channel_id && c.first_message_id\n      ? 'https://discord.com/channels/' + guildId + '/' + c.channel_id + '/' + c.first_message_id\n      : 'N/A';\n    return '--- Context chunk ' + (idx + 1) + ' of ' + selected.length + ' ---\\n' +\n      'Channel:      #' + (c.channel_name || 'unknown') + '\\n' +\n      'Thread:       ' + thread + '\\n' +\n      'Date range:   ' + dateOnly(c.start_ts) + ' to ' + dateOnly(c.end_ts) + '\\n' +\n      'Authors:      ' + authors + '\\n' +\n      'Score:        ' + score + '\\n' +\n      'Message IDs:  ' + ids + '\\n' +\n      'Discord link: ' + link + '\\n\\n' +\n      String(c.text || '').trim();\n  }).join('\\n\\n');\n}\nfunction buildRetrievalRows(base, selected) {\n  const selectedIds = new Set(selected.map(c => c.qdrant_point_id));\n  const selectedRankById = new Map(selected.map((c, index) => [c.qdrant_point_id, index + 1]));\n  const rerankerById = new Map((base.reranked_candidates || []).map(c => [c.qdrant_point_id, c]));\n  const dedupeById = new Map([...(base.deduped_candidates || []), ...(base.dropped_dedupe_candidates || [])].map(c => [c.qdrant_point_id, c]));\n  return (base.candidates || []).map(c => {\n    const rankedCandidate = rerankerById.get(c.qdrant_point_id);\n    const dedupeCandidate = dedupeById.get(c.qdrant_point_id);\n    const selectedForContext = selectedIds.has(c.qdrant_point_id);\n    return {\n      qdrant_point_id: c.qdrant_point_id,\n      rank: c.rank,\n      rank_after: rankedCandidate?.rerank_rank ?? null,\n      retrieval_score: c.retrieval_score,\n      reranker_score: rankedCandidate?.reranker_score ?? null,\n      channel_id: c.channel_id,\n      channel_name: c.channel_name,\n      thread_name: c.thread_name,\n      first_message_id: c.first_message_id,\n      message_ids: c.message_ids,\n      start_ts: c.start_ts,\n      end_ts: c.end_ts,\n      dedupe_status: dedupeCandidate?.dedupe_status ?? (rankedCandidate ? 'not_applied' : null),\n      dedupe_reason: dedupeCandidate?.dedupe_reason ?? null,\n      dedupe_matched_chunk_id: dedupeCandidate?.dedupe_matched_chunk_id ?? null,\n      dedupe_overlap_ratio: dedupeCandidate?.dedupe_overlap_ratio ?? null,\n      dedupe_shared_message_count: dedupeCandidate?.dedupe_shared_message_count ?? null,\n      rank_after_dedupe: dedupeCandidate?.rank_after_dedupe ?? null,\n      selected_for_context: selectedForContext,\n      payload: {\n        ...c.payload,\n        selected_for_context: selectedForContext,\n        selected_context_rank: selectedRankById.get(c.qdrant_point_id) ?? null,\n        context_contract_version: 'phase7.v1',\n        context_token_budget: base.context_token_budget,\n        context_token_estimate: base.context_token_estimate,\n        context_budget_gate_status: base.context_budget_gate_status,\n        stage_1_gate_status: base.stage_1_gate_status,\n        stage_1_gate_reason: base.stage_1_gate_reason,\n        reranker_score: rankedCandidate?.reranker_score ?? null,\n        rank_after: rankedCandidate?.rerank_rank ?? null,\n        dedupe_status: dedupeCandidate?.dedupe_status ?? (rankedCandidate ? 'not_applied' : null),\n        dedupe_reason: dedupeCandidate?.dedupe_reason ?? null,\n        dedupe_matched_chunk_id: dedupeCandidate?.dedupe_matched_chunk_id ?? null,\n        dedupe_overlap_ratio: dedupeCandidate?.dedupe_overlap_ratio ?? null,\n        dedupe_shared_message_count: dedupeCandidate?.dedupe_shared_message_count ?? null,\n        rank_after_dedupe: dedupeCandidate?.rank_after_dedupe ?? null,\n        missing_message_ids_warning: dedupeCandidate?.dedupe_missing_message_ids_warning ?? false,\n        missing_message_ids_qdrant_point_id: dedupeCandidate?.dedupe_missing_message_ids_warning ? c.qdrant_point_id : null,\n      }\n    };\n  });\n}\nconst started = Date.now();\nconst state = $items('Build Dedupe And Context Decision')[0].json;\nconst guildId = state.discord_guild_id || '853099205206999050';\nconst minResultCount = Number(state.min_result_count ?? 3);\nconst contextK = Number(state.context_k ?? 5);\nconst contextTokenBudget = Number(state.context_token_budget ?? 2200);\nconst refusalText = \"I don't have enough TPM Unite specific context to answer this confidently, try rephrasing or ask the community directly.\";\n\nconst priorRefusalReason = state.should_generate ? null : (state.refusal_reason || 'context_insufficient');\nlet selected = [];\nlet contextBlock = '';\nlet contextTokenEstimateBeforeBudget = 0;\nlet contextTokenEstimate = 0;\nlet contextDroppedForBudgetCount = 0;\nlet contextOverflowDetected = false;\nlet contextRefusalReason = priorRefusalReason;\nlet contextEventName = 'context.insufficient';\nlet contextBudgetGateStatus = priorRefusalReason ? 'skipped_prior_refusal' : 'not_started';\n\nif (!priorRefusalReason) {\n  const sourceCandidates = (state.deduped_candidates || state.selected_context || [])\n    .filter(c => c && c.dedupe_status !== 'dropped')\n    .sort(candidateSort);\n  selected = sourceCandidates.slice(0, contextK);\n  const selectedBeforeBudget = selected.length;\n  contextBlock = buildContextBlock(selected, guildId);\n  contextTokenEstimateBeforeBudget = estimateTokens(contextBlock);\n  contextTokenEstimate = contextTokenEstimateBeforeBudget;\n  contextOverflowDetected = contextTokenEstimate > contextTokenBudget;\n\n  while (selected.length > minResultCount && contextTokenEstimate > contextTokenBudget) {\n    selected.pop();\n    contextDroppedForBudgetCount += 1;\n    contextBlock = buildContextBlock(selected, guildId);\n    contextTokenEstimate = estimateTokens(contextBlock);\n  }\n\n  if (selected.length < minResultCount || contextTokenEstimate > contextTokenBudget) {\n    contextRefusalReason = 'context_token_budget_insufficient';\n    contextBudgetGateStatus = 'failed';\n    contextEventName = 'context.insufficient';\n  } else {\n    contextBudgetGateStatus = contextOverflowDetected ? 'trimmed' : 'passed';\n    contextEventName = contextOverflowDetected ? 'context.overflow' : 'context.assembled';\n  }\n\n  state.selected_context_count_before_budget = selectedBeforeBudget;\n} else {\n  state.selected_context_count_before_budget = 0;\n}\n\nconst shouldGenerate = !contextRefusalReason;\nconst allSelectedOlderThan12Months = selected.length > 0 && selected.every(c => {\n  const ts = c.end_ts || c.start_ts;\n  if (!ts) return false;\n  return Date.now() - new Date(ts).getTime() > 365 * 24 * 60 * 60 * 1000;\n});\nconst wideSpanDetected = selected.some(c => Number(c.span_days ?? c.payload?.span_days ?? 0) > 365);\nconst weakRerankerSignal = selected.length > 0 && selected.every(candidate => Number(candidate.reranker_score ?? 0) > Number(state.reranker_score_threshold ?? 0) && Number(candidate.reranker_score ?? 0) < Number(state.weak_reranker_score_threshold ?? 2));\nconst weakSignalNote = weakRerankerSignal ? 'Note: retrieved context may not be a strong match for this question.\\n\\n' : '';\nconst temporalInstruction = allSelectedOlderThan12Months ? 'The selected context is older than 12 months. Include the temporal honesty note required by Rule 5.\\n' : '';\nconst wideSpanInstruction = wideSpanDetected ? 'At least one selected context chunk spans more than 365 days. Note that the context may reflect different community views over time.\\n' : '';\nconst systemPrompt = [\n  'You are an assistant for the TPM Unite Discord community.',\n  \"You have access to retrieved excerpts from real TPM Unite conversations spanning the community's history.\",\n  '',\n  'RULES - follow exactly, in priority order:',\n  '1. GROUNDING: Answer ONLY from the provided context blocks. Never use general knowledge, personal opinions, or external sources. Every claim must be traceable to a specific context block.',\n  '2. REFUSAL: If the provided context is insufficient to answer confidently, respond with exactly: \"' + refusalText + '\" Then stop. Do not add caveats, partial answers, or suggestions.',\n  '3. CITATION: After each key claim, cite the source in this format: (#{channel}, {YYYY-MM-DD}). For forum threads: (#{channel} > {thread_name}, {YYYY-MM-DD}). If you cannot cite the answer from the provided context, refuse.',\n  '4. FRAMING: Frame answers as community wisdom, not authoritative rulings. Use language like \"TPM Unite members have discussed...\", \"The community has shared...\", \"Past discussions suggest...\" Never say \"You should...\" or \"The answer is...\"',\n  '5. TEMPORAL HONESTY: If context is older than 12 months, note: \"Note: this reflects TPM Unite discussions from {year} - the community may have more recent context.\"',\n  '6. NUANCE CAVEAT: For subjective, evolving, or role-specific topics, close with: \"This reflects past TPM Unite discussions - the community may have more recent or personal context to add.\"',\n  '7. SAFETY: Do not surface personal identifying information from the context even if present. Do not answer questions that require advice beyond what the community has discussed.',\n  '8. RESPONSE LENGTH: Your entire response, including citations, must be 1,900 characters or fewer.'\n].join('\\n');\nconst prompt = systemPrompt + '\\n\\nContext assembly notes:\\n' + weakSignalNote + temporalInstruction + wideSpanInstruction + '\\nRetrieved context:\\n' + contextBlock + '\\n\\nUser question:\\n' + state.user_query;\nconst completed = Date.now();\nconst output = {\n  ...state,\n  phase_7_scope: 'context_prompt_contract_after_dedupe',\n  context_contract_version: 'phase7.v1',\n  context_assembly_started_ms: started,\n  context_assembly_completed_ms: completed,\n  context_assembly_latency_ms: Math.max(0, completed - started),\n  context_budget_gate_status: contextBudgetGateStatus,\n  context_event_name: contextEventName,\n  context_token_budget: contextTokenBudget,\n  context_token_estimate_before_budget: contextTokenEstimateBeforeBudget,\n  context_token_estimate: contextTokenEstimate,\n  context_overflow_detected: contextOverflowDetected,\n  context_dropped_for_budget_count: contextDroppedForBudgetCount,\n  selected_context_count: selected.length,\n  selected_context: selected,\n  context_block: contextBlock,\n  prompt,\n  prompt_hash: sha256Hex(prompt),\n  temporal_honesty_required: allSelectedOlderThan12Months,\n  wide_span_context_detected: wideSpanDetected,\n  weak_reranker_signal: weakRerankerSignal,\n  weak_signal_note: weakSignalNote,\n  should_generate: shouldGenerate,\n  should_generate_int: shouldGenerate ? 1 : 0,\n  refusal_reason: contextRefusalReason,\n  retrieval_status: shouldGenerate ? 'context_found' : 'no_context',\n  final_status: shouldGenerate ? 'answered' : 'refused',\n  refusal_text: refusalText,\n  score_source: 'reranker_score_after_dedupe',\n};\noutput.retrieval_results_sql_json = JSON.stringify(buildRetrievalRows(output, selected)).replace(/'/g, \"''\");\nreturn [{ json: output }];"
+      },
+      "id": "phase7-assemble-context-contract",
+      "name": "Assemble Context Contract",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        900,
+        80
+      ]
+    }
+  ],
+  "connections": {
+    "Create Transaction": {
+      "main": [
+        [
+          {
+            "node": "Initialize Runtime State",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Initialize Runtime State": {
+      "main": [
+        [
+          {
+            "node": "Update Transaction Started",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare Embedding Request": {
+      "main": [
+        [
+          {
+            "node": "Embed Query",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Embed Query": {
+      "main": [
+        [
+          {
+            "node": "Build Embedding Result",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Embedding Result": {
+      "main": [
+        [
+          {
+            "node": "Build Phoenix Embedding Checkpoint",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare Qdrant Search": {
+      "main": [
+        [
+          {
+            "node": "Qdrant Vector Search",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Qdrant Vector Search": {
+      "main": [
+        [
+          {
+            "node": "Build Stage 1 Retrieval Gate",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Store Retrieval Results": {
+      "main": [
+        [
+          {
+            "node": "Build Phoenix Retrieval Context Checkpoint",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Context Found?": {
+      "main": [
+        [
+          {
+            "node": "Prepare Gemini Request",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Prepare Discord Refusal",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare Gemini Request": {
+      "main": [
+        [
+          {
+            "node": "Gemini Generation",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Gemini Generation": {
+      "main": [
+        [
+          {
+            "node": "Build Gemini Result",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Gemini Result": {
+      "main": [
+        [
+          {
+            "node": "Build Phoenix Gemini Checkpoint",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Gemini Failed?": {
+      "main": [
+        [
+          {
+            "node": "Finalize Gemini Failure",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Prepare Discord Answer",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare Discord Answer": {
+      "main": [
+        [
+          {
+            "node": "Post Discord Answer",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Post Discord Answer": {
+      "main": [
+        [
+          {
+            "node": "Build Discord Answer Result",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Discord Answer Result": {
+      "main": [
+        [
+          {
+            "node": "Finalize Posted Transaction",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare Discord Refusal": {
+      "main": [
+        [
+          {
+            "node": "Post Discord Refusal",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Post Discord Refusal": {
+      "main": [
+        [
+          {
+            "node": "Build Discord Refusal Result",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Discord Refusal Result": {
+      "main": [
+        [
+          {
+            "node": "Finalize Posted Transaction",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Finalize Gemini Failure": {
+      "main": [
+        [
+          {
+            "node": "Build Phoenix Final Checkpoint",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Finalize Posted Transaction": {
+      "main": [
+        [
+          {
+            "node": "Build Phoenix Final Checkpoint",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Update Transaction Started": {
+      "main": [
+        [
+          {
+            "node": "Build Phoenix Start Checkpoint",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Phoenix Start Checkpoint": {
+      "main": [
+        [
+          {
+            "node": "Send Phoenix Start Checkpoint",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send Phoenix Start Checkpoint": {
+      "main": [
+        [
+          {
+            "node": "Prepare Embedding Request",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Phoenix Embedding Checkpoint": {
+      "main": [
+        [
+          {
+            "node": "Send Phoenix Embedding Checkpoint",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send Phoenix Embedding Checkpoint": {
+      "main": [
+        [
+          {
+            "node": "Prepare Qdrant Search",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Phoenix Retrieval Context Checkpoint": {
+      "main": [
+        [
+          {
+            "node": "Send Phoenix Retrieval Context Checkpoint",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send Phoenix Retrieval Context Checkpoint": {
+      "main": [
+        [
+          {
+            "node": "Context Found?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Phoenix Gemini Checkpoint": {
+      "main": [
+        [
+          {
+            "node": "Send Phoenix Gemini Checkpoint",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send Phoenix Gemini Checkpoint": {
+      "main": [
+        [
+          {
+            "node": "Gemini Failed?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Phoenix Final Checkpoint": {
+      "main": [
+        [
+          {
+            "node": "Send Phoenix Final Checkpoint",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send Phoenix Final Checkpoint": {
+      "main": [
+        [
+          {
+            "node": "Read Final Transaction",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Stage 1 Retrieval Gate": {
+      "main": [
+        [
+          {
+            "node": "Prepare Reranker Request",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare Reranker Request": {
+      "main": [
+        [
+          {
+            "node": "CrossEncoder Rerank",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "CrossEncoder Rerank": {
+      "main": [
+        [
+          {
+            "node": "Build Dedupe And Context Decision",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Dedupe And Context Decision": {
+      "main": [
+        [
+          {
+            "node": "Assemble Context Contract",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Assemble Context Contract": {
+      "main": [
+        [
+          {
+            "node": "Store Retrieval Results",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Set Intake Active Call": {
+      "main": [
+        [
+          {
+            "node": "Create Transaction",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Manual Trigger - Active Call Intake": {
+      "main": [
+        [
+          {
+            "node": "Set Intake Active Call",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "meta": {
+    "phase": "phase-8-intake-routing-active-call",
+    "description": "Phase 8 first implementation slice: active-call intake/routing mode contract using the shared Phase 7 RAG execution path."
+  }
+}

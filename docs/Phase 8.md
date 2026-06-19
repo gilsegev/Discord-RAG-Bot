@@ -369,6 +369,14 @@ Create or refactor toward:
 
 The first Phase 8 implementation can limit the intake workflow to regression modes, but it should use the same contract we expect active and passive calls to use later.
 
+Implementation slice 1:
+
+- Add `workflows/n8n/rag-intake-routing-phase-8-active-call.json`.
+- Preserve the known-working Phase 7 active-call RAG path.
+- Add the Phase 8 intake mode contract fields.
+- Validate that the active-call path still reaches Discord before adding regression and CI branches.
+- Do not build a separate regression-only RAG copy.
+
 Intake nodes:
 
 - `Manual Trigger`
