@@ -530,6 +530,10 @@ What it does:
 - counts only configured feedback reactions in v1, such as thumbs-up and thumbs-down
 - hashes or redacts `feedback_author_id`
 - writes one feedback row per user per bot response
+- writes `feedback_source` separately from `feedback_type` so Discord event source and feedback sentiment are not overloaded
+- writes `feedback_value` for the normalized sentiment, reaction name, or structured form value
+- sets `review_candidate = true` and `review_status = pending` for negative reactions or explicit critique
+- writes `matched = false` when feedback cannot be linked to a known bot transaction
 - treats add/remove or repeated feedback as last-write-wins
 - logs unmatched feedback events without including them in weekly metrics
 Interfaces:

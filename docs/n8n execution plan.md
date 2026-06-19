@@ -362,12 +362,21 @@ reaction event
 -> look up transaction by discord_response_message_id
 -> normalize feedback
 -> upsert feedback row
+-> flag review candidates when feedback is negative or explicit critique
 -> update trace or metrics
 ```
 
 Expected outcome:
 
 User reactions can be tied back to the original retrieval and answer transaction.
+
+Schema contract:
+
+- `feedback_source` stores where the signal came from: `reaction`, `context_menu`, `slash_command`, `form`, or `manual`.
+- `feedback_type` remains the legacy normalized type: `positive`, `negative`, or `explicit`.
+- `feedback_value` stores the normalized sentiment or structured value.
+- Negative reactions and explicit critique set `review_candidate = true` and `review_status = pending`.
+- Unmatched feedback writes `matched = false` and is excluded from weekly quality metrics until linked.
 
 ## Phase 10: Weekly Metrics And Alerts
 Add reporting after transactions, retrieval, refusals, responses, and feedback are flowing.
