@@ -252,20 +252,25 @@ Credential policy:
 - No Gemini key.
 - No broad shell access required for ordinary runs.
 
-## Runner Script Role
+## Regression Batch Runner Role
+Regression execution is owned by an n8n workflow, not by a separate repo script.
 
-A repo-owned script is still useful, but it should not own RAG logic.
+The batch runner workflow:
 
-Responsibilities:
+- embeds the versioned cases from [regression_questions.jsonl](../scripts/regression_questions.jsonl)
+- accepts filters such as `cases`, `category`, and `limit`
+- iterates over the selected cases
+- calls `RAG Intake + Routing - Phase 8` once per case through the internal n8n intake webhook
+- defaults to `run_mode = retrieval_only`
+- defaults to `allow_gemini = false`
+- defaults to `allow_discord_post = false`
+- writes one `rag_regression_runs` row per batch
+- writes one `rag_regression_results` row per case
+- returns a compact JSON summary to the caller
 
-- read `scripts/regression_questions.jsonl`
-- validate required fields
-- select all cases, one case, or a category
-- call the RAG Intake + Routing workflow or its webhook entry point
-- print and save the returned summary
-- exit with a CI-friendly status code
+The runner does not own retrieval, rerank, dedupe, context assembly, or answer generation. It is an orchestrator around the shared intake and RAG core workflows.
 
-The script is a client of the intake workflow, not a second implementation of retrieval.
+A repo-owned CI helper script may be added later, but only as a client that triggers this n8n batch workflow and saves the returned artifact. It must not become a second RAG implementation.
 
 ## Persistence Model
 
@@ -406,21 +411,32 @@ Core nodes:
 
 CI and Shilpi modes must set `allow_gemini = false` and `allow_discord_post = false`.
 
-### Step 4: Add Runner Script
+### Step 4: Add n8n Regression Batch Runner
+Add `workflows/n8n/rag-regression-batch-runner-phase-8.json`.
 
-Create a small repo-owned command, for example:
+The workflow should:
 
-```text
-npm run regression:run -- --mode retrieval_only --cases all
+- expose a batch webhook for manual, evaluator, and later CI calls
+- load the versioned regression cases
+- filter by one case, a comma-separated case list, category, or limit
+- call `RAG Intake + Routing - Phase 8` once per selected case via `rag-intake-phase-8`
+- force Discord posting off by default
+- keep Gemini off by default
+- persist run and case evidence to Postgres
+- return a summary payload with counts and per-case outcomes
+
+Default request:
+
+```json
+{
+  "cases": "all",
+  "mode": "retrieval_only",
+  "allow_gemini": false,
+  "allow_discord_post": false
+}
 ```
 
-The script should:
-
-- read `.env.local`
-- call the n8n webhook
-- pass selected cases
-- print summary
-- save output artifact
+The workflow may support full-answer mode for maintainer calibration, but retrieval-only remains the safe default for Shilpi and CI.
 
 ### Step 5: Add CI Job
 
