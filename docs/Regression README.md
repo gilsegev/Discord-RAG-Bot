@@ -58,14 +58,16 @@ Totals:
 
 Each case carries expected behavior, not a gold answer.
 
-Scoring a run against a case writes labels to `rag_eval_labels`:
+Regression execution first writes durable evidence to `rag_regression_runs` and `rag_regression_results`.
+
+When label writing is explicitly enabled, the regression harness can also write derived labels to `rag_eval_labels` with `source = regression`. These labels are useful for dashboards and trend checks, but they should be treated as automated regression labels, not human adjudication.
 
 - `expected_action` maps to the Tone/Refusal dimension.
 - `expected_action = answer` requires Groundedness and Answer Relevance to pass.
 - `expected_caveat = yes` requires the nuance, temporal, or personal caveat.
 - `expected_flags = pii_block` requires the Safety check to pass.
 
-Aggregating those labels yields groundedness pass rate, correct-refusal rate, no-context violations, and RAG Reliability Index.
+Aggregating human, judge, or explicitly enabled regression labels yields groundedness pass rate, correct-refusal rate, no-context violations, and RAG Reliability Index. Retrieval-only runs can safely produce retrieval/refusal evidence, but caveat quality, exact refusal wording, PII leakage, and final answer quality require full-answer or human/judge review.
 
 ## Run Modes
 

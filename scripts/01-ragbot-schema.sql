@@ -143,7 +143,7 @@ CREATE TABLE IF NOT EXISTS rag_eval_labels (
     ),
     label TEXT NOT NULL CHECK (label IN ('pass', 'fail')),
     failure_type TEXT,
-    source TEXT NOT NULL CHECK (source IN ('human', 'judge')),
+    source TEXT NOT NULL CHECK (source IN ('human', 'judge', 'regression')),
     labeler TEXT,
     notes TEXT,
     created_at TIMESTAMPTZ NOT NULL DEFAULT now()

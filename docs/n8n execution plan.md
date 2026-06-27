@@ -352,6 +352,7 @@ It needs:
 - expected outcome fields for grounded answer, correct refusal, partial context, no context, stale context, adversarial, safety, and PII cases
 - actual outcome fields for status, retrieval status, refusal reason, selected chunks, scores, citations, answer length, latency, and trace link
 - summary reporting for pass rate, false refusals, missed refusals, citation failures, no-context violations, and latency
+- optional derived label writing to `rag_eval_labels` with `source = regression`, disabled by default until the team chooses to treat automated regression labels as dashboard inputs
 
 Expected outcome:
 
@@ -377,6 +378,10 @@ Exit criteria:
 - each run persists enough evidence to debug failures outside the n8n editor
 - false refusal, missed refusal, no-context violation, and citation failure categories are explicit
 - results are suitable for later weekly quality metrics and human review
+
+Deferred CI work:
+
+CI execution is intentionally deferred until the manual and batch regression paths are stable. A later phase should add a GitHub Actions workflow that validates the JSONL file and runs a no-secret retrieval-only regression path against either local services or a restored Qdrant snapshot. CI should start as non-blocking or structural-only until the team agrees on hard quality gates.
 
 ## Phase 9: Passive Listener
 Add passive listener behavior only after the active-call path is stable.
