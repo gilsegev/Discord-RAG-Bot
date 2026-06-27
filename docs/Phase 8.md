@@ -135,6 +135,15 @@ Every request should carry an explicit mode object.
 
 Allowed behavior should be enforced from the flags, not from assumptions about who clicked the workflow.
 
+### Channel Scope Contract
+
+Regression cases may include `channel_scope`.
+
+- `all` means search the full indexed corpus.
+- `in #channel-name` means constrain retrieval to that channel for that regression case.
+
+This is a regression/request-level test control, not the default production behavior. Normal active-call bot answers should continue to search across the indexed corpus unless the user or calling workflow explicitly asks for a scoped answer.
+
 ## Required Run Modes
 
 ### 1. Maintainer Manual Run
@@ -420,6 +429,7 @@ The workflow should:
 - load the versioned regression cases
 - filter by one case, a comma-separated case list, category, or limit
 - call `RAG Intake + Routing - Phase 8` once per selected case via `rag-intake-phase-8`
+- pass `channel_scope` through to the shared RAG core so channel-scoped regression cases can apply a Qdrant payload filter
 - force Discord posting off by default
 - keep Gemini off by default
 - persist run and case evidence to Postgres

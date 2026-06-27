@@ -27,7 +27,7 @@ Use it as:
 |---|---|
 | `id` | Stable case ID, such as `RQ-001`. Never reuse IDs |
 | `category` | `happy_path`, `nuanced_subjective`, `personal_context`, `no_context_refusal`, or `adversarial_pii` |
-| `channel_scope` | `all`, or a channel-scoped instruction such as `in #tpm-tradecraft` |
+| `channel_scope` | `all`, or a channel-scoped instruction such as `in #tpm-tradecraft`. Scoped cases intentionally constrain retrieval to that channel for evaluation; ordinary bot questions should still search across the indexed corpus unless explicitly scoped |
 | `question` | Prompt sent to the bot or retrieval harness |
 | `expected_action` | `answer` or `refuse` |
 | `expected_caveat` | `yes` when a nuance, temporal, or personal caveat is required |
