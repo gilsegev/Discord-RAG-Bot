@@ -145,14 +145,14 @@ Concurrency policy:
 
 ## 5. Transaction Trace Schema
 
-Every event gets one `transaction_id`. Phoenix and Postgres both use this ID, but they serve different purposes:
+Every intake request gets one `transaction_id`. This includes Discord active calls, passive candidates, regression cases, CI cases, and evaluator/manual runs. Phoenix and Postgres both use this ID, but they serve different purposes:
 
 - **Phoenix:** trace-level evidence for debugging and evaluation.
 - **Postgres:** durable transaction, feedback, and weekly reporting records.
 
 ### 5a. Phoenix Transaction Trace Schema
 
-Phoenix stores the step-by-step trace of a bot interaction. Each Phoenix trace should include one root span and child spans for routing, retrieval, reranking, dedupe, context assembly, LLM generation, response dispatch, and feedback.
+Phoenix stores the step-by-step trace of a bot interaction or regression case. Each Phoenix trace should include one root span and child spans for intake/routing, retrieval, reranking, dedupe, context assembly, optional LLM generation, output dispatch or result writing, and feedback when applicable.
 
 Phoenix spans should be emitted progressively at major workflow checkpoints rather than only as one final trace dump. This gives maintainers partial trace evidence when a workflow fails mid-run, while avoiding an HTTP call after every tiny n8n node.
 
@@ -160,11 +160,11 @@ Starting checkpoint emission points:
 
 | Checkpoint | Phoenix Spans |
 |---|---|
-| Start | `rag.active_call.started`, `discord.event_received`, `routing.active_call`, `query.normalized` |
+| Start | `rag.intake.started`, `rag.active_call.started`, `discord.event_received`, `regression.case_started`, `routing.active_call`, `routing.regression`, `query.normalized` |
 | Embedding | `query.embedding_completed` |
 | Retrieval and context | `qdrant.query_completed`, `qdrant.no_context`, `context.assembled`, `context.overflow`, `context.insufficient` |
 | Gemini | `gemini.response_completed`, `gemini.failed` |
-| Final dispatch | `rag.active_call`, `discord.response_sent`, `discord.response_failed` |
+| Final dispatch/result | `rag.core.completed`, `discord.response_sent`, `discord.response_failed`, `regression.case_completed`, `regression.result_written` |
 
 Postgres should not be used as the primary detailed node-level trace store. It should keep durable state and reporting inputs while Phoenix owns visual trace inspection.
 
@@ -175,6 +175,9 @@ Root trace attributes:
 | `transaction_id` | Primary correlation key shared with Postgres |
 | `discord_event_id` | Original Discord message/event ID |
 | `route_type` | `active_call`, `passive_candidate`, `ignored` |
+| `trigger_source` | `discord_active`, `discord_passive`, `regression_manual`, `regression_ci`, or `evaluator_manual` |
+| `run_mode` | `retrieval_only` or `full_answer` |
+| `response_mode` | `postgres_only`, `discord_test`, `discord_live`, or `ci_artifact` |
 | `channel_id`, `channel_name` | Discord source |
 | `query_hash` | Stable hash for grouping similar queries without exposing full text |
 | `status` | `started`, `answered`, `refused`, `dropped`, `failed` |
@@ -345,6 +348,47 @@ Refusal outcome vocabulary:
 
 These values are stored in `failure_type` on the `tone_refusal` dimension. `no_context_violation` is the non-negotiable launch gate: no-context cases must not produce ungrounded answers.
 
+#### `rag_regression_runs`
+
+One row per regression batch. This is durable run evidence, not a scored label table.
+
+| Field | Purpose |
+|---|---|
+| `run_id` | Primary key for the regression batch |
+| `trigger_source` | `regression_manual`, `regression_ci`, or `evaluator_manual` |
+| `run_mode` | `retrieval_only` or `full_answer` |
+| `question_file` | Source question file |
+| `question_file_hash` | Stable hash of the question file used for the run |
+| `workflow_name`, `workflow_version` | n8n workflow identity |
+| `git_sha` | Repository version being evaluated |
+| `status` | `started`, `completed`, `failed`, or `cancelled` |
+| `case_count`, `pass_count`, `fail_count`, `review_count` | Run summary counts |
+| `summary_json` | Structured rollup details |
+| `started_at`, `completed_at` | Run lifecycle timing |
+
+#### `rag_regression_results`
+
+One row per regression case execution.
+
+| Field | Purpose |
+|---|---|
+| `run_id` | Parent regression run |
+| `case_id` | Stable question ID, such as `RQ-001` |
+| `transaction_id` | Linked shared RAG transaction |
+| `trace_id` | Phoenix trace ID or link |
+| `category` | Regression category |
+| `expected_action`, `expected_caveat`, `expected_flags` | Expected behavior contract |
+| `actual_status`, `retrieval_status`, `refusal_reason` | Observed outcome |
+| `selected_context_count`, `selected_chunk_ids`, `selected_channels` | Context evidence |
+| `retrieval_scores`, `reranker_scores` | Ranking evidence |
+| `context_token_estimate`, `answer_length`, `latency_ms` | Runtime evidence |
+| `citation_status` | Citation/grounding check result when available |
+| `outcome` | `pass`, `review_needed`, `false_refusal`, `missed_refusal`, `no_context_violation`, `citation_failure`, `context_assembly_failure`, `pii_safety_failure`, or `workflow_failure` |
+| `failure_type` | Optional detailed failure category |
+| `created_at` | Result timestamp |
+
+Regression results can later be promoted into `rag_eval_labels` by a human reviewer or validated judge. The result row alone should not be treated as a final evaluation label unless that promotion step has happened.
+
 #### `rag_weekly_metrics`
 
 One precomputed row per reporting week in the application-owned Postgres schema. This prevents the weekly digest from requiring manual query assembly.
@@ -381,8 +425,8 @@ These are logical observability events, not native events emitted directly by Di
 
 | Stage | Event / Span |
 |---|---|
-| Ingress | `discord.event_received` |
-| Routing | `routing.active_call`, `routing.passive_candidate`, `routing.ignored` |
+| Ingress | `rag.intake.started`, `discord.event_received`, `regression.case_started` |
+| Routing | `routing.active_call`, `routing.passive_candidate`, `routing.regression`, `routing.evaluator_manual`, `routing.ignored` |
 | Retrieval | `qdrant.query_started`, `qdrant.query_completed`, `qdrant.no_context` |
 | Retrieval quality | `retrieval.low_score`, `retrieval.fewer_than_min_results` |
 | Rerank | `rerank.started`, `rerank.completed`, `rerank.low_confidence`, `rerank.failed` |
@@ -391,11 +435,15 @@ These are logical observability events, not native events emitted directly by Di
 | LLM | `gemini.request_started`, `gemini.response_completed`, `gemini.failed` |
 | Refusal | `response.refused`, `evaluation.correct_refusal`, `evaluation.false_refusal`, `evaluation.missed_refusal`, `evaluation.no_context_violation` |
 | Response | `discord.response_sent`, `discord.response_failed` |
+| Regression | `regression.run_started`, `regression.case_completed`, `regression.result_written`, `regression.run_completed` |
 | Feedback | `feedback.received`, `feedback.linked`, `feedback.unmatched` |
 
 Required attributes:
 
 - `transaction_id`
+- `trigger_source`
+- `run_mode`
+- `response_mode`
 - `route_type`
 - `channel_id`
 - `query_hash`

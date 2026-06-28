@@ -1,0 +1,1058 @@
+{
+  "id": "yTjxaAcNAqc811LZ",
+  "name": "RAG Intake + Routing - Phase 8",
+  "active": false,
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "rag-intake-phase-8",
+        "responseMode": "lastNode",
+        "options": {}
+      },
+      "id": "phase8-intake-webhook",
+      "name": "Intake Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        -2200,
+        -440
+      ],
+      "webhookId": "phase8-rag-intake"
+    },
+    {
+      "parameters": {},
+      "id": "phase8-intake-execute-workflow-trigger",
+      "name": "Execute Workflow Trigger",
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1,
+      "position": [
+        -2200,
+        -220
+      ]
+    },
+    {
+      "parameters": {},
+      "id": "b70e59e0-c662-4277-9c33-d60eac135001",
+      "name": "Manual Trigger",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        -2200,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const input = ($json && $json.body) ? $json.body : ($json || {});\nconst manualDefaults = {\n  user_query: 'How does the partnership interview at Meta work, and do I need technical examples for it?',\n  discord_message_id: 'phase-8-intake-active-call-manual',\n  channel_id: 'phase-8-test',\n  channel_name: 'n8n-phase-8-test',\n  author_id_hash: 'manual-test-author',\n  qdrant_collection: 'tpm_unite_history',\n  embedding_url: 'http://embedder:8000/embed',\n  qdrant_base_url: 'http://qdrant:6333',\n  reranker_url: 'http://reranker:8002/rerank',\n  gemini_url: 'https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash:generateContent?key=REPLACE_WITH_GEMINI_API_KEY',\n  discord_webhook_url: 'REPLACE_WITH_DISCORD_WEBHOOK_URL?wait=true',\n  top_k: 20,\n  context_k: 5,\n  min_result_count: 3,\n  retrieval_score_threshold: 0.55,\n  phoenix_collector_url: 'http://trace-emitter:8001/v1/traces',\n  phoenix_project_name: 'discord-rag-bot-phase-8',\n  context_token_budget: 2200,\n  reranker_score_threshold: 0,\n  weak_reranker_score_threshold: 2,\n  dedupe_overlap_threshold: 0.5,\n  trigger_source: 'discord_active',\n  run_mode: 'full_answer',\n  response_mode: 'discord_test',\n  allow_gemini: true,\n  allow_discord_post: true,\n  requested_by: 'gil',\n  regression_run_id: '',\n  case_id: '',\n  channel_scope: 'all',\n  workflow_contract_version: 'phase-8-intake-v1',\n};\nconst merged = { ...manualDefaults, ...input };\nif (input.question && !input.user_query) merged.user_query = input.question;\nif (merged.trigger_source && String(merged.trigger_source).startsWith('regression')) {\n  merged.run_mode = merged.run_mode || 'retrieval_only';\n  merged.response_mode = merged.response_mode || 'ci_artifact';\n  merged.allow_gemini = merged.allow_gemini === true || merged.allow_gemini === 'true';\n  merged.allow_discord_post = false;\n}\nmerged.allow_gemini = merged.allow_gemini === true || merged.allow_gemini === 'true';\nmerged.allow_discord_post = merged.allow_discord_post === true || merged.allow_discord_post === 'true';\nmerged.top_k = Number(merged.top_k ?? 20);\nmerged.context_k = Number(merged.context_k ?? 5);\nmerged.min_result_count = Number(merged.min_result_count ?? 3);\nmerged.retrieval_score_threshold = Number(merged.retrieval_score_threshold ?? 0.55);\nmerged.reranker_score_threshold = Number(merged.reranker_score_threshold ?? 0);\nmerged.weak_reranker_score_threshold = Number(merged.weak_reranker_score_threshold ?? 2);\nmerged.context_token_budget = Number(merged.context_token_budget ?? 2200);\nmerged.dedupe_overlap_threshold = Number(merged.dedupe_overlap_threshold ?? 0.5);\nreturn [{ json: merged }];"
+      },
+      "id": "da2e88d5-854e-4cb6-a60c-f881a3fa7b47",
+      "name": "Set Intake Active Call",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -1980,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "INSERT INTO rag_transactions (\n  discord_message_id,\n  channel_id,\n  channel_name,\n  author_id_hash,\n  incoming_message_ts,\n  route_type,\n  status,\n  retrieval_status,\n  response_status,\n  user_query\n)\nVALUES (\n  '{{ String($json.discord_message_id || '').replace(/'/g, \"''\") }}',\n  '{{ String($json.channel_id || '').replace(/'/g, \"''\") }}',\n  '{{ String($json.channel_name || '').replace(/'/g, \"''\") }}',\n  '{{ String($json.author_id_hash || '').replace(/'/g, \"''\") }}',\n  now(),\n  'active_call',\n  'created',\n  'not_started',\n  'not_started',\n  '{{ String($json.user_query || '').replace(/'/g, \"''\") }}'\n)\nRETURNING\n  transaction_id,\n  created_at,\n  discord_message_id,\n  channel_id,\n  channel_name,\n  author_id_hash,\n  route_type,\n  status,\n  retrieval_status,\n  response_status,\n  user_query;"
+      },
+      "id": "a7f88c91-2217-4ee8-b4b0-ad077ce0d488",
+      "name": "Create Transaction",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        -1760,
+        0
+      ],
+      "credentials": {
+        "postgres": {
+          "id": "JcwnINxG4CstrGKy",
+          "name": "Postgres account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "function rightRotate(value, amount) { return (value >>> amount) | (value << (32 - amount)); }\nfunction utf8Bytes(str) {\n  const bytes = [];\n  for (let i = 0; i < str.length; i++) {\n    let code = str.charCodeAt(i);\n    if (code >= 0xd800 && code <= 0xdbff && i + 1 < str.length) {\n      const next = str.charCodeAt(++i);\n      code = 0x10000 + (((code & 0x3ff) << 10) | (next & 0x3ff));\n    }\n    if (code < 0x80) bytes.push(code);\n    else if (code < 0x800) bytes.push(0xc0 | (code >> 6), 0x80 | (code & 0x3f));\n    else if (code < 0x10000) bytes.push(0xe0 | (code >> 12), 0x80 | ((code >> 6) & 0x3f), 0x80 | (code & 0x3f));\n    else bytes.push(0xf0 | (code >> 18), 0x80 | ((code >> 12) & 0x3f), 0x80 | ((code >> 6) & 0x3f), 0x80 | (code & 0x3f));\n  }\n  return bytes;\n}\nfunction sha256Hex(input) {\n  const bytes = utf8Bytes(String(input));\n  const k = [0x428a2f98,0x71374491,0xb5c0fbcf,0xe9b5dba5,0x3956c25b,0x59f111f1,0x923f82a4,0xab1c5ed5,0xd807aa98,0x12835b01,0x243185be,0x550c7dc3,0x72be5d74,0x80deb1fe,0x9bdc06a7,0xc19bf174,0xe49b69c1,0xefbe4786,0x0fc19dc6,0x240ca1cc,0x2de92c6f,0x4a7484aa,0x5cb0a9dc,0x76f988da,0x983e5152,0xa831c66d,0xb00327c8,0xbf597fc7,0xc6e00bf3,0xd5a79147,0x06ca6351,0x14292967,0x27b70a85,0x2e1b2138,0x4d2c6dfc,0x53380d13,0x650a7354,0x766a0abb,0x81c2c92e,0x92722c85,0xa2bfe8a1,0xa81a664b,0xc24b8b70,0xc76c51a3,0xd192e819,0xd6990624,0xf40e3585,0x106aa070,0x19a4c116,0x1e376c08,0x2748774c,0x34b0bcb5,0x391c0cb3,0x4ed8aa4a,0x5b9cca4f,0x682e6ff3,0x748f82ee,0x78a5636f,0x84c87814,0x8cc70208,0x90befffa,0xa4506ceb,0xbef9a3f7,0xc67178f2];\n  let h = [0x6a09e667,0xbb67ae85,0x3c6ef372,0xa54ff53a,0x510e527f,0x9b05688c,0x1f83d9ab,0x5be0cd19];\n  const bitLen = bytes.length * 8;\n  bytes.push(0x80);\n  while ((bytes.length % 64) !== 56) bytes.push(0);\n  const high = Math.floor(bitLen / 0x100000000), low = bitLen >>> 0;\n  for (const word of [high, low]) bytes.push((word >>> 24) & 255, (word >>> 16) & 255, (word >>> 8) & 255, word & 255);\n  for (let offset = 0; offset < bytes.length; offset += 64) {\n    const w = new Array(64).fill(0);\n    for (let i = 0; i < 16; i++) { const j = offset + i * 4; w[i] = ((bytes[j] << 24) | (bytes[j + 1] << 16) | (bytes[j + 2] << 8) | bytes[j + 3]) >>> 0; }\n    for (let i = 16; i < 64; i++) {\n      const s0 = (rightRotate(w[i - 15], 7) ^ rightRotate(w[i - 15], 18) ^ (w[i - 15] >>> 3)) >>> 0;\n      const s1 = (rightRotate(w[i - 2], 17) ^ rightRotate(w[i - 2], 19) ^ (w[i - 2] >>> 10)) >>> 0;\n      w[i] = (w[i - 16] + s0 + w[i - 7] + s1) >>> 0;\n    }\n    let [a,b,c,d,e,f,g,hh] = h;\n    for (let i = 0; i < 64; i++) {\n      const s1 = (rightRotate(e, 6) ^ rightRotate(e, 11) ^ rightRotate(e, 25)) >>> 0;\n      const ch = ((e & f) ^ (~e & g)) >>> 0;\n      const temp1 = (hh + s1 + ch + k[i] + w[i]) >>> 0;\n      const s0 = (rightRotate(a, 2) ^ rightRotate(a, 13) ^ rightRotate(a, 22)) >>> 0;\n      const maj = ((a & b) ^ (a & c) ^ (b & c)) >>> 0;\n      const temp2 = (s0 + maj) >>> 0;\n      hh = g; g = f; f = e; e = (d + temp1) >>> 0; d = c; c = b; b = a; a = (temp1 + temp2) >>> 0;\n    }\n    h = [(h[0]+a)>>>0,(h[1]+b)>>>0,(h[2]+c)>>>0,(h[3]+d)>>>0,(h[4]+e)>>>0,(h[5]+f)>>>0,(h[6]+g)>>>0,(h[7]+hh)>>>0];\n  }\n  return h.map(x => x.toString(16).padStart(8, '0')).join('');\n}const tx = $items('Create Transaction')[0].json;\nconst input = $items('Set Intake Active Call')[0].json;\nconst incomingQuery = tx.normalized_query || `search_query: ${tx.user_query.replace(/\\s+/g, ' ').trim()}`;\nconst normalizedQuery = incomingQuery.startsWith('search_query:') ? incomingQuery : `search_query: ${incomingQuery.replace(/\\s+/g, ' ').trim()}`;\nconst now = Date.now();\nreturn [{ json: {\n  ...tx,\n  trigger_source: input.trigger_source || 'discord_active',\n  run_mode: input.run_mode || 'full_answer',\n  response_mode: input.response_mode || 'discord_test',\n  allow_gemini: input.allow_gemini === true || input.allow_gemini === 'true',\n  allow_discord_post: input.allow_discord_post === true || input.allow_discord_post === 'true',\n  requested_by: input.requested_by || 'gil',\n  regression_run_id: input.regression_run_id || '',\n  case_id: input.case_id || '',\n  channel_scope: input.channel_scope || 'all',\n  workflow_contract_version: input.workflow_contract_version || 'phase-8-intake-v1',\n  qdrant_collection: input.qdrant_collection,\n  embedding_url: input.embedding_url,\n  qdrant_base_url: input.qdrant_base_url,\n  reranker_url: input.reranker_url,\n  phoenix_collector_url: input.phoenix_collector_url,\n  phoenix_project_name: input.phoenix_project_name,\n  gemini_url: input.gemini_url,\n  discord_webhook_url: input.discord_webhook_url,\n  top_k: Number(input.top_k ?? 20),\n  context_k: Number(input.context_k ?? 5),\n  min_result_count: Number(input.min_result_count ?? 3),\n  retrieval_score_threshold: Number(input.retrieval_score_threshold ?? 0.55),\n  reranker_score_threshold: Number(input.reranker_score_threshold ?? 0),\n  weak_reranker_score_threshold: Number(input.weak_reranker_score_threshold ?? 2),\n  context_token_budget: Number(input.context_token_budget ?? 2200),\n  dedupe_overlap_threshold: Number(input.dedupe_overlap_threshold ?? 0.5),\n  normalized_query: normalizedQuery,\n  workflow_started_ms: now,\n  query_hash: sha256Hex(normalizedQuery)\n}}];"
+      },
+      "id": "phase8-build-rag-core-request",
+      "name": "Build RAG Core Request",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -1540,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "UPDATE rag_transactions\nSET\n  status = 'retrieving',\n  retrieval_status = 'not_started',\n  normalized_query = '{{ String($json.normalized_query || '').replace(/'/g, \"''\") }}',\n  query_hash = '{{ String($json.query_hash || '').replace(/'/g, \"''\") }}'\nWHERE transaction_id = '{{ $json.transaction_id }}'\nRETURNING transaction_id;"
+      },
+      "id": "943a276a-adbd-44df-a7c7-d9343e2097b94",
+      "name": "Update Transaction Started",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        -1320,
+        0
+      ],
+      "credentials": {
+        "postgres": {
+          "id": "JcwnINxG4CstrGKy",
+          "name": "Postgres account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "workflowId": {
+          "__rl": true,
+          "value": "AlQumPCsMAoOzMgL",
+          "mode": "list",
+          "cachedResultName": "RAG Core Execution - Phase 8"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "transaction_id": "={{ $('Build RAG Core Request').item.json.transaction_id }}",
+            "created_at": "={{ $('Build RAG Core Request').item.json.created_at }}",
+            "discord_message_id": "={{ $('Build RAG Core Request').item.json.discord_message_id }}",
+            "channel_id": "={{ $('Build RAG Core Request').item.json.channel_id }}",
+            "channel_name": "={{ $('Build RAG Core Request').item.json.channel_name }}",
+            "author_id_hash": "={{ $('Build RAG Core Request').item.json.author_id_hash }}",
+            "route_type": "={{ $('Build RAG Core Request').item.json.route_type }}",
+            "status": "={{ $('Build RAG Core Request').item.json.status }}",
+            "retrieval_status": "={{ $('Build RAG Core Request').item.json.retrieval_status }}",
+            "response_status": "={{ $('Build RAG Core Request').item.json.response_status }}",
+            "user_query": "={{ $('Build RAG Core Request').item.json.user_query }}",
+            "normalized_query": "={{ $('Build RAG Core Request').item.json.normalized_query }}",
+            "query_hash": "={{ $('Build RAG Core Request').item.json.query_hash }}",
+            "trigger_source": "={{ $('Build RAG Core Request').item.json.trigger_source }}",
+            "run_mode": "={{ $('Build RAG Core Request').item.json.run_mode }}",
+            "response_mode": "={{ $('Build RAG Core Request').item.json.response_mode }}",
+            "allow_gemini": "={{ $('Build RAG Core Request').item.json.allow_gemini }}",
+            "allow_discord_post": "={{ $('Build RAG Core Request').item.json.allow_discord_post }}",
+            "requested_by": "={{ $('Build RAG Core Request').item.json.requested_by }}",
+            "regression_run_id": "={{ $('Build RAG Core Request').item.json.regression_run_id }}",
+            "case_id": "={{ $('Build RAG Core Request').item.json.case_id }}",
+            "workflow_contract_version": "={{ $('Build RAG Core Request').item.json.workflow_contract_version }}",
+            "qdrant_collection": "={{ $('Build RAG Core Request').item.json.qdrant_collection }}",
+            "embedding_url": "={{ $('Build RAG Core Request').item.json.embedding_url }}",
+            "qdrant_base_url": "={{ $('Build RAG Core Request').item.json.qdrant_base_url }}",
+            "reranker_url": "={{ $('Build RAG Core Request').item.json.reranker_url }}",
+            "phoenix_collector_url": "={{ $('Build RAG Core Request').item.json.phoenix_collector_url }}",
+            "phoenix_project_name": "={{ $('Build RAG Core Request').item.json.phoenix_project_name }}",
+            "gemini_url": "={{ $('Build RAG Core Request').item.json.gemini_url }}",
+            "discord_webhook_url": "={{ $('Build RAG Core Request').item.json.discord_webhook_url }}",
+            "top_k": "={{ $('Build RAG Core Request').item.json.top_k }}",
+            "context_k": "={{ $('Build RAG Core Request').item.json.context_k }}",
+            "min_result_count": "={{ $('Build RAG Core Request').item.json.min_result_count }}",
+            "retrieval_score_threshold": "={{ $('Build RAG Core Request').item.json.retrieval_score_threshold }}",
+            "reranker_score_threshold": "={{ $('Build RAG Core Request').item.json.reranker_score_threshold }}",
+            "weak_reranker_score_threshold": "={{ $('Build RAG Core Request').item.json.weak_reranker_score_threshold }}",
+            "context_token_budget": "={{ $('Build RAG Core Request').item.json.context_token_budget }}",
+            "dedupe_overlap_threshold": "={{ $('Build RAG Core Request').item.json.dedupe_overlap_threshold }}",
+            "workflow_started_ms": "={{ $('Build RAG Core Request').item.json.workflow_started_ms }}",
+            "channel_scope": "={{ $('Build RAG Core Request').item.json.channel_scope }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "transaction_id",
+              "displayName": "transaction_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string"
+            },
+            {
+              "id": "created_at",
+              "displayName": "created_at",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string"
+            },
+            {
+              "id": "discord_message_id",
+              "displayName": "discord_message_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string"
+            },
+            {
+              "id": "channel_id",
+              "displayName": "channel_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string"
+            },
+            {
+              "id": "channel_name",
+              "displayName": "channel_name",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string"
+            },
+            {
+              "id": "author_id_hash",
+              "displayName": "author_id_hash",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string"
+            },
+            {
+              "id": "route_type",
+              "displayName": "route_type",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string"
+            },
+            {
+              "id": "status",
+              "displayName": "status",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string"
+            },
+            {
+              "id": "retrieval_status",
+              "displayName": "retrieval_status",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string"
+            },
+            {
+              "id": "response_status",
+              "displayName": "response_status",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string"
+            },
+            {
+              "id": "user_query",
+              "displayName": "user_query",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string"
+            },
+            {
+              "id": "normalized_query",
+              "displayName": "normalized_query",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string"
+            },
+            {
+              "id": "query_hash",
+              "displayName": "query_hash",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string"
+            },
+            {
+              "id": "trigger_source",
+              "displayName": "trigger_source",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string"
+            },
+            {
+              "id": "run_mode",
+              "displayName": "run_mode",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string"
+            },
+            {
+              "id": "response_mode",
+              "displayName": "response_mode",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string"
+            },
+            {
+              "id": "allow_gemini",
+              "displayName": "allow_gemini",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "boolean"
+            },
+            {
+              "id": "allow_discord_post",
+              "displayName": "allow_discord_post",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "boolean"
+            },
+            {
+              "id": "requested_by",
+              "displayName": "requested_by",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string"
+            },
+            {
+              "id": "regression_run_id",
+              "displayName": "regression_run_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string"
+            },
+            {
+              "id": "case_id",
+              "displayName": "case_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string"
+            },
+            {
+              "id": "workflow_contract_version",
+              "displayName": "workflow_contract_version",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string"
+            },
+            {
+              "id": "qdrant_collection",
+              "displayName": "qdrant_collection",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string"
+            },
+            {
+              "id": "embedding_url",
+              "displayName": "embedding_url",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string"
+            },
+            {
+              "id": "qdrant_base_url",
+              "displayName": "qdrant_base_url",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string"
+            },
+            {
+              "id": "reranker_url",
+              "displayName": "reranker_url",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string"
+            },
+            {
+              "id": "phoenix_collector_url",
+              "displayName": "phoenix_collector_url",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string"
+            },
+            {
+              "id": "phoenix_project_name",
+              "displayName": "phoenix_project_name",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string"
+            },
+            {
+              "id": "gemini_url",
+              "displayName": "gemini_url",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string"
+            },
+            {
+              "id": "discord_webhook_url",
+              "displayName": "discord_webhook_url",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string"
+            },
+            {
+              "id": "top_k",
+              "displayName": "top_k",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "number"
+            },
+            {
+              "id": "context_k",
+              "displayName": "context_k",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "number"
+            },
+            {
+              "id": "min_result_count",
+              "displayName": "min_result_count",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "number"
+            },
+            {
+              "id": "retrieval_score_threshold",
+              "displayName": "retrieval_score_threshold",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "number"
+            },
+            {
+              "id": "reranker_score_threshold",
+              "displayName": "reranker_score_threshold",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "number"
+            },
+            {
+              "id": "weak_reranker_score_threshold",
+              "displayName": "weak_reranker_score_threshold",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "number"
+            },
+            {
+              "id": "context_token_budget",
+              "displayName": "context_token_budget",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "number"
+            },
+            {
+              "id": "dedupe_overlap_threshold",
+              "displayName": "dedupe_overlap_threshold",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "number"
+            },
+            {
+              "id": "workflow_started_ms",
+              "displayName": "workflow_started_ms",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "number"
+            },
+            {
+              "id": "channel_scope",
+              "displayName": "channel_scope",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string"
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "id": "phase8-execute-rag-core",
+      "name": "Execute RAG Core",
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.2,
+      "position": [
+        -1060,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "phase8-final-status-answered",
+              "leftValue": "={{ $json.final_status }}",
+              "rightValue": "answered",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            },
+            {
+              "id": "phase8-allow-discord-post",
+              "leftValue": "={{ $json.allow_discord_post }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "phase8-post-answer-",
+      "name": "Post Answer?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        -120,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const state = $json;\nconst {\n  query_vector,\n  candidates,\n  passed_stage_1_candidates,\n  reranked_candidates,\n  deduped_candidates,\n  dropped_dedupe_candidates,\n  selected_context,\n  context_block,\n  prompt,\n  retrieval_results_sql_json,\n  ...safeState\n} = state;\n\nconst responseText = String(state.discord_response_text || state.gemini_response_text || '').trim();\n\nif (!safeState.allow_discord_post) {\n  return [{\n    json: {\n      ...safeState,\n      discord_response_text: responseText,\n      discord_started_ms: Date.now(),\n      discord_completed_ms: Date.now(),\n      discord_status_code: null,\n      discord_response_message_id: '',\n      response_status: 'not_posted',\n      discord_skipped: true,\n      discord_skip_reason: 'discord_post_not_allowed_for_response_mode'\n    }\n  }];\n}\n\nreturn [{\n  json: {\n    ...safeState,\n    discord_response_text: responseText,\n    discord_started_ms: Date.now(),\n    discord_skipped: false\n  }\n}];"
+      },
+      "id": "d6a6cbb2-a92b-4414-900e-834b85782976",
+      "name": "Prepare Discord Answer",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        120,
+        -220
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $json.discord_webhook_url }}",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ { content: $json.discord_response_text, allowed_mentions: { parse: [] } } }}",
+        "options": {
+          "response": {
+            "response": {
+              "fullResponse": true,
+              "neverError": true,
+              "responseFormat": "json"
+            }
+          }
+        }
+      },
+      "id": "d8810c03-8708-47b3-9fd8-9219753af95d",
+      "name": "Post Discord Answer",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        340,
+        -220
+      ],
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "jsCode": "const state = $items('Prepare Discord Answer')[0].json;\nconst response = $json;\nconst now = Date.now();\nconst statusCode = response.statusCode ?? response.status ?? 0;\nconst body = response.body ?? {};\nconst ok = statusCode >= 200 && statusCode < 300;\nconst discordErrorCode = body.code ?? null;\nconst discordErrorMessage = body.message ? String(body.message) : '';\nlet failureReason = state.failure_reason || null;\n\nif (!ok) {\n  if (discordErrorCode === 50006) failureReason = 'discord_empty_message';\n  else if (statusCode === 401 || statusCode === 403) failureReason = 'discord_webhook_auth_failed';\n  else if (statusCode === 404) failureReason = 'discord_webhook_not_found';\n  else if (statusCode === 429) failureReason = 'discord_rate_limited';\n  else failureReason = 'discord_post_failed';\n}\n\nreturn [{\n  json: {\n    ...state,\n    \n    discord_completed_ms: now,\n    discord_latency_ms: Math.max(0, now - state.discord_started_ms),\n    discord_status_code: statusCode,\n    discord_error_code: discordErrorCode,\n    discord_error_message: discordErrorMessage,\n    discord_response_message_id: body.id || '',\n    response_status: ok ? 'posted' : 'failed',\n    failure_reason: failureReason\n  }\n}];"
+      },
+      "id": "981ad98d-70d3-4f41-a5a0-bc3b5013077b",
+      "name": "Build Discord Answer Result",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        560,
+        -220
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const state = $json;\nconst {\n  query_vector,\n  candidates,\n  passed_stage_1_candidates,\n  reranked_candidates,\n  deduped_candidates,\n  dropped_dedupe_candidates,\n  selected_context,\n  context_block,\n  prompt,\n  retrieval_results_sql_json,\n  ...safeState\n} = state;\nreturn [{ json: { ...safeState, discord_response_text: state.refusal_text, discord_started_ms: Date.now() } }];"
+      },
+      "id": "ba5e467e-316e-4ab9-bc81-4ea34c0ab5e3",
+      "name": "Prepare Discord Refusal",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        120,
+        160
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $json.discord_webhook_url }}",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ { content: $json.discord_response_text, allowed_mentions: { parse: [] } } }}",
+        "options": {
+          "response": {
+            "response": {
+              "fullResponse": true,
+              "neverError": true,
+              "responseFormat": "json"
+            }
+          }
+        }
+      },
+      "id": "70d4640c-28c9-47d4-9f91-76f23a868e72",
+      "name": "Post Discord Refusal",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        340,
+        160
+      ],
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "jsCode": "const state = $items('Prepare Discord Refusal')[0].json;\nconst response = $json;\nconst now = Date.now();\nconst statusCode = response.statusCode ?? response.status ?? 0;\nconst body = response.body ?? {};\nconst ok = statusCode >= 200 && statusCode < 300;\nconst discordErrorCode = body.code ?? null;\nconst discordErrorMessage = body.message ? String(body.message) : '';\nlet failureReason = state.failure_reason || null;\n\nif (!ok) {\n  if (discordErrorCode === 50006) failureReason = 'discord_empty_message';\n  else if (statusCode === 401 || statusCode === 403) failureReason = 'discord_webhook_auth_failed';\n  else if (statusCode === 404) failureReason = 'discord_webhook_not_found';\n  else if (statusCode === 429) failureReason = 'discord_rate_limited';\n  else failureReason = 'discord_post_failed';\n}\n\nreturn [{\n  json: {\n    ...state,\n    final_status: 'refused',\n    retrieval_status: state.retrieval_status,\n    discord_completed_ms: now,\n    discord_latency_ms: Math.max(0, now - state.discord_started_ms),\n    discord_status_code: statusCode,\n    discord_error_code: discordErrorCode,\n    discord_error_message: discordErrorMessage,\n    discord_response_message_id: body.id || '',\n    response_status: ok ? 'posted' : 'failed',\n    failure_reason: failureReason\n  }\n}];"
+      },
+      "id": "681f20c9-8509-4885-89c5-754ae2895ec8",
+      "name": "Build Discord Refusal Result",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        560,
+        160
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "UPDATE rag_transactions\nSET\n  status = '{{ $json.final_status }}',\n  retrieval_status = '{{ $json.retrieval_status }}',\n  response_status = '{{ $json.response_status }}',\n  discord_response_message_id = NULLIF('{{ $json.discord_response_message_id }}', ''),\n  refusal_reason = NULLIF(NULLIF('{{ $json.refusal_reason }}', ''), 'null'),\n  failure_reason = NULLIF(NULLIF('{{ $json.failure_reason }}', ''), 'null'),\n  completed_at = now(),\n  latency_ms = GREATEST(1, EXTRACT(EPOCH FROM (now() - created_at))::int * 1000)\nWHERE transaction_id = '{{ $json.transaction_id }}'\nRETURNING transaction_id, status, retrieval_status, response_status, refusal_reason, failure_reason, discord_response_message_id, latency_ms;"
+      },
+      "id": "481c3807-7068-4bb6-a5fd-2ce0bc836e04",
+      "name": "Finalize Posted Transaction",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        820,
+        0
+      ],
+      "credentials": {
+        "postgres": {
+          "id": "JcwnINxG4CstrGKy",
+          "name": "Postgres account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "function getNode(name) { try { return $items(name)[0]?.json || null; } catch (e) { return null; } }\nfunction hexToBase64(hex) { let binary = ''; for (let i = 0; i < hex.length; i += 2) binary += String.fromCharCode(parseInt(hex.slice(i, i + 2), 16)); return btoa(binary); }\nfunction value(v) { if (v === null || v === undefined) return { stringValue: '' }; if (typeof v === 'boolean') return { boolValue: v }; if (typeof v === 'number') return Number.isInteger(v) ? { intValue: String(v) } : { doubleValue: v }; return { stringValue: String(v) }; }\nfunction attrs(obj) { return Object.entries(obj).filter(([, v]) => v !== undefined).map(([key, val]) => ({ key, value: value(val) })); }\nfunction ns(ms) { return String(Math.max(0, Math.floor(ms || Date.now())) * 1000000); }\nfunction spanId(seed) { return hexToBase64(seed.padEnd(16, '0').slice(0, 16)); }\nfunction makeSpan(name, idSeed, parentId, start, end, attributes, statusCode) { const span = { traceId, spanId: spanId(idSeed), name, kind: 1, startTimeUnixNano: ns(start), endTimeUnixNano: ns(end || start), attributes: attrs(attributes), status: { code: statusCode || 1 } }; if (parentId) span.parentSpanId = parentId; return span; }\nfunction payload(spans, projectName) { return { resourceSpans: [{ resource: { attributes: attrs({ 'service.name': 'discord-rag-bot', 'deployment.environment': 'phase0', 'phoenix.project.name': projectName, 'project.name': projectName, 'openinference.project.name': projectName }) }, scopeSpans: [{ scope: { name: 'n8n.phase8.intake', version: '1.0.0' }, spans }] }] }; }\nconst init = getNode('Initialize Runtime State') || $json || {};\nconst projectName = init.phoenix_project_name || 'discord-rag-bot-phase-8';\nconst collectorUrl = init.phoenix_collector_url || 'http://trace-emitter:8001/v1/traces';\nconst traceSeed = String(init.query_hash || init.transaction_id || '').replace(/-/g, '').padEnd(32, '0').slice(0, 32);\nconst traceId = hexToBase64(traceSeed);\nconst rootSpanId = spanId('1000000000000000');\nconst startMs = init.workflow_started_ms || Date.now();\nconst finalTx = $json || {}; const answer = getNode('Build Discord Answer Result'); const refusal = getNode('Build Discord Refusal Result'); const discord = answer || refusal || finalTx; const retrieval = getNode('Assemble Context Contract') || getNode('Build Dedupe And Context Decision') || {}; const gemini = getNode('Build Gemini Result');\nconst finalStatus = finalTx.status || retrieval.final_status || 'unknown';\nconst refusalReason = finalTx.refusal_reason || retrieval.refusal_reason || '';\nconst failureReason = finalTx.failure_reason || gemini?.gemini_failure_reason || discord?.failure_reason || '';\nconst endMs = Date.now();\nconst spans = [makeSpan('rag.active_call', '1000000000000000', null, startMs, endMs, { 'transaction_id': init.transaction_id || finalTx.transaction_id, 'openinference.span.kind': 'chain', 'phoenix.project.name': projectName, 'route_type': init.route_type, 'channel_id': init.channel_id, 'channel_name': init.channel_name, 'query_hash': init.query_hash, 'status': finalStatus, 'refusal_reason': refusalReason, 'failure_reason': failureReason }, finalStatus === 'failed' ? 2 : 1)];\nif (discord && discord.discord_started_ms) {\n  spans.push(makeSpan(discord.response_status === 'posted' ? 'discord.response_sent' : 'discord.response_failed', '8000000000000000', rootSpanId, discord.discord_started_ms, discord.discord_completed_ms, { 'discord_status_code': discord.discord_status_code, 'discord_response_message_id': discord.discord_response_message_id, 'response_status': discord.response_status, 'latency_ms': discord.discord_latency_ms, 'failure_reason': discord.failure_reason, 'discord_error_code': discord.discord_error_code, 'discord_error_message': discord.discord_error_message }, discord.response_status === 'posted' ? 1 : 2));\n}\nreturn [{ json: { ...finalTx, phoenix_collector_url: collectorUrl, phoenix_trace_payload: payload(spans, projectName), phoenix_checkpoint: 'final', phoenix_span_count: spans.length } }];"
+      },
+      "id": "phase3b-build-phoenix-final",
+      "name": "Build Phoenix Final Checkpoint",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1040,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $json.phoenix_collector_url }}",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ $json.phoenix_trace_payload }}",
+        "options": {
+          "response": {
+            "response": {
+              "fullResponse": true,
+              "neverError": true,
+              "responseFormat": "json"
+            }
+          }
+        }
+      },
+      "id": "phase3b-send-phoenix-final",
+      "name": "Send Phoenix Final Checkpoint",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1260,
+        0
+      ],
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT\n  transaction_id,\n  route_type,\n  status,\n  retrieval_status,\n  response_status,\n  refusal_reason,\n  failure_reason,\n  discord_response_message_id,\n  user_query,\n  normalized_query,\n  query_hash,\n  created_at,\n  completed_at,\n  latency_ms\nFROM rag_transactions\nWHERE transaction_id = '{{ $items(\"Build Phoenix Final Checkpoint\")[0].json.transaction_id }}';"
+      },
+      "id": "3859ba1a-7980-4820-b5fb-162aa1833c77",
+      "name": "Read Final Transaction",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        1480,
+        0
+      ],
+      "credentials": {
+        "postgres": {
+          "id": "JcwnINxG4CstrGKy",
+          "name": "Postgres account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const state = $json;\nconst finalStatus = state.final_status || (state.refusal_reason ? 'refused' : 'answered');\nconst retrievalStatus = state.retrieval_status || (finalStatus === 'answered' ? 'context_found' : 'no_context');\nreturn [{ json: {\n  ...state,\n  final_status: finalStatus,\n  retrieval_status: retrievalStatus,\n  response_status: 'not_posted',\n  discord_response_message_id: '',\n  discord_skipped: true,\n  discord_skip_reason: 'discord_post_not_allowed_for_response_mode',\n  discord_started_ms: Date.now(),\n  discord_completed_ms: Date.now(),\n  discord_latency_ms: 0,\n  discord_status_code: null\n}}];"
+      },
+      "id": "phase8-build-not-posted-result",
+      "name": "Build Not Posted Result",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -780,
+        -220
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "phase8-allow-discord-post",
+              "leftValue": "={{ $json.allow_discord_post }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "phase8-should-post-discord",
+      "name": "Should Post Discord?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        -980,
+        0
+      ]
+    }
+  ],
+  "connections": {
+    "Manual Trigger": {
+      "main": [
+        [
+          {
+            "node": "Set Intake Active Call",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Set Intake Active Call": {
+      "main": [
+        [
+          {
+            "node": "Create Transaction",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create Transaction": {
+      "main": [
+        [
+          {
+            "node": "Build RAG Core Request",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build RAG Core Request": {
+      "main": [
+        [
+          {
+            "node": "Update Transaction Started",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Update Transaction Started": {
+      "main": [
+        [
+          {
+            "node": "Execute RAG Core",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Execute RAG Core": {
+      "main": [
+        [
+          {
+            "node": "Should Post Discord?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Post Answer?": {
+      "main": [
+        [
+          {
+            "node": "Prepare Discord Answer",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Prepare Discord Refusal",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare Discord Answer": {
+      "main": [
+        [
+          {
+            "node": "Post Discord Answer",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Post Discord Answer": {
+      "main": [
+        [
+          {
+            "node": "Build Discord Answer Result",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Discord Answer Result": {
+      "main": [
+        [
+          {
+            "node": "Finalize Posted Transaction",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare Discord Refusal": {
+      "main": [
+        [
+          {
+            "node": "Post Discord Refusal",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Post Discord Refusal": {
+      "main": [
+        [
+          {
+            "node": "Build Discord Refusal Result",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Discord Refusal Result": {
+      "main": [
+        [
+          {
+            "node": "Finalize Posted Transaction",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Finalize Posted Transaction": {
+      "main": [
+        [
+          {
+            "node": "Build Phoenix Final Checkpoint",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Phoenix Final Checkpoint": {
+      "main": [
+        [
+          {
+            "node": "Send Phoenix Final Checkpoint",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send Phoenix Final Checkpoint": {
+      "main": [
+        [
+          {
+            "node": "Read Final Transaction",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Execute Workflow Trigger": {
+      "main": [
+        [
+          {
+            "node": "Set Intake Active Call",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Should Post Discord?": {
+      "main": [
+        [
+          {
+            "node": "Post Answer?",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Build Not Posted Result",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Not Posted Result": {
+      "main": [
+        [
+          {
+            "node": "Finalize Posted Transaction",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Intake Webhook": {
+      "main": [
+        [
+          {
+            "node": "Set Intake Active Call",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "meta": {
+    "description": "Phase 8 intake/routing workflow. Owns request mode, transaction setup, calls shared RAG core, and routes mode-specific outputs."
+  }
+}

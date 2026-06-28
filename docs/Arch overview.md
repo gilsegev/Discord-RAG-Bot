@@ -11,9 +11,11 @@ The system relies on a lean, containerized stack designed to balance low operati
 **Implementation:** Persistent WebSocket connection using `MESSAGE_CREATE` and reaction intents.
 
 ### n8n Orchestrator
-**Role:** Event router, dual-ingress filtering engine for active and passive events, context assembly layer, LLM coordinator, and telemetry dispatcher.  
-**Responsibility:** Handles event routing, filtering, context assembly, LLM coordination, and telemetry dispatch.  
+**Role:** Intake router, execution state machine, dual-ingress filtering engine for active and passive events, context assembly layer, LLM coordinator, and telemetry dispatcher.
+**Responsibility:** Handles request intake, mode routing, filtering, shared RAG execution, context assembly, LLM coordination, and telemetry dispatch.
 **Implementation:** Advanced AI Workflow Canvas hosted on Oracle Cloud.
+
+n8n should use a shared execution shape rather than separate copies of the RAG path. Active calls, passive candidates, manual regression runs, CI regression runs, and evaluator runs enter through a common intake/routing contract. That intake layer sets mode flags such as `trigger_source`, `run_mode`, `response_mode`, `allow_gemini`, and `allow_discord_post`, then calls the shared RAG core for retrieval, reranking, dedupe, context assembly, and optional generation.
 
 ### Qdrant Vector DB
 **Role:** Semantic memory layer.  
@@ -45,75 +47,40 @@ n8n still owns the logical rerank node, threshold gate, refusal handling, contex
 **Implementation:** Centralized logging/tracing service or database collection, such as a dedicated Qdrant/Postgres collection, Langfuse, or Arize.
 
 ## 2. End-to-End Data Flow and Observability Lifecycle
-The live interaction loop operates through a dual-trigger ingress system. It processes both explicit user requests and passive channel monitoring, transforming chat traffic into context-aware answers while capturing full-lifecycle observability data at every stage.
+The live interaction loop operates through a shared intake and routing system. It processes explicit user requests, passive channel monitoring, and evaluation/regression invocations, transforming valid requests into context-aware answers or durable evaluation evidence while capturing full-lifecycle observability data at every stage.
 
 ```text
-[ Discord Chat Traffic ] ---> (Every incoming event logged to Observability Layer)
+[ Discord Chat Traffic / Regression Runner / CI ] ---> (Every incoming request logged to Observability Layer)
        |
        v
-[ n8n Ingress Router ]
+[ n8n Intake + Routing Workflow ]
        |
-       +-----------------------------------------+
-       |                                         |
-       v                                         v
-[ Event 1: Active Call ]                 [ Event 2: Passive Listener ]
-(User tags @bot)                         (Standard channel traffic)
-       |                                         |
-       |                                         v
-       |                                 [ Rule Engine / Relevance Check ]
-       |                                         |
-       |                              No match --+--> [ Trace: Ignored ] --> [ Drop ]
-       |                                         |
-       +-------------------------+---------------+
-                                 |
-                                 v
-                       [ Embed Query ]
-                                 |
-                                 v
-                       [ Qdrant Payload Query ]
-                                 |
-                                 v
-                       [ CrossEncoder Rerank ]
-                                 |
-                                 v
-              [ Log: Vector Latency & Context Matches ]
-                                 |
-                                 v
-                       [ Gemini Generation ]
-                                 |
-                                 v
-              [ Log: LLM Prompt, Token Count, Response Text ]
-                                 |
-                                 v
-                       [ Fallback Evaluation ]
-                                 |
-             [ Did Qdrant find context? ]
-                    |             |
-                   Yes            No
-                    |             |
-                    v             v
-      [ Discord Outbound Node ]   [ Log: Failed Context Match to Observability ]
-                    |             |
-                    |             v
-                    |     [ Is Active Call? ]
-                    |        |          |
-                    |       Yes         No
-                    |        |          |
-                    |        v          v
-                    | [ Generate: "I don't know" fallback ]    [ Drop / Silent End ]
-                    |        |
-                    +--------+
-                             |
-                             v
-             [ Update Trace: Dispatched successfully ]
+       v
+[ Mode Flags: trigger_source, run_mode, response_mode, permissions ]
+       |
+       v
+[ Shared RAG Core: embed -> Qdrant -> rerank -> dedupe -> context ]
+       |
+       +--------------------------+
+       |                          |
+       v                          v
+[ Optional Gemini Generation ]    [ Retrieval-only Result ]
+       |                          |
+       +------------+-------------+
+                    |
+                    v
+       [ Mode-Specific Output Writers ]
+       |        |            |
+       v        v            v
+[ Discord ] [ Regression ] [ CI Artifact / Metrics ]
 ```
 
 ### Execution Tracking Stages
 1. **Universal Capture**  
-   The moment an event reaches the n8n workflow from the Discord Gateway, a unique transaction tracking ID is created. The raw payload is immediately logged to the Observability Layer, regardless of whether the event triggers a response.
+   The moment a Discord event, regression case, or CI request reaches the n8n intake workflow, a unique transaction tracking ID is created. The raw request envelope and mode flags are logged to the Observability Layer, regardless of whether the request triggers a response.
 
 2. **Dual-Ingress Routing and Filtering**  
-   Active calls, such as direct bot mentions, bypass relevance filters and move directly to vector retrieval with a strict "must answer" constraint. Passive listener events are checked against operational heuristics, such as character length and question markers. If filtered out, the transaction status is updated to `Ignored` in the logs.
+   Active calls, such as direct bot mentions, bypass passive-listener relevance filters and move directly to the shared RAG core. Passive listener events are checked against operational heuristics, such as character length and question markers. Regression and CI requests set explicit evaluation mode flags and also use the shared RAG core. If a request is filtered out, the transaction status is updated to `Ignored` in the logs.
 
 3. **Context Vector Retrieval Telemetry**  
    For valid queries, vector search execution metrics are appended to the transaction log. These metrics include query latency, confidence scores, and the exact chunks retrieved from Qdrant. If Qdrant does not return usable context, the failed context match is logged before the workflow either generates an active-call fallback or silently drops a passive-listener event.
@@ -122,7 +89,7 @@ The live interaction loop operates through a dual-trigger ingress system. It pro
    The complete assembled prompt sent to the Gemini API and the returned response payload are captured alongside execution metadata, such as token counts and API latency.
 
 5. **Dispatch Verification**  
-   A final confirmation log marks whether the transaction was successfully transmitted back to the Discord client.
+   A final confirmation log marks whether the transaction was successfully transmitted to its configured output: Discord, regression result rows, CI artifact, or review/evaluation tables.
 
 ## 3. Feedback Loop and Performance Grading
 To move beyond basic monitoring and toward continuous optimization, the architecture explicitly accounts for community evaluation.
