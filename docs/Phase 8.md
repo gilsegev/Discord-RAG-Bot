@@ -65,7 +65,7 @@ Discord active call
 Discord passive candidate
 Gil manual regression run
 CI regression run
-Shilpi / evaluator retrieval-only run
+AltCtrlDeliver / evaluator retrieval-only run
         |
         v
 RAG Intake + Routing workflow
@@ -95,7 +95,7 @@ Responsibilities:
 - set mode flags
 - call the shared RAG core workflow
 - route the returned result to the right output writers
-- prevent forbidden side effects, such as Discord posting from CI or Shilpi runs
+- prevent forbidden side effects, such as Discord posting from CI or AltCtrlDeliver runs
 
 ### Shared RAG Core Workflow
 
@@ -114,7 +114,7 @@ Responsibilities:
 - return a structured result object
 - emit Phoenix checkpoints for the RAG execution path
 
-The shared core must not know whether the request came from Discord, CI, Gil, or Shilpi except through explicit mode flags. That keeps the logic reusable and prevents workflow drift.
+The shared core must not know whether the request came from Discord, CI, Gil, or AltCtrlDeliver except through explicit mode flags. That keeps the logic reusable and prevents workflow drift.
 
 ### Mode Contract
 
@@ -129,7 +129,7 @@ Every request should carry an explicit mode object.
   "allow_discord_post": false,
   "case_id": "RQ-001",
   "regression_run_id": "optional",
-  "requested_by": "gil | ci | shilpi | bot"
+  "requested_by": "gil | ci | altctrldeliver | bot"
 }
 ```
 
@@ -222,11 +222,11 @@ Full-answer CI:
 
 This can be added later using bot-owned repository secrets after the retrieval-only harness is stable. It should not use Gil's personal Gemini key.
 
-### 3. Shilpi Manual Run Without Gil's Secrets
+### 3. AltCtrlDeliver Manual Run Without Gil's Secrets
 
 User:
 
-AltCtrlDeliver / Shilpi or another trusted evaluator.
+AltCtrlDeliver or another trusted evaluator.
 
 Purpose:
 
@@ -247,7 +247,7 @@ Access model:
 Flow:
 
 ```text
-Shilpi opens limited tunnel
+AltCtrlDeliver opens limited tunnel
 -> opens RAG Intake + Routing workflow
 -> selects retrieval_only mode and question subset
 -> runs batch through Shared RAG Core
@@ -418,7 +418,7 @@ Core nodes:
 - `Gemini Generation` only when `allow_gemini = true`
 - `Return RAG Result`
 
-CI and Shilpi modes must set `allow_gemini = false` and `allow_discord_post = false`.
+CI and AltCtrlDeliver modes must set `allow_gemini = false` and `allow_discord_post = false`.
 
 ### Step 4: Add n8n Regression Batch Runner
 Add `workflows/n8n/rag-regression-batch-runner-phase-8.json`.
@@ -446,7 +446,7 @@ Default request:
 }
 ```
 
-The workflow may support full-answer mode for maintainer calibration, but retrieval-only remains the safe default for Shilpi and CI.
+The workflow may support full-answer mode for maintainer calibration, but retrieval-only remains the safe default for AltCtrlDeliver and CI.
 
 ### Step 5: Add CI Job
 
@@ -457,7 +457,7 @@ Add a GitHub Actions workflow that initially runs:
 
 CI should start as non-blocking or structural-only until the team agrees on hard quality gates.
 
-### Step 6: Add Shilpi Instructions
+### Step 6: Add AltCtrlDeliver Instructions
 
 Update the developer evaluation access doc with:
 
@@ -482,7 +482,7 @@ After retrieval-only is stable:
 
 - Regression inputs are versioned in PR20.
 - A maintainer can run at least one known seed case manually.
-- Shilpi can run retrieval-only without Gemini or Discord credentials.
+- AltCtrlDeliver can run retrieval-only without Gemini or Discord credentials.
 - CI can validate the regression file and run the no-secret path or a dry-run equivalent.
 - Every run has a durable run row and result rows.
 - Phoenix traces show case-level execution.
@@ -493,5 +493,5 @@ After retrieval-only is stable:
 - Whether CI should restore a Qdrant snapshot artifact or rebuild Qdrant from checked-in logs.
 - Which gates should fail CI immediately versus produce a warning during calibration.
 - Whether full-answer mode should ever post to Discord, or only store generated text in Postgres.
-- Whether Shilpi should run through n8n UI only or also have runner-script access through a constrained command.
+- Whether AltCtrlDeliver should run through n8n UI only or also have runner-script access through a constrained command.
 - Whether regression result rows should later be promoted into `rag_eval_labels` manually, via LLM judge, or both.

@@ -347,7 +347,7 @@ It needs:
 - a shared RAG core workflow so regression, CI, active calls, and later passive calls do not fork retrieval logic
 - support for retrieval-only evaluation so retrieval, rerank, dedupe, and context assembly can be tested without Gemini cost or variability
 - support for full answer/refusal evaluation when Gemini behavior is being tested
-- three supported run paths: maintainer manual run, no-secret CI run, and Shilpi/manual evaluator run without Gil's Discord webhook or Gemini API key
+- three supported run paths: maintainer manual run, no-secret CI run, and AltCtrlDeliver/manual evaluator run without Gil's Discord webhook or Gemini API key
 - one durable row per regression run and one durable row per question result
 - expected outcome fields for grounded answer, correct refusal, partial context, no context, stale context, adversarial, safety, and PII cases
 - actual outcome fields for status, retrieval status, refusal reason, selected chunks, scores, citations, answer length, latency, and trace link

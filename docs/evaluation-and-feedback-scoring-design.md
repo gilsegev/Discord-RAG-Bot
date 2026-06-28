@@ -1,6 +1,6 @@
 # TPM Unite RAG Bot — Evaluation & Feedback Scoring Design
 
-**Owner:** (shilpigpt) · **Status:** Reviewed — decisions agreed · **Related:** Product Vision & Requirements; Arch Overview; Observability Design; Feedback & Reaction Correlation Design
+**Owner:** AltCtrlDeliver · **Status:** Reviewed — decisions agreed · **Related:** Product Vision & Requirements; Arch Overview; Observability Design; Feedback & Reaction Correlation Design
 
 ## Purpose
 The v1 bot was deprecated for generic, ungrounded advice. Evaluation's job is to prove answers are relevant and grounded in TPM Unite's own history — before launch and continuously after — and to catch that failure before the community sees it.

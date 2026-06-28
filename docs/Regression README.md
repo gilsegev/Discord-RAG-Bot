@@ -83,7 +83,7 @@ question -> retrieval -> rerank -> dedupe -> context assembly -> Gemini -> Disco
 
 ### Manual Retrieval-Only Run
 
-Used by maintainers and Shilpi without Gemini or Discord credentials.
+Used by maintainers and AltCtrlDeliver without Gemini or Discord credentials.
 
 Runs:
 
