@@ -332,7 +332,58 @@ Budget gate:
 - If fewer than three chunks remain, refuse with `context_token_budget_insufficient`.
 - Log `context.overflow` for trimming and `context.insufficient` for refusal.
 
-## Phase 8: Passive Listener
+## Phase 8: Regression Evaluation Harness
+Add an automated regression harness before expanding into passive listener behavior.
+
+Reason:
+
+The active-call path now has retrieval, reranking, dedupe, context assembly, prompt construction, Discord dispatch, Postgres state, and Phoenix traces. Manual validation is no longer enough to know whether a workflow change improved quality or simply passed one demo question.
+
+The regression harness should run the curated question set from `scripts/regression_questions.jsonl` and any additional questions provided by the team. The file format and maintenance rules are documented in `docs/Regression README.md`.
+
+It needs:
+
+- one repeatable intake/routing entry point for running a batch of questions
+- a shared RAG core workflow so regression, CI, active calls, and later passive calls do not fork retrieval logic
+- support for retrieval-only evaluation so retrieval, rerank, dedupe, and context assembly can be tested without Gemini cost or variability
+- support for full answer/refusal evaluation when Gemini behavior is being tested
+- three supported run paths: maintainer manual run, no-secret CI run, and AltCtrlDeliver/manual evaluator run without Gil's Discord webhook or Gemini API key
+- one durable row per regression run and one durable row per question result
+- expected outcome fields for grounded answer, correct refusal, partial context, no context, stale context, adversarial, safety, and PII cases
+- actual outcome fields for status, retrieval status, refusal reason, selected chunks, scores, citations, answer length, latency, and trace link
+- summary reporting for pass rate, false refusals, missed refusals, citation failures, no-context violations, and latency
+- optional derived label writing to `rag_eval_labels` with `source = regression`, disabled by default until the team chooses to treat automated regression labels as dashboard inputs
+
+Expected outcome:
+
+The team can run the same question set after each retrieval, context, prompt, or schema change through the same shared RAG core used by production paths, then see whether quality improved, regressed, or needs review.
+
+Workflow design:
+
+```text
+RAG Intake + Routing
+-> Shared RAG Core
+-> mode-specific output writers
+```
+
+The intake workflow identifies `trigger_source`, sets `run_mode`, sets `response_mode`, and enforces `allow_gemini` / `allow_discord_post`. The shared core owns normalization, embedding, Qdrant retrieval, reranking, dedupe, context assembly, refusal gates, optional Gemini execution, and core Phoenix checkpoints.
+
+Exit criteria:
+
+- the regression question file format is documented
+- the harness can run at least retrieval-only mode
+- retrieval-only mode can run without Gemini, Discord, or personal credentials
+- regression does not duplicate the RAG retrieval/rerank/dedupe/context logic
+- the harness can run the known Meta partnership seed case
+- each run persists enough evidence to debug failures outside the n8n editor
+- false refusal, missed refusal, no-context violation, and citation failure categories are explicit
+- results are suitable for later weekly quality metrics and human review
+
+Deferred CI work:
+
+CI execution is intentionally deferred until the manual and batch regression paths are stable. A later phase should add a GitHub Actions workflow that validates the JSONL file and runs a no-secret retrieval-only regression path against either local services or a restored Qdrant snapshot. CI should start as non-blocking or structural-only until the team agrees on hard quality gates.
+
+## Phase 9: Passive Listener
 Add passive listener behavior only after the active-call path is stable.
 
 Reason:
@@ -351,7 +402,7 @@ Expected outcome:
 
 Passive behavior expands coverage without making the bot noisy.
 
-## Phase 9: Feedback Correlation
+## Phase 10: Feedback Correlation
 Add Discord reaction monitoring after bot responses store `discord_response_message_id`.
 
 Flow:
@@ -378,7 +429,7 @@ Schema contract:
 - Negative reactions and explicit critique set `review_candidate = true` and `review_status = pending`.
 - Unmatched feedback writes `matched = false` and is excluded from weekly quality metrics until linked.
 
-## Phase 10: Weekly Metrics And Alerts
+## Phase 11: Weekly Metrics And Alerts
 Add reporting after transactions, retrieval, refusals, responses, and feedback are flowing.
 
 Weekly metrics:
@@ -399,7 +450,7 @@ Expected outcome:
 
 The system becomes measurable and maintainable without manual query assembly.
 
-## Phase 11: Gemini Prompt Hardening And Stress Testing
+## Phase 12: Gemini Prompt Hardening And Stress Testing
 Harden the generation and refusal behavior after the retrieval pipeline, dedupe, context assembly, feedback, and observability paths are stable.
 
 Scope:
