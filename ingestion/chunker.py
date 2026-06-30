@@ -1,12 +1,16 @@
 """
-ingestion/chunker.py — v9 reply-aware chunking
-v9 fixes (PR #5):
-  - Fix 1: split pieces now update start_ts, end_ts, authors, span_days
-            per piece — previously inherited stale values from original chunk
-            gilsegev validation: 11/14 stale start_ts, 13/14 stale authors
-  - id_to_msg passed into _split_if_needed() to look up actual message objects
-Prior fixes retained from v8:
+ingestion/chunker.py - v10 reply-aware chunking
+v10 fixes (post PR #5):
+  - Fix 1: reply line detection in _build_line_to_msg_id() now handles
+            '  > [author @ date]:' format - previously lstrip() left '> ['
+            which failed the is_msg_line check, producing empty message_ids
+            on reply-only split chunks (2/11,442 in tpm-tradecraft)
+  - Fix 2: end-to-end regression test for oversized chunk composed
+            entirely of reply-rendered lines - verifies _split_if_needed
+            produces pieces with non-empty message_ids
+Prior fixes retained from v8/v9:
   - Per-piece message_ids and first_message_id (PR #4)
+  - Per-piece start_ts, end_ts, authors, span_days (PR #5)
   - Single-line overflow guard (PR #4)
   - message_count per piece (PR #4)
   - Smoke test import as ingestion.parser (PR #4)
@@ -43,7 +47,6 @@ def chunk_records(records: list[dict]) -> list[dict]:
         chunks    = _reply_aware_chunk(msgs, id_to_msg,
                                        is_thread=is_thread)
         for chunk in chunks:
-            # Fix 1: pass id_to_msg so split pieces can look up message objects
             all_chunks.extend(_split_if_needed(chunk, id_to_msg))
 
     all_chunks.sort(key=lambda c: c["start_ts"])
@@ -120,7 +123,7 @@ def _reply_aware_chunk(msgs: list[dict], id_to_msg: dict,
 def _window_chunk(msgs: list[dict],
                   min_msgs: int = MIN_MSGS) -> list[dict]:
     """
-    15-min time window chunking — fallback for non-reply messages.
+    15-min time window chunking - fallback for non-reply messages.
     start_ts resets to current message timestamp after split.
     """
     if not msgs:
@@ -195,9 +198,16 @@ def _build_line_to_msg_id(lines: list[str],
     """
     Map each line index to its source message_id.
 
-    Strategy: walk lines in order. When a line starts with
-    '[author @ date]:' or '  > [author @ date]:' it's a new message.
-    Assign it the next message_id from msg_ids in order.
+    Fix 1 (v10): reply lines render as '  > [author @ date]: content'
+    After lstrip(), these become '> [author @ date]: content' which
+    previously failed the is_msg_line check (requires line to start
+    with '[').
+
+    Fix: strip a leading '>' marker and surrounding whitespace before
+    checking the message line pattern. This correctly identifies both:
+      - Normal lines:  '[author @ date]: content'
+      - Reply lines:   '  > [author @ date]: content'
+
     Continuation lines inherit the same message_id as the preceding
     message line.
     """
@@ -206,7 +216,11 @@ def _build_line_to_msg_id(lines: list[str],
     last_msg_id    = None
 
     for i, line in enumerate(lines):
+        # Fix 1: strip reply prefix '>' before pattern check
         stripped = line.lstrip()
+        if stripped.startswith(">"):
+            stripped = stripped[1:].lstrip()
+
         is_msg_line = (
             stripped.startswith("[") and
             "@ " in stripped and
@@ -226,7 +240,7 @@ def _metadata_from_msg_ids(piece_msg_ids: list[str],
                             id_to_msg: dict,
                             fallback_chunk: dict) -> dict:
     """
-    Fix 1: derive accurate start_ts, end_ts, authors, span_days
+    Derive accurate start_ts, end_ts, authors, span_days
     from the actual message objects in this split piece.
 
     Falls back to original chunk values if message objects are not
@@ -236,7 +250,6 @@ def _metadata_from_msg_ids(piece_msg_ids: list[str],
             if mid in id_to_msg]
 
     if not msgs:
-        # Fallback — should not happen in practice
         return {
             "start_ts":  fallback_chunk["start_ts"],
             "end_ts":    fallback_chunk["end_ts"],
@@ -262,15 +275,10 @@ def _split_if_needed(chunk: dict,
     """
     Split chunk at line boundaries if it exceeds MAX_TOKENS.
 
-    Fix 1 (v9): start_ts, end_ts, authors, span_days now derived from
-    actual message objects in each split piece via _metadata_from_msg_ids().
-    Previously all split pieces inherited stale values from {**chunk}.
-    gilsegev validation: 11/14 stale start_ts, 13/14 stale authors fixed.
-
-    Fix from v8 retained:
-    - Per-piece message_ids and first_message_id
-    - Single-line overflow guard
-    - message_count per piece
+    Uses _build_line_to_msg_id() to map each rendered line to its
+    source message_id. Each split piece stores only the message_ids
+    it actually contains, with correct per-piece metadata via
+    _metadata_from_msg_ids().
     """
     tokens = len(enc.encode(chunk["text"]))
     chunk["token_count"] = tokens
@@ -300,8 +308,6 @@ def _split_if_needed(chunk: dict,
         if not current:
             return
         sub_text = thread_header + "\n".join(current)
-
-        # Fix 1: derive accurate metadata from actual messages in this piece
         meta = _metadata_from_msg_ids(current_msg_ids, id_to_msg, chunk)
 
         sub = {**chunk}
@@ -313,7 +319,6 @@ def _split_if_needed(chunk: dict,
         sub["first_message_id"] = current_msg_ids[0] \
             if current_msg_ids else \
             (all_msg_ids[0] if all_msg_ids else "")
-        # Fix 1: overwrite stale timestamps and authors from {**chunk}
         sub["start_ts"]         = meta["start_ts"]
         sub["end_ts"]           = meta["end_ts"]
         sub["authors"]          = meta["authors"]
@@ -323,12 +328,12 @@ def _split_if_needed(chunk: dict,
     for i, line in enumerate(lines):
         msg_id = line_to_msg_id.get(i)
 
-        test_lines    = current + [line]
-        test_text     = thread_header + "\n".join(test_lines)
+        test_lines     = current + [line]
+        test_text      = thread_header + "\n".join(test_lines)
         would_overflow = len(enc.encode(test_text)) > MAX_TOKENS
 
         if would_overflow and not current:
-            # Single-line overflow guard — force include as own piece
+            # Single-line overflow guard - force include as own piece
             current = [line]
             if msg_id and msg_id not in current_msg_ids:
                 current_msg_ids.append(msg_id)
@@ -352,6 +357,90 @@ def _split_if_needed(chunk: dict,
     _flush_piece()
 
     return result
+
+
+def _run_regression_tests() -> bool:
+    """
+    Fix 2: End-to-end regression tests for reply-only oversized chunks.
+
+    Test 1 - Unit: verify _build_line_to_msg_id correctly maps reply lines.
+    Test 2 - Integration: verify _split_if_needed produces non-empty
+              message_ids on a synthetic oversized reply-only chunk.
+
+    Returns True if all tests pass, False otherwise.
+    """
+    all_pass = True
+
+    # ── Test 1: Unit test for reply line detection ──────────────────
+    test_lines = [
+        "  > [alice @ 2021-08-10]: this is a reply message with content",
+        "  > [bob @ 2021-08-10]: another reply here in the chain",
+        "  > [alice @ 2021-08-10]: a third reply completing the chain",
+    ]
+    test_ids = ["id001", "id002", "id003"]
+    mapping  = _build_line_to_msg_id(test_lines, test_ids)
+
+    if len(mapping) == 3 and set(mapping.values()) == set(test_ids):
+        print("  Test 1 PASS: reply line detection maps all 3 lines")
+    else:
+        print(f"  Test 1 FAIL: mapping={mapping}, expected 3 entries "
+              f"with ids {test_ids}")
+        all_pass = False
+
+    # ── Test 2: End-to-end split of reply-only oversized chunk ──────
+    # Build a synthetic chunk composed entirely of reply lines.
+    # Each message has a parent_id so _build() prefixes with '  > '.
+    # Repeat enough times to exceed MAX_TOKENS.
+    word    = "reply " * 40          # ~40 tokens per message line
+    n_msgs  = 25                     # 25 × ~40 = ~1,000 tokens → forces split
+
+    fake_msgs = []
+    id_to_msg_test = {}
+    for k in range(n_msgs):
+        mid = f"reply_msg_{k:04d}"
+        msg = {
+            "id":        mid,
+            "author":    f"user{k % 3}",
+            "timestamp": f"2021-08-10T{k:02d}:00:00+00:00",
+            "content":   word.strip(),
+            "channel":   "tpm-tradecraft",
+            "channel_id": "999",
+            "thread_name": None,
+            # All messages are replies (have a parent_id)
+            "parent_id": f"reply_msg_{max(0, k-1):04d}",
+        }
+        fake_msgs.append(msg)
+        id_to_msg_test[mid] = msg
+
+    # _build() with parent_id set renders all lines as '  > [author @ date]:'
+    chunk = _build(fake_msgs)
+    chunk["channel_id"]  = "999"
+    chunk["thread_name"] = None
+
+    # Force token_count calculation
+    tokens = len(enc.encode(chunk["text"]))
+
+    if tokens <= MAX_TOKENS:
+        print(f"  Test 2 SKIP: synthetic chunk only {tokens} tokens "
+              f"- increase n_msgs to exceed {MAX_TOKENS}")
+    else:
+        pieces = _split_if_needed(chunk, id_to_msg_test)
+
+        # Verify all pieces have non-empty message_ids
+        empty = [p for p in pieces if not p.get("message_ids")]
+        if empty:
+            print(f"  Test 2 FAIL: {len(empty)}/{len(pieces)} pieces "
+                  f"have empty message_ids - reply line detection broken")
+            for p in empty:
+                print(f"    split_index={p['split_index']} "
+                      f"text_preview={p['text'][:80]!r}")
+            all_pass = False
+        else:
+            total_ids = sum(len(p["message_ids"]) for p in pieces)
+            print(f"  Test 2 PASS: {len(pieces)} split pieces, all have "
+                  f"non-empty message_ids ({total_ids} total)")
+
+    return all_pass
 
 
 # ── Quick test ────────────────────────────────────────────────
@@ -385,21 +474,35 @@ if __name__ == "__main__":
     print(f"  Max span (days):        "
           f"{max(c.get('span_days', 0) for c in chunks)}")
 
-    # Verify split piece metadata is correct
+    # Production regression check - no split piece with empty message_ids
     if split_chunks:
         print(f"\nSplit piece metadata verification (first 3 pieces):")
         for sc in split_chunks[:3]:
             print(f"  split_index={sc['split_index']} "
                   f"msg_count={sc['message_count']} "
                   f"start_ts={sc['start_ts'][:10]} "
-                  f"end_ts={sc['end_ts'][:10]} "
                   f"authors={sc['authors']} "
-                  f"span_days={sc['span_days']} "
                   f"first_message_id={sc['first_message_id']}")
 
-        # Coverage check
+        empty_ids = [c for c in split_chunks if not c.get("message_ids")]
+        if empty_ids:
+            print(f"\n  REGRESSION FAIL: {len(empty_ids)} split pieces "
+                  f"have empty message_ids:")
+            for c in empty_ids:
+                print(f"    split_index={c['split_index']} "
+                      f"channel={c['channel']} "
+                      f"text_preview={c['text'][:80]!r}")
+        else:
+            print(f"\n  Regression check: 0/{len(split_chunks)} split "
+                  f"pieces with empty message_ids")
+
         all_piece_ids = set()
         for sc in split_chunks:
             all_piece_ids.update(sc["message_ids"])
-        print(f"\nSplit coverage: {len(split_chunks)} pieces, "
+        print(f"  Split coverage: {len(split_chunks)} pieces, "
               f"{len(all_piece_ids)} unique message IDs")
+
+    # Fix 2: Run end-to-end regression tests
+    print(f"\nRunning regression tests...")
+    passed = _run_regression_tests()
+    print(f"\nRegression tests: {'ALL PASS' if passed else 'SOME FAILED'}")
