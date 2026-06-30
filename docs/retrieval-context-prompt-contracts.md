@@ -168,6 +168,8 @@ Feedback correlation note:
 
 ### 2.2 Token budget
 
+**Updated per Issue #19:** Phase 7 testing confirmed the previous 1,200-token context budget caused frequent `context_token_budget_insufficient` refusals on the real Discord corpus. Budget updated to 2,200 tokens, matching the implemented n8n `context_token_budget = 2200`.
+
 | Allocation | Tokens |
 |---|---|
 | System prompt | ~300 |
@@ -181,12 +183,12 @@ The 154 tokens/chunk figure is derived from the current Qdrant index average (15
 
 ### 2.3 Context overflow handling
 
-**Single chunk overflow:** The current largest chunk is 692 tokens — well under the 1,200-token context budget for 5 chunks. The ingestion pipeline's `_split_if_needed()` function splits oversized chunks at line boundaries before indexing, including a single-line overflow guard (v8). n8n does not need to handle single-chunk overflow at retrieval time.
+**Single chunk overflow:** The current largest chunk is 692 tokens — well under the 2,200-token context budget for 5 chunks. The ingestion pipeline's `_split_if_needed()` function splits oversized chunks at line boundaries before indexing, including a single-line overflow guard (v8). n8n does not need to handle single-chunk overflow at retrieval time.
 
-**Multi-chunk overflow:** If the assembled 5 chunks exceed the 1,200-token context budget:
+**Multi-chunk overflow:** If the assembled 5 chunks exceed the 2,200-token context budget:
 1. Drop the lowest `reranker_score` chunk
 2. Repeat until under budget
-3. If fewer than 3 chunks remain after dropping, trigger refusal — "insufficient context after token budget constraints"
+3. If fewer than 3 chunks remain after dropping, trigger refusal: `context_token_budget_insufficient`
 4. Log the overflow event to the observability layer with chunk count and token counts
 
 ---
