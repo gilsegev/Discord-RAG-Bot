@@ -488,6 +488,18 @@ After retrieval-only is stable:
 - Phoenix traces show case-level execution.
 - Failures are categorized clearly enough to debug the pipeline stage that regressed.
 
+## Full Regression Diagnosis
+
+The first full retrieval-only regression run showed that Phase 8 is producing useful quality signal rather than exposing workflow bugs.
+
+Observed false refusals fell into three expected buckets:
+
+- corpus gaps where the question asks for a specific angle not strongly represented in the indexed logs
+- intentional minimum-evidence refusals where only one strong source exists and the three-candidate gate blocks thin answers
+- eval-case calibration candidates where the expected behavior may need rewriting or relabeling
+
+Do not tune reranker thresholds from this first run alone. Threshold changes should happen in a dedicated calibration PR after reviewing the refusal/safety cases together.
+
 ## Open Decisions
 
 - Whether CI should restore a Qdrant snapshot artifact or rebuild Qdrant from checked-in logs.
