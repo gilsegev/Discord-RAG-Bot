@@ -6,12 +6,12 @@ This document explains how trusted project maintainers can access the Oracle ser
 This is different from limited regression access. Admin access uses the shared `ubuntu` server account and allows maintainers to inspect the repo, manage Docker services, run commands, and open tunnels to local services.
 
 ## Who Has Admin Access
-The following public keys are installed on the Oracle server under the `ubuntu` account:
+The following project maintainers have public keys installed on the Oracle server under the `ubuntu` account:
 
-- Haragonda: `haragonda-altctrldeliver-eval`
-- AltCtrlDeliver: `shilpi-tpm-rag-eval`
+- `haragonda`
+- `altctrldeliver`
 
-Each maintainer should use their own private key that matches the public key they provided.
+Each maintainer should use their own private key that matches the public key they provided. The comment at the end of an SSH public key may use an older local label, but the maintainer names above are the canonical names for this project.
 
 ## Log In To The Server
 Use:
