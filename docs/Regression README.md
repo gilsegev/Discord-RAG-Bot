@@ -49,9 +49,9 @@ Use it as:
 Totals:
 
 - 45 cases
-- 29 expected answers
-- 16 expected refusals
-- 13 caveat-required cases
+- 27 expected answers
+- 18 expected refusals
+- 11 caveat-required cases
 - 6 PII/adversarial cases
 
 ## How It Maps To The Rubric
