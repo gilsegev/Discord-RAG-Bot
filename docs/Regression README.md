@@ -31,7 +31,7 @@ Use it as:
 | `question` | Prompt sent to the bot or retrieval harness |
 | `expected_action` | `answer` or `refuse` |
 | `expected_caveat` | `yes` when a nuance, temporal, or personal caveat is required |
-| `expected_flags` | `pii_block` when the answer must not surface PII, otherwise `none` |
+| `expected_flags` | `pii_block` when the answer must not surface PII, otherwise `none`. In retrieval-only mode, `pii_block` cases can only be scored as review candidates — see [What Each Run Mode Can Score](#what-each-run-mode-can-score) |
 | `contamination_risk` | `review` when the question is close to a single indexed thread, otherwise `low` |
 | `source_area` | Corpus area the case relates to; may include `PROVISIONAL` notes |
 | `expected_behavior` | Human-readable behavior label; not a frozen answer |
@@ -65,7 +65,7 @@ When label writing is explicitly enabled, the regression harness can also write 
 - `expected_action` maps to the Tone/Refusal dimension.
 - `expected_action = answer` requires Groundedness and Answer Relevance to pass.
 - `expected_caveat = yes` requires the nuance, temporal, or personal caveat.
-- `expected_flags = pii_block` requires the Safety check to pass.
+- `expected_flags = pii_block` requires the Safety check to pass. The Safety check is a full-answer, human, or judge determination; retrieval-only runs emit a review candidate, not a final safety pass/fail.
 
 Aggregating human, judge, or explicitly enabled regression labels yields groundedness pass rate, correct-refusal rate, no-context violations, and RAG Reliability Index. Retrieval-only runs can safely produce retrieval/refusal evidence, but caveat quality, exact refusal wording, PII leakage, and final answer quality require full-answer or human/judge review.
 
@@ -106,6 +106,26 @@ The default CI mode should be retrieval-only and no-secret:
 - durable artifact with run summary and per-case results
 
 Full-answer CI can be added later using bot-owned repository secrets, not personal keys.
+
+## What Each Run Mode Can Score
+
+Run modes differ in what they can *validate*, not just what they execute. Retrieval-only mode intentionally skips Gemini and Discord, so it never sees generated answer text. Scoring must respect that boundary — otherwise a no-secret run can look like it validated something it never produced.
+
+| Check | Retrieval-only | Full-answer / human / judge |
+|---|---|---|
+| Refuse vs. answer decision | scored | scored |
+| `refusal_reason` (e.g. no usable context, reranker gate) | scored | scored |
+| Retrieved/selected context and channel scope | scored | scored |
+| Exact user-facing refusal wording | candidate only — cannot validate | scored |
+| PII leakage pass/fail (`expected_flags = pii_block`) | review candidate only — cannot validate | scored |
+| Caveat quality (`expected_caveat = yes`) | candidate only | scored |
+| Answer groundedness, relevance, length | not available | scored |
+
+Rules for retrieval-only runs:
+
+- A case with `expected_flags = pii_block` is emitted as `review_needed` (a safety-label *candidate*), never as a final `pass` or `pii_safety_failure`. Retrieval-only can confirm the pipeline refused or found no usable context; it cannot confirm the generated text is PII-free.
+- A refusal case is scored on the refusal *decision* and `refusal_reason`, not on the exact refusal string. Exact user-facing wording is validated only in full-answer, human, or judge review.
+- This keeps AltCtrlDeliver and no-secret CI runs useful without implying they validate generated text.
 
 ## Maintenance Rules
 
