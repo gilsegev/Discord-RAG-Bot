@@ -54,6 +54,7 @@ For `cross-encoder/ms-marco-MiniLM-L-6-v2`, positive scores indicate relevance a
 - Pass Stage 1 candidates to CrossEncoder `cross-encoder/ms-marco-MiniLM-L-6-v2`
 - Rerank by `reranker_score`
 - Apply starting threshold `reranker_score > 0`
+- If no candidates pass the reranker threshold, trigger refusal. Stage 2 does not reuse the Stage 1 minimum of three; one or more positive candidates proceed.
 - Candidates then proceed to reaction boost and dedupe before final top-5 selection (see section 1.6 for full pipeline order)
 
 **What score appears in the context block sent to the LLM:**
@@ -93,6 +94,8 @@ overlap_ratio = len(shared) / min(len(chunk_a.message_ids), len(chunk_b.message_
 ```
 
 If `overlap_ratio > 0.5` — keep only the higher `boosted_reranker_score` chunk.
+
+If dedupe leaves no candidates, trigger refusal. Dedupe does not reuse the Stage 1 minimum of three; one or more unique candidates proceed to final context selection.
 
 Using `min()` as the denominator catches cases where a short reply-chain chunk is mostly contained inside a larger chunk — Jaccard similarity would miss these cases.
 
@@ -190,6 +193,8 @@ The 154 tokens/chunk figure is derived from the current Qdrant index average (15
 2. Repeat until under budget
 3. If fewer than 3 chunks remain after dropping, trigger refusal: `context_token_budget_insufficient`
 4. Log the overflow event to the observability layer with chunk count and token counts
+
+The three-chunk rule in this section applies only when context was actually trimmed because it exceeded the token budget. Context that begins under budget with one or two qualifying, deduped chunks is allowed to proceed.
 
 ---
 

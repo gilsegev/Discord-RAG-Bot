@@ -255,7 +255,7 @@ Implementation notes:
 
 - Adds repo-owned reranker service at `http://reranker:8002/rerank`.
 - Uses `cross-encoder/ms-marco-MiniLM-L-6-v2`.
-- Refuses before Gemini when fewer than three candidates have `reranker_score > 0`.
+- Refuses before Gemini when no candidates have `reranker_score > 0`. The Stage 1 minimum of three is not reused after reranking.
 - Stores both `retrieval_score` and `reranker_score`.
 - Emits Phoenix rerank spans.
 
@@ -292,6 +292,8 @@ Reaction boost remains out of Phase 6 until `reaction_count` exists in the Qdran
 Expected outcome:
 
 Repeated evidence is reduced before the LLM sees the final context.
+
+Dedupe refuses only when no unique candidates remain. The Stage 1 minimum of three is not reused after dedupe.
 
 Note:
 
