@@ -4,8 +4,8 @@
 
 `ragbot-discord-listener` is the dedicated Discord ingress service for Phase 9.
 It maintains a Discord Gateway connection, receives `MESSAGE_CREATE` events from
-an explicitly configured server and channel allowlist, and forwards normalized
-events to the Phase 9 n8n intake workflow.
+one explicitly configured server, excludes configured channels, and forwards
+normalized events to the Phase 9 n8n intake workflow.
 
 It is separate from the existing `discord_notifier` container and uses its own
 Discord application, bot token, Docker container, and runtime configuration.
@@ -37,8 +37,9 @@ For Phase 9 shadow mode, do not grant `Send Messages`. Active-call posting can
 continue through the existing configured Discord webhook. Phase 9B should review
 the posting mechanism and permissions separately.
 
-Add the bot only to channels whose messages may be processed. The server-side
-channel allowlist provides a second enforcement layer.
+Discord channel permissions remain the primary visibility boundary. The
+server-side exclusion list provides an additional denylist for channels the bot
+can view but the RAG pipeline must not process.
 
 ## Server Configuration
 
@@ -54,7 +55,7 @@ Add these values to the existing uncommitted `.env` file:
 DISCORD_BOT_TOKEN=replace_with_the_dedicated_bot_token
 DISCORD_AUTHOR_HASH_SALT=replace_with_a_long_random_secret
 DISCORD_ALLOWED_GUILD_ID=replace_with_the_discord_server_id
-DISCORD_ALLOWED_CHANNEL_IDS=111111111111111111,222222222222222222
+DISCORD_EXCLUDED_CHANNEL_IDS=111111111111111111,222222222222222222
 ```
 
 Generate the author-hash salt on the server:
@@ -68,8 +69,10 @@ Do not commit or print the completed `.env` file.
 Discord IDs can be copied after enabling **Developer Mode** under Discord's
 Advanced settings, then using **Copy Server ID** or **Copy Channel ID**.
 
-The listener fails closed when its token, salt, guild ID, or channel allowlist is
-missing. An empty channel allowlist never means "monitor every channel."
+The listener fails closed when its token, salt, or guild ID is missing. An empty
+`DISCORD_EXCLUDED_CHANNEL_IDS` value means that it monitors every text channel
+the bot can view in the configured guild. Excluding a parent channel also
+excludes all threads under that channel.
 
 ## Build And Start
 
@@ -145,7 +148,7 @@ switch.
 
 ## Validation
 
-Send test messages in one allowlisted channel and inspect:
+Send test messages in one included channel and inspect:
 
 ```bash
 docker compose --profile discord-listener logs -f discord-listener
@@ -171,8 +174,11 @@ For passive candidates, verify `response_status = not_posted` and
   RAG runs.
 - The listener caches recently seen message IDs and marks repeat Gateway delivery
   as duplicate. The Phase 9 intake records it as ignored.
+- `DISCORD_EXCLUDED_CHANNEL_IDS` is a denylist. The listener drops those channels
+  before sending anything to n8n, and it does not create ignored transactions for
+  excluded-channel traffic.
 - Delivery is intentionally not retried after an ambiguous timeout because the
   current intake does not yet enforce durable idempotency by Discord message ID.
 - Message content is not written to listener logs.
-- Threads are accepted when either the thread ID or its parent channel ID is in
-  the allowlist.
+- A thread is excluded when either its own ID or its parent channel ID is in the
+  exclusion list.

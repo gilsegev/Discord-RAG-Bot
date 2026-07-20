@@ -23,7 +23,7 @@ def required_env(name: str) -> str:
     return value
 
 
-def parse_snowflakes(name: str, *, required: bool = False) -> set[int]:
+def parse_snowflakes(name: str) -> set[int]:
     raw = os.getenv(name, "")
     values: set[int] = set()
     for item in raw.split(","):
@@ -34,15 +34,13 @@ def parse_snowflakes(name: str, *, required: bool = False) -> set[int]:
             values.add(int(item))
         except ValueError as exc:
             raise RuntimeError(f"{name} contains a non-numeric Discord ID") from exc
-    if required and not values:
-        raise RuntimeError(f"{name} must contain at least one Discord channel ID")
     return values
 
 
 DISCORD_BOT_TOKEN = required_env("DISCORD_BOT_TOKEN")
 AUTHOR_HASH_SALT = required_env("DISCORD_AUTHOR_HASH_SALT")
 ALLOWED_GUILD_ID = int(required_env("DISCORD_ALLOWED_GUILD_ID"))
-ALLOWED_CHANNEL_IDS = parse_snowflakes("DISCORD_ALLOWED_CHANNEL_IDS", required=True)
+EXCLUDED_CHANNEL_IDS = parse_snowflakes("DISCORD_EXCLUDED_CHANNEL_IDS")
 N8N_INTAKE_URL = os.getenv(
     "N8N_INTAKE_URL", "http://n8n:5678/webhook/rag-intake-phase-9"
 ).strip()
@@ -94,10 +92,10 @@ class DiscordListener(discord.Client):
         with open(READY_FILE, "w", encoding="utf-8") as ready_file:
             ready_file.write(str(self.user.id if self.user else "ready"))
         logger.info(
-            "Discord Gateway ready as bot_user_id=%s guild_id=%s allowed_channels=%s",
+            "Discord Gateway ready as bot_user_id=%s guild_id=%s excluded_channels=%s",
             self.user.id if self.user else "unknown",
             ALLOWED_GUILD_ID,
-            len(ALLOWED_CHANNEL_IDS),
+            len(EXCLUDED_CHANNEL_IDS),
         )
 
     async def on_disconnect(self) -> None:
@@ -107,11 +105,11 @@ class DiscordListener(discord.Client):
             pass
         logger.warning("Discord Gateway disconnected; discord.py will attempt to resume")
 
-    def _is_allowed_channel(self, message: discord.Message) -> bool:
+    def _is_excluded_channel(self, message: discord.Message) -> bool:
         channel_id = int(message.channel.id)
         parent_id = getattr(message.channel, "parent_id", None)
-        return channel_id in ALLOWED_CHANNEL_IDS or (
-            parent_id is not None and int(parent_id) in ALLOWED_CHANNEL_IDS
+        return channel_id in EXCLUDED_CHANNEL_IDS or (
+            parent_id is not None and int(parent_id) in EXCLUDED_CHANNEL_IDS
         )
 
     def _mark_and_check_duplicate(self, message_id: int) -> bool:
@@ -125,7 +123,7 @@ class DiscordListener(discord.Client):
     async def on_message(self, message: discord.Message) -> None:
         if message.guild is None or message.guild.id != ALLOWED_GUILD_ID:
             return
-        if not self._is_allowed_channel(message):
+        if self._is_excluded_channel(message):
             return
 
         duplicate = self._mark_and_check_duplicate(message.id)
