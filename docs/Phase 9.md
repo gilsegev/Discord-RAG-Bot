@@ -2,7 +2,9 @@
 
 ## Status
 
-Planning draft. No Phase 9 workflow or schema changes have been implemented.
+Implementation is in progress. The Phase 9 intake workflow is deployed, and the
+dedicated Discord Gateway listener is documented in
+`docs/Phase 9 Discord listener.md`.
 
 ## Goal
 
