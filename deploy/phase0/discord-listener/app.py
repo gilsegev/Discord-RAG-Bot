@@ -92,9 +92,10 @@ class DiscordListener(discord.Client):
         with open(READY_FILE, "w", encoding="utf-8") as ready_file:
             ready_file.write(str(self.user.id if self.user else "ready"))
         logger.info(
-            "Discord Gateway ready as bot_user_id=%s guild_id=%s excluded_channels=%s",
+            "Discord Gateway ready as bot_user_id=%s guild_id=%s connected_guild_ids=%s excluded_channels=%s",
             self.user.id if self.user else "unknown",
             ALLOWED_GUILD_ID,
+            ",".join(str(guild.id) for guild in self.guilds),
             len(EXCLUDED_CHANNEL_IDS),
         )
 
@@ -125,6 +126,14 @@ class DiscordListener(discord.Client):
             return
         if self._is_excluded_channel(message):
             return
+
+        logger.info(
+            "Received Discord event message_id=%s channel_id=%s author_is_bot=%s content_length=%s",
+            message.id,
+            message.channel.id,
+            message.author.bot,
+            len(message.content or ""),
+        )
 
         duplicate = self._mark_and_check_duplicate(message.id)
         bot_user_id = self.user.id if self.user else None
