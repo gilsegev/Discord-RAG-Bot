@@ -1,16 +1,15 @@
 {
-  "id": "yTjxaAcNAqc811LZ",
-  "name": "RAG Intake + Routing - Phase 8",
+  "name": "RAG Intake + Routing - Phase 9",
   "active": false,
   "nodes": [
     {
       "parameters": {
         "httpMethod": "POST",
-        "path": "rag-intake-phase-8",
+        "path": "rag-intake-phase-9",
         "responseMode": "lastNode",
         "options": {}
       },
-      "id": "phase8-intake-webhook",
+      "id": "phase9-intake-webhook",
       "name": "Intake Webhook",
       "type": "n8n-nodes-base.webhook",
       "typeVersion": 2,
@@ -18,7 +17,7 @@
         -2200,
         -440
       ],
-      "webhookId": "phase8-rag-intake"
+      "webhookId": "phase9-rag-intake"
     },
     {
       "parameters": {},
@@ -44,28 +43,41 @@
     },
     {
       "parameters": {
-        "jsCode": "const input = ($json && $json.body) ? $json.body : ($json || {});\nconst manualDefaults = {\n  user_query: 'How does the partnership interview at Meta work, and do I need technical examples for it?',\n  discord_message_id: 'phase-8-intake-active-call-manual',\n  channel_id: 'phase-8-test',\n  channel_name: 'n8n-phase-8-test',\n  author_id_hash: 'manual-test-author',\n  qdrant_collection: 'tpm_unite_history',\n  embedding_url: 'http://embedder:8000/embed',\n  qdrant_base_url: 'http://qdrant:6333',\n  reranker_url: 'http://reranker:8002/rerank',\n  gemini_url: 'https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash:generateContent?key=REPLACE_WITH_GEMINI_API_KEY',\n  discord_webhook_url: 'REPLACE_WITH_DISCORD_WEBHOOK_URL?wait=true',\n  top_k: 20,\n  context_k: 5,\n  min_result_count: 3,\n  retrieval_score_threshold: 0.55,\n  phoenix_collector_url: 'http://trace-emitter:8001/v1/traces',\n  phoenix_project_name: 'discord-rag-bot-phase-8',\n  context_token_budget: 2200,\n  reranker_score_threshold: 0,\n  weak_reranker_score_threshold: 2,\n  dedupe_overlap_threshold: 0.5,\n  trigger_source: 'discord_active',\n  run_mode: 'full_answer',\n  response_mode: 'discord_test',\n  allow_gemini: true,\n  allow_discord_post: true,\n  requested_by: 'gil',\n  regression_run_id: '',\n  case_id: '',\n  channel_scope: 'all',\n  workflow_contract_version: 'phase-8-intake-v1',\n};\nconst merged = { ...manualDefaults, ...input };\nif (input.question && !input.user_query) merged.user_query = input.question;\nif (merged.trigger_source && String(merged.trigger_source).startsWith('regression')) {\n  merged.run_mode = merged.run_mode || 'retrieval_only';\n  merged.response_mode = merged.response_mode || 'ci_artifact';\n  merged.allow_gemini = merged.allow_gemini === true || merged.allow_gemini === 'true';\n  merged.allow_discord_post = false;\n}\nmerged.allow_gemini = merged.allow_gemini === true || merged.allow_gemini === 'true';\nmerged.allow_discord_post = merged.allow_discord_post === true || merged.allow_discord_post === 'true';\nmerged.top_k = Number(merged.top_k ?? 20);\nmerged.context_k = Number(merged.context_k ?? 5);\nmerged.min_result_count = Number(merged.min_result_count ?? 3);\nmerged.retrieval_score_threshold = Number(merged.retrieval_score_threshold ?? 0.55);\nmerged.reranker_score_threshold = Number(merged.reranker_score_threshold ?? 0);\nmerged.weak_reranker_score_threshold = Number(merged.weak_reranker_score_threshold ?? 2);\nmerged.context_token_budget = Number(merged.context_token_budget ?? 2200);\nmerged.dedupe_overlap_threshold = Number(merged.dedupe_overlap_threshold ?? 0.5);\nreturn [{ json: merged }];"
+        "jsCode": "const input = ($json && $json.body) ? $json.body : ($json || {});\nconst manualDefaults = {\n  user_query: 'How does the partnership interview at Meta work, and do I need technical examples for it?',\n  discord_message_id: 'phase-9-intake-active-call-manual',\n  channel_id: 'phase-9-test',\n  channel_name: 'n8n-phase-9-test',\n  author_id_hash: 'manual-test-author',\n  qdrant_collection: 'tpm_unite_history',\n  embedding_url: 'http://embedder:8000/embed',\n  qdrant_base_url: 'http://qdrant:6333',\n  reranker_url: 'http://reranker:8002/rerank',\n  gemini_url: 'https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash:generateContent?key=REPLACE_WITH_GEMINI_API_KEY',\n  discord_webhook_url: 'REPLACE_WITH_DISCORD_WEBHOOK_URL?wait=true',\n  top_k: 20,\n  context_k: 5,\n  min_result_count: 3,\n  retrieval_score_threshold: 0.55,\n  phoenix_collector_url: 'http://trace-emitter:8001/v1/traces',\n  phoenix_project_name: 'discord-rag-bot-phase-9',\n  context_token_budget: 2200,\n  reranker_score_threshold: 0,\n  weak_reranker_score_threshold: 2,\n  dedupe_overlap_threshold: 0.5,\n  trigger_source: 'discord_active',\n  run_mode: 'full_answer',\n  response_mode: 'discord_test',\n  allow_gemini: true,\n  allow_discord_post: true,\n  requested_by: 'gil',\n  regression_run_id: '',\n  case_id: '',\n  channel_scope: 'all',\n  workflow_contract_version: 'phase-9-intake-v1',\n  passive_enabled: true,\n  passive_min_words: 3,\n  passive_excluded_channel_ids: [],\n};\nconst merged = { ...manualDefaults, ...input };\nif (input.question && !input.user_query) merged.user_query = input.question;\nmerged._allow_gemini_explicit = Object.prototype.hasOwnProperty.call(input, 'allow_gemini');\nif (merged.trigger_source && String(merged.trigger_source).startsWith('regression')) {\n  merged.run_mode = merged.run_mode || 'retrieval_only';\n  merged.response_mode = merged.response_mode || 'ci_artifact';\n  merged.allow_gemini = merged.allow_gemini === true || merged.allow_gemini === 'true';\n  merged.allow_discord_post = false;\n}\nmerged.allow_gemini = merged.allow_gemini === true || merged.allow_gemini === 'true';\nmerged.allow_discord_post = merged.allow_discord_post === true || merged.allow_discord_post === 'true';\nmerged.passive_enabled = merged.passive_enabled === true || merged.passive_enabled === 'true';\nmerged.passive_min_words = Number(merged.passive_min_words ?? 3);\nmerged.top_k = Number(merged.top_k ?? 20);\nmerged.context_k = Number(merged.context_k ?? 5);\nmerged.min_result_count = Number(merged.min_result_count ?? 3);\nmerged.retrieval_score_threshold = Number(merged.retrieval_score_threshold ?? 0.55);\nmerged.reranker_score_threshold = Number(merged.reranker_score_threshold ?? 0);\nmerged.weak_reranker_score_threshold = Number(merged.weak_reranker_score_threshold ?? 2);\nmerged.context_token_budget = Number(merged.context_token_budget ?? 2200);\nmerged.dedupe_overlap_threshold = Number(merged.dedupe_overlap_threshold ?? 0.5);\nreturn [{ json: merged }];"
       },
       "id": "da2e88d5-854e-4cb6-a60c-f881a3fa7b47",
+      "name": "Normalize Intake",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -2020,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const state = { ...$json };\nconst trigger = String(state.trigger_source || 'discord_active');\nconst text = String(state.user_query || state.content || '').replace(/\\s+/g, ' ').trim();\nconst activeTrigger = trigger === 'discord_active' || trigger.startsWith('regression') || trigger === 'evaluator_manual';\nconst directInvocation = state.is_direct_mention === true || state.is_direct_mention === 'true' || state.is_active_call === true || state.is_active_call === 'true';\nlet routeType = 'active_call';\nlet routingReason = activeTrigger ? `active_trigger:${trigger}` : 'direct_bot_invocation';\nif (!activeTrigger && !directInvocation) {\n  routeType = 'passive_candidate';\n  routingReason = 'passive_relevance_gate_passed';\n  const excluded = Array.isArray(state.passive_excluded_channel_ids) ? state.passive_excluded_channel_ids.map(String) : String(state.passive_excluded_channel_ids || '').split(',').map(v => v.trim()).filter(Boolean);\n  const words = text.match(/[\\p{L}\\p{N}][\\p{L}\\p{N}'’-]*/gu) || [];\n  const hasQuestionSignal = /\\?|\\b(how|what|why|when|where|who|which|can|could|should|would|does|do|is|are|anyone|advice|help|recommend|thoughts|experience)\\b/i.test(text);\n  const acknowledgementOnly = /^(thanks|thank you|thx|ty|got it|makes sense|sounds good|good to know|okay|ok|cool|nice|great|agreed|same|lol|lmao|haha)[.! ]*$/i.test(text);\n  const urlOnly = /^(https?:\\/\\/\\S+|www\\.\\S+)$/i.test(text);\n  const noSemanticText = text.length === 0 || !/[\\p{L}\\p{N}]/u.test(text);\n  const ignoredChecks = [\n    [state.passive_enabled !== true, 'passive_disabled'],\n    [state.is_duplicate === true || state.is_duplicate === 'true', 'duplicate_event'],\n    [state.author_is_bot === true || state.author_is_bot === 'true', 'bot_authored'],\n    [state.is_webhook === true || state.is_webhook === 'true', 'webhook_authored'],\n    [state.is_system_event === true || state.is_system_event === 'true', 'system_event'],\n    [excluded.includes(String(state.channel_id || '')), 'excluded_channel'],\n    [noSemanticText, 'empty_or_nonsemantic'],\n    [urlOnly, 'url_only'],\n    [acknowledgementOnly, 'acknowledgement_only'],\n    [words.length < state.passive_min_words && !hasQuestionSignal, 'short_without_question_signal'],\n  ];\n  const ignored = ignoredChecks.find(([matched]) => matched);\n  if (ignored) {\n    routeType = 'ignored';\n    routingReason = ignored[1];\n  }\n}\nconst passive = routeType === 'passive_candidate';\nreturn [{ json: {\n  ...state,\n  user_query: text,\n  route_type: routeType,\n  routing_reason: routingReason,\n  should_run_rag: routeType !== 'ignored',\n  trigger_source: passive ? 'discord_passive' : state.trigger_source,\n  run_mode: passive && !state._allow_gemini_explicit ? 'retrieval_only' : state.run_mode,\n  response_mode: passive ? 'postgres_only' : state.response_mode,\n  allow_gemini: passive && !state._allow_gemini_explicit ? false : state.allow_gemini,\n  allow_discord_post: passive ? false : state.allow_discord_post,\n  passive_mode: passive ? 'shadow' : '',\n}}];"
+      },
+      "id": "phase9-classify-route",
       "name": "Set Intake Active Call",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        -1980,
+        -1800,
         0
       ]
     },
     {
       "parameters": {
         "operation": "executeQuery",
-        "query": "INSERT INTO rag_transactions (\n  discord_message_id,\n  channel_id,\n  channel_name,\n  author_id_hash,\n  incoming_message_ts,\n  route_type,\n  status,\n  retrieval_status,\n  response_status,\n  user_query\n)\nVALUES (\n  '{{ String($json.discord_message_id || '').replace(/'/g, \"''\") }}',\n  '{{ String($json.channel_id || '').replace(/'/g, \"''\") }}',\n  '{{ String($json.channel_name || '').replace(/'/g, \"''\") }}',\n  '{{ String($json.author_id_hash || '').replace(/'/g, \"''\") }}',\n  now(),\n  'active_call',\n  'created',\n  'not_started',\n  'not_started',\n  '{{ String($json.user_query || '').replace(/'/g, \"''\") }}'\n)\nRETURNING\n  transaction_id,\n  created_at,\n  discord_message_id,\n  channel_id,\n  channel_name,\n  author_id_hash,\n  route_type,\n  status,\n  retrieval_status,\n  response_status,\n  user_query;"
+        "query": "INSERT INTO rag_transactions (\n  discord_message_id,\n  channel_id,\n  channel_name,\n  author_id_hash,\n  incoming_message_ts,\n  route_type,\n  status,\n  retrieval_status,\n  response_status,\n  user_query,\n  completed_at\n)\nVALUES (\n  '{{ String($json.discord_message_id || '').replace(/'/g, \"''\") }}',\n  '{{ String($json.channel_id || '').replace(/'/g, \"''\") }}',\n  '{{ String($json.channel_name || '').replace(/'/g, \"''\") }}',\n  '{{ String($json.author_id_hash || '').replace(/'/g, \"''\") }}',\n  now(),\n  '{{ String($json.route_type || 'ignored').replace(/'/g, \"''\") }}',\n  '{{ $json.should_run_rag ? 'created' : 'ignored' }}',\n  'not_started',\n  '{{ $json.should_run_rag ? 'not_started' : 'not_posted' }}',\n  '{{ String($json.user_query || '').replace(/'/g, \"''\") }}',\n  {{ $json.should_run_rag ? 'NULL' : 'now()' }}\n)\nRETURNING\n  transaction_id,\n  created_at,\n  discord_message_id,\n  channel_id,\n  channel_name,\n  author_id_hash,\n  route_type,\n  status,\n  retrieval_status,\n  response_status,\n  user_query;"
       },
       "id": "a7f88c91-2217-4ee8-b4b0-ad077ce0d488",
       "name": "Create Transaction",
       "type": "n8n-nodes-base.postgres",
       "typeVersion": 2.6,
       "position": [
-        -1760,
+        -1580,
         0
       ],
       "credentials": {
@@ -74,6 +86,91 @@
           "name": "Postgres account"
         }
       }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "phase9-run-rag-route",
+              "leftValue": "={{ $json.route_type }}",
+              "rightValue": "ignored",
+              "operator": {
+                "type": "string",
+                "operation": "notEquals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "phase9-run-rag",
+      "name": "Run RAG?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        -1360,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "INSERT INTO rag_trace_events (\n  transaction_id,\n  event_name,\n  node_name,\n  status,\n  event_payload\n)\nVALUES (\n  '{{ $json.transaction_id }}',\n  '{{ $json.route_type === 'passive_candidate' ? 'routing.passive_candidate' : 'routing.active_call' }}',\n  'Set Intake Active Call',\n  'decision',\n  jsonb_build_object(\n    'trigger_source', '{{ String($items('Set Intake Active Call')[0].json.trigger_source || '').replace(/'/g, \"''\") }}',\n    'route_type', '{{ String($json.route_type || '').replace(/'/g, \"''\") }}',\n    'reason', '{{ String($items('Set Intake Active Call')[0].json.routing_reason || '').replace(/'/g, \"''\") }}',\n    'passive_mode', '{{ String($items('Set Intake Active Call')[0].json.passive_mode || '').replace(/'/g, \"''\") }}'\n  )\n)\nRETURNING transaction_id, event_name;"
+      },
+      "id": "phase9-log-routed",
+      "name": "Log Routed Event",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        -1140,
+        -80
+      ],
+      "credentials": {
+        "postgres": {
+          "id": "JcwnINxG4CstrGKy",
+          "name": "Postgres account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "INSERT INTO rag_trace_events (\n  transaction_id,\n  event_name,\n  node_name,\n  status,\n  event_payload\n)\nVALUES (\n  '{{ $json.transaction_id }}',\n  'routing.ignored',\n  'Set Intake Active Call',\n  'decision',\n  jsonb_build_object(\n    'trigger_source', '{{ String($items('Set Intake Active Call')[0].json.trigger_source || '').replace(/'/g, \"''\") }}',\n    'route_type', 'ignored',\n    'reason', '{{ String($items('Set Intake Active Call')[0].json.routing_reason || 'unspecified').replace(/'/g, \"''\") }}',\n    'discord_message_id', '{{ String($json.discord_message_id || '').replace(/'/g, \"''\") }}'\n  )\n)\nRETURNING transaction_id, event_name;"
+      },
+      "id": "phase9-log-ignored",
+      "name": "Log Ignored Event",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        -1140,
+        220
+      ],
+      "credentials": {
+        "postgres": {
+          "id": "JcwnINxG4CstrGKy",
+          "name": "Postgres account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const tx = $items('Create Transaction')[0].json;\nconst route = $items('Set Intake Active Call')[0].json;\nreturn [{ json: {\n  ...tx,\n  trigger_source: route.trigger_source,\n  route_type: 'ignored',\n  routing_reason: route.routing_reason,\n  final_status: 'ignored',\n  retrieval_status: 'not_started',\n  response_status: 'not_posted',\n  allow_discord_post: false,\n  discord_skipped: true,\n  discord_skip_reason: route.routing_reason,\n}}];"
+      },
+      "id": "phase9-return-ignored",
+      "name": "Return Ignored Result",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -920,
+        220
+      ]
     },
     {
       "parameters": {
@@ -817,6 +914,17 @@
       "main": [
         [
           {
+            "node": "Normalize Intake",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Normalize Intake": {
+      "main": [
+        [
+          {
             "node": "Set Intake Active Call",
             "type": "main",
             "index": 0
@@ -839,7 +947,47 @@
       "main": [
         [
           {
+            "node": "Run RAG?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Run RAG?": {
+      "main": [
+        [
+          {
+            "node": "Log Routed Event",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Log Ignored Event",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Log Routed Event": {
+      "main": [
+        [
+          {
             "node": "Build RAG Core Request",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Log Ignored Event": {
+      "main": [
+        [
+          {
+            "node": "Return Ignored Result",
             "type": "main",
             "index": 0
           }
@@ -1000,7 +1148,7 @@
       "main": [
         [
           {
-            "node": "Set Intake Active Call",
+            "node": "Normalize Intake",
             "type": "main",
             "index": 0
           }
@@ -1040,7 +1188,7 @@
       "main": [
         [
           {
-            "node": "Set Intake Active Call",
+            "node": "Normalize Intake",
             "type": "main",
             "index": 0
           }
@@ -1053,6 +1201,6 @@
   },
   "staticData": null,
   "meta": {
-    "description": "Phase 8 intake/routing workflow. Owns request mode, transaction setup, calls shared RAG core, and routes mode-specific outputs."
+    "description": "Phase 9 intake/routing workflow. Classifies active, passive, and ignored events; applies the passive relevance gate; calls the Phase 8 shared RAG core; and prevents passive Discord posting."
   }
 }

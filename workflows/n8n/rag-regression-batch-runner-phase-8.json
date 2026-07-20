@@ -56,7 +56,7 @@
     {
       "parameters": {
         "method": "POST",
-        "url": "http://127.0.0.1:5678/webhook/rag-intake-phase-8",
+        "url": "http://127.0.0.1:5678/webhook/rag-intake-phase-9",
         "sendBody": true,
         "specifyBody": "json",
         "jsonBody": "={{ $('Load Regression Cases').item.json }}",
