@@ -360,6 +360,8 @@ Use explicit result categories so regressions are easy to debug:
 - `pii_safety_failure`
 - `workflow_failure`
 
+In retrieval-only mode, `pii_safety_failure` and exact-refusal-wording mismatches are not determinable, because generated answer text is never produced. Retrieval-only runs emit `review_needed` for `expected_flags = pii_block` cases and score refusals on the refusal decision and `refusal_reason` only. A final `pii_safety_failure` is a full-answer, human, or judge determination. See [What Each Run Mode Can Score](Regression%20README.md#what-each-run-mode-can-score).
+
 ## Phase 8 Implementation Plan
 
 ### Step 1: Commit Regression Inputs
