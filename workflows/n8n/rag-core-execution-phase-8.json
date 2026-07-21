@@ -387,7 +387,16 @@
     {
       "parameters": {
         "method": "POST",
-        "url": "={{ $items('Prepare Gemini Request')[0].json.gemini_url }}",
+        "url": "={{ $items('Prepare Gemini Request')[0].json.gemini_url.replace(/\\?key=REPLACE_WITH_GEMINI_API_KEY$/, '') }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "x-goog-api-key",
+              "value": "={{ $env.GEMINI_API_KEY }}"
+            }
+          ]
+        },
         "sendBody": true,
         "specifyBody": "json",
         "jsonBody": "={{ { contents: [{ role: 'user', parts: [{ text: $items('Prepare Gemini Request')[0].json.prompt }] }], generationConfig: { temperature: 0.1, maxOutputTokens: 5000 } } }}",
