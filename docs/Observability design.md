@@ -223,7 +223,16 @@ One row per Discord event considered by the bot.
 | `status` | `started`, `answered`, `refused`, `dropped`, `failed` |
 | `refusal_reason` | Why the bot refused, if applicable |
 | `failure_reason` | Why the workflow failed operationally, if applicable |
+| `generated_answer` | Durable generated answer for successful full-answer runs; `NULL` when generation did not produce an answer |
+| `final_response_text` | Guarded/truncated response that was or would have been dispatched |
+| `generation_model` | Model that produced `generated_answer` |
+| `generation_metadata` | JSON metadata such as token usage, finish reason, and generation latency |
 | `created_at`, `completed_at` | Lifecycle timing |
+
+Postgres is the source of truth for generated answers. Phoenix may repeat the
+answer as an LLM span output for time-bounded review and debugging, but Phoenix
+retention must not be the only copy. Retrieval-only runs and pre-generation
+refusals store `generated_answer = NULL` and empty generation metadata.
 
 Use `refusal_reason` only when the bot deliberately refuses because product quality gates say it should not answer. Use `failure_reason` when the workflow could not complete because of an operational issue, such as Gemini failure, Discord dispatch failure, Qdrant API failure, Postgres write failure, or malformed third-party response.
 

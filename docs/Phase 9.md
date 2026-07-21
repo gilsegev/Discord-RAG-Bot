@@ -317,5 +317,6 @@ Before enabling it, define:
 - Which channels are included or excluded from shadow observation?
 - Should attachment text, links, and reply context be added to the query, or
   should v1 use message content only?
-- Where will generated shadow answers be retained for review?
+- Generated shadow answers are retained in `rag_transactions.generated_answer`;
+  Phoenix repeats the output on its Gemini span for time-bounded review.
 - Is a passive concurrency cap needed after measuring real execution latency?
