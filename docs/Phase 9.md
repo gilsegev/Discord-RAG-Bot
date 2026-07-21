@@ -53,9 +53,11 @@ stage is to run eligible messages in shadow mode and force:
 }
 ```
 
-`allow_gemini` may be disabled when the team wants retrieval-only observation.
-`allow_discord_post` must remain `false` for all Phase 9 shadow-mode events,
-regardless of caller input.
+Eligible Phase 9 passive candidates always run in `full_answer` mode with Gemini
+enabled so reviewers can assess the complete hypothetical response. Retrieval-only
+execution remains available to regression and evaluator traffic, not passive
+shadow traffic. `allow_discord_post` must remain `false` for all Phase 9
+shadow-mode events, regardless of caller input.
 
 ## Scope
 
@@ -124,9 +126,9 @@ traffic move to the Phase 9 intake.
 |---|---|
 | `trigger_source` | `discord_passive` |
 | `route_type` | `passive_candidate` |
-| `run_mode` | `retrieval_only` or `full_answer` |
+| `run_mode` | Always forced to `full_answer` |
 | `response_mode` | `postgres_only` |
-| `allow_gemini` | Configurable |
+| `allow_gemini` | Always forced to `true` |
 | `allow_discord_post` | Always forced to `false` |
 | `requested_by` | `bot` |
 
@@ -164,15 +166,11 @@ passive threshold should be adopted only after reviewing:
 - how many generated answers would have been intrusive or off-topic
 - false negatives created by a stricter threshold
 
-Two observation modes are useful:
-
-1. `retrieval_only`: run through context assembly without Gemini cost.
-2. `full_answer`: generate the hypothetical answer, store it for review, and do
-   not post it.
-
-Full-answer sampling may be added later if Gemini cost or review volume becomes
-material. At 30–50 messages per day, processing all eligible messages is a
-reasonable initial calibration workload.
+Every eligible passive candidate uses `full_answer`: generate the hypothetical
+answer, store it for review, and do not post it. At 30–50 messages per day,
+processing all eligible messages is a reasonable initial calibration workload.
+Regression and evaluator requests retain their independent retrieval-only mode
+and must not inherit the passive Gemini policy.
 
 ## Rate Limiting Recommendation
 
@@ -274,8 +272,8 @@ should independently reject passive shadow-mode posting. A caller-provided
 The first implementation should demonstrate:
 
 - a normal human message enters the shared RAG core
-- a passive event can complete in retrieval-only mode
 - a passive event can generate and persist a hypothetical answer
+- a retrieval-only regression does not execute Gemini
 - no passive event posts an answer or refusal to Discord
 - an active mention still follows the active-call path and can post normally
 - bot-authored, system, empty, excluded-channel, duplicate, and active-mention
