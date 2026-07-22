@@ -262,6 +262,14 @@ I don't have enough TPM Unite specific context to answer this confidently, try r
 | Multiple sources | List each on a new line after the answer |
 | No citable source | Do not cite — trigger refusal instead |
 
+Before the citation guard runs, the response builder canonicalizes citations
+whose Discord jump URL exactly matches a selected context source. This replaces
+model-formatted variants (for example, a linked citation that omitted its date)
+with the authoritative channel, thread, URL, and date from `selected_context`.
+URLs that do not match selected context are not rewritten and fail the citation
+guard. `citation_normalized_count` records how many citations were rendered from
+selected source metadata.
+
 ### 3.4 Uncertainty handling
 
 Two separate score signals apply at different pipeline stages:

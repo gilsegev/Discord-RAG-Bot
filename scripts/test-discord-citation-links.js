@@ -88,6 +88,20 @@ const linkedResult = runCode(
 assert.strictEqual(linkedResult.has_citation, true);
 assert.strictEqual(linkedResult.citation_guard_failed, false);
 
+const missingDateCitation = expectedCitation.replace(', 2024-06-18)', ')');
+const normalizedResult = runCode(
+  'Build Gemini Result',
+  {
+    statusCode: 200,
+    body: { candidates: [{ content: { parts: [{ text: `Members shared this. ${missingDateCitation}` }] } }] },
+  },
+  { 'Prepare Gemini Request': { ...assembled, gemini_started_ms: Date.now() } }
+);
+assert.strictEqual(normalizedResult.citation_normalized_count, 1);
+assert.strictEqual(normalizedResult.has_citation, true);
+assert.strictEqual(normalizedResult.citation_guard_failed, false);
+assert(normalizedResult.discord_response_text.includes(expectedCitation));
+
 const plainResult = runCode(
   'Build Gemini Result',
   {
