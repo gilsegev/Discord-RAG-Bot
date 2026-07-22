@@ -1,0 +1,67 @@
+{
+  "id": "Psv7kzucsYnJk37q",
+  "name": "RAG Feedback Reconciliation - Phase 10",
+  "active": false,
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "minutes",
+              "minutesInterval": 5
+            }
+          ]
+        }
+      },
+      "id": "phase10-reconcile-schedule",
+      "name": "Every Five Minutes",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        -300,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "WITH linked AS (\n  UPDATE rag_feedback feedback\n  SET transaction_id = tx.transaction_id,\n      matched = true,\n      updated_at = now()\n  FROM rag_transactions tx\n  WHERE feedback.matched = false\n    AND feedback.discord_response_message_id = tx.discord_response_message_id\n  RETURNING feedback.feedback_id, feedback.transaction_id,\n            feedback.discord_response_message_id, feedback.feedback_source,\n            feedback.feedback_type, feedback.feedback_value\n),\ntraced AS (\n  INSERT INTO rag_trace_events (transaction_id, event_name, node_name, status, event_payload)\n  SELECT transaction_id, 'feedback.linked', 'Reconcile Unmatched Feedback', 'completed',\n         jsonb_build_object(\n           'feedback_id', feedback_id,\n           'discord_response_message_id', discord_response_message_id,\n           'feedback_source', feedback_source,\n           'feedback_type', feedback_type,\n           'feedback_value', feedback_value,\n           'correlation_mode', 'scheduled_reconciliation'\n         )\n  FROM linked\n  RETURNING event_id\n)\nSELECT (SELECT count(*) FROM linked) AS linked_count,\n       (SELECT count(*) FROM traced) AS trace_count;"
+      },
+      "id": "phase10-reconcile-feedback",
+      "name": "Reconcile Unmatched Feedback",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        -60,
+        0
+      ],
+      "credentials": {
+        "postgres": {
+          "id": "JcwnINxG4CstrGKy",
+          "name": "Postgres account"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "Every Five Minutes": {
+      "main": [
+        [
+          {
+            "node": "Reconcile Unmatched Feedback",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "meta": {
+    "description": "Links Phase 10 feedback that arrived before its response transaction was finalized."
+  }
+}

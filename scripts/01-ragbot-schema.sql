@@ -125,12 +125,12 @@ CREATE TABLE IF NOT EXISTS rag_feedback (
         review_status IN ('pending', 'in_review', 'resolved', 'dismissed')
     ),
     created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
     CHECK (review_candidate = false OR review_status IS NOT NULL),
     UNIQUE (
         discord_response_message_id,
         feedback_author_id_hash,
-        feedback_source,
-        feedback_type
+        feedback_source
     )
 );
 
