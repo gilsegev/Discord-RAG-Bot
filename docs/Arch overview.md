@@ -7,8 +7,23 @@ The system relies on a lean, containerized stack designed to balance low operati
 
 ### Discord Gateway
 **Role:** Event source and user interface.  
-**Responsibility:** Provides real-time messaging data from Discord.  
-**Implementation:** Persistent WebSocket connection using `MESSAGE_CREATE` and reaction intents.
+**Responsibility:** Provides real-time messaging data and receives bot responses.
+**Implementation:** A persistent WebSocket connection receives `MESSAGE_CREATE`
+and reaction events. For output, n8n calls Discord's authenticated Bot API
+directly with the originating `channel_id`; channel-bound webhooks are not used
+for production response dispatch.
+
+Discord response dispatch uses:
+
+```text
+POST https://discord.com/api/v10/channels/{channel_id}/messages
+Authorization: Bot <DISCORD_BOT_TOKEN>
+```
+
+The request replies to the originating `discord_message_id`. Discord's returned
+message ID is stored as `discord_response_message_id` for delivery verification
+and reaction-feedback correlation. The bot token is injected into n8n from the
+server environment and is never stored in workflow JSON.
 
 ### n8n Orchestrator
 **Role:** Intake router, execution state machine, dual-ingress filtering engine for active and passive events, context assembly layer, LLM coordinator, and telemetry dispatcher.
@@ -75,6 +90,11 @@ The live interaction loop operates through a shared intake and routing system. I
 [ Discord ] [ Regression ] [ CI Artifact / Metrics ]
 ```
 
+The Discord output writer is an n8n HTTP Request node that calls the official
+Discord Bot API. It dynamically uses the transaction's `channel_id`, so one bot
+installation can respond in any permitted channel without per-channel webhook
+configuration or another dispatch service.
+
 ### Execution Tracking Stages
 1. **Universal Capture**  
    The moment a Discord event, regression case, or CI request reaches the n8n intake workflow, a unique transaction tracking ID is created. The raw request envelope and mode flags are logged to the Observability Layer, regardless of whether the request triggers a response.
@@ -89,7 +109,11 @@ The live interaction loop operates through a shared intake and routing system. I
    The complete assembled prompt sent to the Gemini API and the returned response payload are captured alongside execution metadata, such as token counts and API latency.
 
 5. **Dispatch Verification**  
-   A final confirmation log marks whether the transaction was successfully transmitted to its configured output: Discord, regression result rows, CI artifact, or review/evaluation tables.
+   For Discord output, n8n posts through the authenticated Bot API to the
+   originating channel and records the returned message ID. A final confirmation
+   log marks whether the transaction was successfully transmitted to its
+   configured output: Discord, regression result rows, CI artifact, or
+   review/evaluation tables.
 
 ## 3. Feedback Loop and Performance Grading
 To move beyond basic monitoring and toward continuous optimization, the architecture explicitly accounts for community evaluation.
