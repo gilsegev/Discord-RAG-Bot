@@ -405,7 +405,9 @@ Expected outcome:
 Passive behavior expands coverage without making the bot noisy.
 
 ## Phase 10: Feedback Correlation
-Add Discord reaction monitoring after bot responses store `discord_response_message_id`.
+Add shared Discord reaction monitoring after bot responses store
+`discord_response_message_id`. Phase 10 is not gated on Phase 9B: active calls,
+Phase 9/9B passive responses, and future response modes use the same path.
 
 Flow:
 
@@ -430,6 +432,29 @@ Schema contract:
 - `feedback_value` stores the normalized sentiment or structured value.
 - Negative reactions and explicit critique set `review_candidate = true` and `review_status = pending`.
 - Unmatched feedback writes `matched = false` and is excluded from weekly quality metrics until linked.
+
+Reaction semantics:
+
+- Different members' reactions are stored and counted independently.
+- One member may retain both 👍 and 👎 on the same response, as Discord permits.
+- Each normalized reaction has its own row; repeated adds are idempotent and a
+  removal deletes only the row for that reaction.
+- Weekly metrics derive positive-only, negative-only, and mixed member states
+  from current rows. Mixed feedback remains reviewable because a negative
+  reaction is present and must not be silently converted to positive.
+
+## Phase 10B: Explicit Critique Categories And UX
+
+Add structured critique capture after reaction correlation is stable. This
+tracks the deferred context-menu, slash-command, or form UX, reason categories,
+and optional free text described by the evaluation workstream. Do not finalize
+categories or interaction design until the referenced Feedback & Reaction
+Correlation Design is available and ratified.
+
+Expected outcome:
+
+Members can explain why an answer was unhelpful, and explicit critiques enter
+the same human-review path without becoming automatic evaluation failures.
 
 ## Phase 11: Weekly Metrics And Alerts
 Add reporting after transactions, retrieval, refusals, responses, and feedback are flowing.

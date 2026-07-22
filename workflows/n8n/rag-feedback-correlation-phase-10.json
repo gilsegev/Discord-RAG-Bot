@@ -1,0 +1,174 @@
+{
+  "id": "4i0ydpGY26DPvKRW",
+  "name": "RAG Feedback Correlation - Phase 10",
+  "active": false,
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "rag-feedback-phase-10",
+        "responseMode": "lastNode",
+        "options": {}
+      },
+      "id": "phase10-feedback-webhook",
+      "name": "Feedback Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        -720,
+        0
+      ],
+      "webhookId": "phase10-rag-feedback"
+    },
+    {
+      "parameters": {
+        "jsCode": "const input = $json.body || $json || {};\nconst eventKind = String(input.event_kind || '');\nconst feedbackType = String(input.feedback_type || '');\nconst feedbackValue = String(input.feedback_value || '');\nconst reactionName = String(input.reaction_name || '');\nconst messageId = String(input.discord_response_message_id || '');\nconst authorHash = String(input.feedback_author_id_hash || '').toLowerCase();\nconst canonicalReactionName = reactionName.replace(/\\uFE0F/g, '').replace(/[\\u{1F3FB}-\\u{1F3FF}]/gu, '');\nconst expected = { [String.fromCodePoint(0x1F44D)]: ['positive', 'thumbs_up'], [String.fromCodePoint(0x1F44E)]: ['negative', 'thumbs_down'] };\nif (!['reaction_added', 'reaction_removed'].includes(eventKind)) throw new Error('Unsupported feedback event_kind');\nif (!expected[canonicalReactionName] || expected[canonicalReactionName][0] !== feedbackType || expected[canonicalReactionName][1] !== feedbackValue) throw new Error('Reaction normalization mismatch');\nif (!/^\\d+$/.test(messageId)) throw new Error('discord_response_message_id must be a Discord snowflake');\nif (!/^[a-f0-9]{64}$/.test(authorHash)) throw new Error('feedback_author_id_hash must be a SHA-256 hex digest');\nreturn [{ json: {\n  event_kind: eventKind,\n  operation: eventKind === 'reaction_added' ? 'add' : 'remove',\n  feedback_source: 'reaction',\n  discord_response_message_id: messageId,\n  feedback_author_id_hash: authorHash,\n  feedback_type: feedbackType,\n  feedback_value: feedbackValue,\n  reaction_name: reactionName,\n  review_candidate: eventKind === 'reaction_added' && feedbackType === 'negative',\n  phoenix_collector_url: 'http://trace-emitter:8001/v1/traces',\n  occurred_at: String(input.occurred_at || new Date().toISOString())\n} }];"
+      },
+      "id": "phase10-normalize-feedback",
+      "name": "Normalize Feedback",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -500,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "WITH matched_tx AS (\n  SELECT transaction_id\n  FROM rag_transactions\n  WHERE discord_response_message_id = '{{ $json.discord_response_message_id }}'\n  LIMIT 1\n),\nremoved AS (\n  DELETE FROM rag_feedback\n  WHERE '{{ $json.operation }}' = 'remove'\n    AND discord_response_message_id = '{{ $json.discord_response_message_id }}'\n    AND feedback_author_id_hash = '{{ $json.feedback_author_id_hash }}'\n    AND feedback_source = 'reaction'\n    AND feedback_value = '{{ $json.feedback_value }}'\n  RETURNING feedback_id, transaction_id\n),\nupserted AS (\n  INSERT INTO rag_feedback (\n    transaction_id, discord_response_message_id, feedback_author_id_hash,\n    feedback_source, feedback_value, feedback_type, reaction_name, matched,\n    review_candidate, review_status, updated_at\n  )\n  SELECT\n    matched_tx.transaction_id, '{{ $json.discord_response_message_id }}',\n    '{{ $json.feedback_author_id_hash }}', 'reaction', '{{ $json.feedback_value }}',\n    '{{ $json.feedback_type }}', '{{ $json.reaction_name }}',\n    matched_tx.transaction_id IS NOT NULL, {{ $json.review_candidate ? 'true' : 'false' }},\n    CASE WHEN {{ $json.review_candidate }} THEN 'pending' ELSE NULL END, now()\n  FROM (SELECT 1) seed\n  LEFT JOIN matched_tx ON true\n  WHERE '{{ $json.operation }}' = 'add'\n  ON CONFLICT (discord_response_message_id, feedback_author_id_hash, feedback_source, feedback_value)\n  DO UPDATE SET\n    transaction_id = EXCLUDED.transaction_id,\n    feedback_value = EXCLUDED.feedback_value,\n    feedback_type = EXCLUDED.feedback_type,\n    reaction_name = EXCLUDED.reaction_name,\n    matched = EXCLUDED.matched,\n    review_candidate = EXCLUDED.review_candidate,\n    review_status = EXCLUDED.review_status,\n    updated_at = now()\n  RETURNING feedback_id, transaction_id\n),\noutcome AS (\n  SELECT\n    COALESCE((SELECT transaction_id FROM upserted LIMIT 1),\n             (SELECT transaction_id FROM removed LIMIT 1),\n             (SELECT transaction_id FROM matched_tx LIMIT 1)) AS transaction_id,\n    EXISTS(SELECT 1 FROM matched_tx) AS matched,\n    CASE\n      WHEN EXISTS(SELECT 1 FROM upserted) THEN 'upserted'\n      WHEN EXISTS(SELECT 1 FROM removed) THEN 'removed'\n      ELSE 'no_op'\n    END AS persistence_operation\n),\ntrace AS (\n  INSERT INTO rag_trace_events (transaction_id, event_name, node_name, status, event_payload)\n  SELECT outcome.transaction_id, events.event_name,\n    'Apply Feedback Signal', 'completed',\n    jsonb_build_object(\n      'discord_response_message_id', '{{ $json.discord_response_message_id }}',\n      'feedback_source', 'reaction',\n      'feedback_type', '{{ $json.feedback_type }}',\n      'feedback_value', '{{ $json.feedback_value }}',\n      'event_kind', '{{ $json.event_kind }}',\n      'persistence_operation', outcome.persistence_operation,\n      'review_candidate', {{ $json.review_candidate ? 'true' : 'false' }}\n    )\n  FROM outcome\n  CROSS JOIN LATERAL (VALUES\n    ('feedback.received'::text),\n    (CASE WHEN outcome.matched THEN 'feedback.linked' ELSE 'feedback.unmatched' END)\n  ) events(event_name)\n  RETURNING event_id\n),\nreview_trace AS (\n  INSERT INTO rag_trace_events (transaction_id, event_name, node_name, status, event_payload)\n  SELECT transaction_id, 'feedback.review_flagged', 'Apply Feedback Signal', 'decision',\n    jsonb_build_object(\n      'discord_response_message_id', '{{ $json.discord_response_message_id }}',\n      'feedback_source', 'reaction',\n      'feedback_type', '{{ $json.feedback_type }}'\n    )\n  FROM outcome\n  WHERE {{ $json.review_candidate ? 'true' : 'false' }}\n  RETURNING event_id\n)\nSELECT outcome.*,\n  '{{ $json.discord_response_message_id }}'::text AS discord_response_message_id,\n  '{{ $json.feedback_type }}'::text AS feedback_type,\n  '{{ $json.feedback_value }}'::text AS feedback_value,\n  {{ $json.review_candidate ? 'true' : 'false' }}::boolean AS review_candidate,\n  (SELECT event_id FROM trace LIMIT 1) AS trace_event_id\nFROM outcome;"
+      },
+      "id": "phase10-apply-feedback",
+      "name": "Apply Feedback Signal",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        -260,
+        0
+      ],
+      "credentials": {
+        "postgres": {
+          "id": "JcwnINxG4CstrGKy",
+          "name": "Postgres account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const result = $json || {};\nconst nowNs = String(Date.now() * 1000000);\nconst seed = String(result.discord_response_message_id || '').padStart(32, '0').slice(-32);\nconst hexToBase64 = (hex) => { let value = ''; for (let i = 0; i < hex.length; i += 2) value += String.fromCharCode(parseInt(hex.slice(i, i + 2), 16)); return btoa(value); };\nconst attrs = (values) => Object.entries(values).map(([key, value]) => ({ key, value: typeof value === 'boolean' ? { boolValue: value } : { stringValue: String(value ?? '') } }));\nconst eventName = result.matched ? 'feedback.linked' : 'feedback.unmatched';\nconst payload = { resourceSpans: [{ resource: { attributes: attrs({ 'service.name': 'discord-rag-bot', 'phoenix.project.name': 'discord-rag-bot-phase-10' }) }, scopeSpans: [{ scope: { name: 'n8n.phase10.feedback', version: '1.0.0' }, spans: [{ traceId: hexToBase64(seed), spanId: hexToBase64(seed.slice(0, 16)), name: eventName, kind: 1, startTimeUnixNano: nowNs, endTimeUnixNano: nowNs, attributes: attrs({ transaction_id: result.transaction_id, discord_response_message_id: result.discord_response_message_id, feedback_type: result.feedback_type, persistence_operation: result.persistence_operation, review_candidate: result.review_candidate, matched: result.matched }), status: { code: 1 } }] }] }] };\nreturn [{ json: { ...result, event_name: eventName, phoenix_collector_url: 'http://trace-emitter:8001/v1/traces', phoenix_trace_payload: payload } }];"
+      },
+      "id": "phase10-build-feedback-trace",
+      "name": "Build Feedback Trace",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -20,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $json.phoenix_collector_url }}",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ $json.phoenix_trace_payload }}",
+        "options": {
+          "response": {
+            "response": {
+              "fullResponse": true,
+              "neverError": true,
+              "responseFormat": "json"
+            }
+          }
+        }
+      },
+      "id": "phase10-send-feedback-trace",
+      "name": "Send Feedback Trace",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        220,
+        0
+      ],
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "jsCode": "const state = $items('Build Feedback Trace')[0].json;\nreturn [{ json: { accepted: true, matched: state.matched, transaction_id: state.transaction_id || null, discord_response_message_id: state.discord_response_message_id, persistence_operation: state.persistence_operation, review_candidate: state.review_candidate, event_name: state.event_name } }];"
+      },
+      "id": "phase10-return-feedback-result",
+      "name": "Return Feedback Result",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        460,
+        0
+      ]
+    }
+  ],
+  "connections": {
+    "Feedback Webhook": {
+      "main": [
+        [
+          {
+            "node": "Normalize Feedback",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Normalize Feedback": {
+      "main": [
+        [
+          {
+            "node": "Apply Feedback Signal",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Apply Feedback Signal": {
+      "main": [
+        [
+          {
+            "node": "Build Feedback Trace",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Feedback Trace": {
+      "main": [
+        [
+          {
+            "node": "Send Feedback Trace",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send Feedback Trace": {
+      "main": [
+        [
+          {
+            "node": "Return Feedback Result",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "meta": {
+    "description": "Phase 10 shared reaction feedback correlation for active and passive bot responses."
+  }
+}

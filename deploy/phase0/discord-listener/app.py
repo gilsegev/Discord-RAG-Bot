@@ -3,6 +3,7 @@ import hashlib
 import logging
 import os
 from collections import OrderedDict
+from datetime import datetime, timezone
 from typing import Any
 
 import aiohttp
@@ -44,6 +45,9 @@ EXCLUDED_CHANNEL_IDS = parse_snowflakes("DISCORD_EXCLUDED_CHANNEL_IDS")
 N8N_INTAKE_URL = os.getenv(
     "N8N_INTAKE_URL", "http://n8n:5678/webhook/rag-intake-phase-9"
 ).strip()
+N8N_FEEDBACK_URL = os.getenv(
+    "N8N_FEEDBACK_URL", "http://n8n:5678/webhook/rag-feedback-phase-10"
+).strip()
 N8N_REQUEST_TIMEOUT_SECONDS = float(os.getenv("N8N_REQUEST_TIMEOUT_SECONDS", "600"))
 DELIVERY_QUEUE_SIZE = int(os.getenv("DISCORD_DELIVERY_QUEUE_SIZE", "100"))
 SEEN_MESSAGE_CACHE_SIZE = int(os.getenv("DISCORD_SEEN_MESSAGE_CACHE_SIZE", "1000"))
@@ -60,6 +64,7 @@ class DiscordListener(discord.Client):
         intents = discord.Intents.none()
         intents.guilds = True
         intents.guild_messages = True
+        intents.guild_reactions = True
         intents.message_content = True
         super().__init__(intents=intents)
         self.delivery_queue: asyncio.Queue[dict[str, Any]] = asyncio.Queue(
@@ -113,6 +118,91 @@ class DiscordListener(discord.Client):
             parent_id is not None and int(parent_id) in EXCLUDED_CHANNEL_IDS
         )
 
+    def _is_excluded_channel_id(self, channel_id: int) -> bool:
+        channel = self.get_channel(channel_id)
+        parent_id = getattr(channel, "parent_id", None) if channel else None
+        return channel_id in EXCLUDED_CHANNEL_IDS or (
+            parent_id is not None and int(parent_id) in EXCLUDED_CHANNEL_IDS
+        )
+
+    def _feedback_event(
+        self, payload: discord.RawReactionActionEvent, event_kind: str
+    ) -> dict[str, Any] | None:
+        if payload.guild_id != ALLOWED_GUILD_ID:
+            return None
+        if self._is_excluded_channel_id(payload.channel_id):
+            return None
+        if self.user and payload.user_id == self.user.id:
+            return None
+        member = getattr(payload, "member", None)
+        if member and member.bot:
+            return None
+        reaction_name = str(payload.emoji)
+        normalized_reaction_name = reaction_name.replace("\ufe0f", "")
+        for skin_tone in ("🏻", "🏼", "🏽", "🏾", "🏿"):
+            normalized_reaction_name = normalized_reaction_name.replace(skin_tone, "")
+        reaction_map = {
+            "👍": ("positive", "thumbs_up"),
+            "👎": ("negative", "thumbs_down"),
+        }
+        normalized = reaction_map.get(normalized_reaction_name)
+        if normalized is None:
+            return None
+        feedback_type, feedback_value = normalized
+        return {
+            "delivery_kind": "feedback",
+            "event_kind": event_kind,
+            "feedback_source": "reaction",
+            "discord_response_message_id": str(payload.message_id),
+            "guild_id": str(payload.guild_id),
+            "channel_id": str(payload.channel_id),
+            "feedback_author_id_hash": hash_author(payload.user_id),
+            "reaction_name": reaction_name,
+            "feedback_type": feedback_type,
+            "feedback_value": feedback_value,
+            "occurred_at": datetime.now(timezone.utc).isoformat(),
+            "requested_by": "discord_listener",
+        }
+
+    async def on_raw_reaction_add(
+        self, payload: discord.RawReactionActionEvent
+    ) -> None:
+        event = self._feedback_event(payload, "reaction_added")
+        if event:
+            logger.info(
+                "Queued Discord feedback event kind=%s message_id=%s channel_id=%s reaction=%s",
+                event["event_kind"],
+                event["discord_response_message_id"],
+                event["channel_id"],
+                event["reaction_name"],
+            )
+            self._enqueue(event)
+
+    async def on_raw_reaction_remove(
+        self, payload: discord.RawReactionActionEvent
+    ) -> None:
+        event = self._feedback_event(payload, "reaction_removed")
+        if event:
+            logger.info(
+                "Queued Discord feedback event kind=%s message_id=%s channel_id=%s reaction=%s",
+                event["event_kind"],
+                event["discord_response_message_id"],
+                event["channel_id"],
+                event["reaction_name"],
+            )
+            self._enqueue(event)
+
+    def _enqueue(self, event: dict[str, Any]) -> None:
+        try:
+            self.delivery_queue.put_nowait(event)
+        except asyncio.QueueFull:
+            logger.error(
+                "Dropping Discord %s event message_id=%s channel_id=%s because delivery queue is full",
+                event.get("delivery_kind", "message"),
+                event.get("discord_response_message_id") or event.get("discord_message_id"),
+                event.get("channel_id"),
+            )
+
     def _mark_and_check_duplicate(self, message_id: int) -> bool:
         duplicate = message_id in self.seen_message_ids
         self.seen_message_ids[message_id] = None
@@ -147,6 +237,7 @@ class DiscordListener(discord.Client):
         }
 
         event = {
+            "delivery_kind": "message",
             "trigger_source": "discord_active" if direct_mention else "discord_passive",
             "discord_message_id": str(message.id),
             "guild_id": str(message.guild.id),
@@ -164,14 +255,7 @@ class DiscordListener(discord.Client):
             "requested_by": "bot",
         }
 
-        try:
-            self.delivery_queue.put_nowait(event)
-        except asyncio.QueueFull:
-            logger.error(
-                "Dropping Discord event because delivery queue is full message_id=%s channel_id=%s",
-                message.id,
-                message.channel.id,
-            )
+        self._enqueue(event)
 
     async def _delivery_loop(self) -> None:
         while True:
@@ -183,7 +267,8 @@ class DiscordListener(discord.Client):
             except Exception:
                 logger.exception(
                     "Failed to deliver Discord event message_id=%s channel_id=%s",
-                    event.get("discord_message_id"),
+                    event.get("discord_response_message_id")
+                    or event.get("discord_message_id"),
                     event.get("channel_id"),
                 )
             finally:
@@ -192,7 +277,10 @@ class DiscordListener(discord.Client):
     async def _deliver(self, event: dict[str, Any]) -> None:
         if self.http_session is None:
             raise RuntimeError("HTTP session is not initialized")
-        async with self.http_session.post(N8N_INTAKE_URL, json=event) as response:
+        delivery_kind = event.get("delivery_kind", "message")
+        target_url = N8N_FEEDBACK_URL if delivery_kind == "feedback" else N8N_INTAKE_URL
+        outbound = {key: value for key, value in event.items() if key != "delivery_kind"}
+        async with self.http_session.post(target_url, json=outbound) as response:
             response_body = await response.text()
             if response.status < 200 or response.status >= 300:
                 raise RuntimeError(
@@ -205,8 +293,9 @@ class DiscordListener(discord.Client):
             except (ValueError, TypeError):
                 pass
             logger.info(
-                "Delivered Discord event message_id=%s channel_id=%s route=%s",
-                event.get("discord_message_id"),
+                "Delivered Discord %s event message_id=%s channel_id=%s route=%s",
+                delivery_kind,
+                event.get("discord_response_message_id") or event.get("discord_message_id"),
                 event.get("channel_id"),
                 route_type,
             )
