@@ -25,6 +25,8 @@ Each step should answer one question:
 - Can we explain what happened?
 
 ## Phase 0: Runtime Foundation
+**Status:** Complete
+
 Set up the infrastructure before implementing RAG logic.
 
 What to stand up:
@@ -46,6 +48,8 @@ Expected outcome:
 The services can talk to each other before any retrieval or LLM logic is added.
 
 ## Phase 1: Minimum Transaction Spine
+**Status:** Complete
+
 Create the minimum durable transaction model in Postgres.
 
 Minimum fields:
@@ -81,6 +85,8 @@ Implementation notes:
 - It does not perform real embedding, vector search, Gemini generation, or Discord dispatch.
 
 ## Phase 2: One Active-Call Happy Path
+**Status:** Complete
+
 Build only the direct bot mention path first.
 
 Do not implement passive listener behavior yet.
@@ -140,6 +146,8 @@ Implementation notes:
 - It still excludes passive listener behavior, reranking, dedupe, reaction boost, feedback correlation, weekly metrics, and advanced alerting.
 
 ## Phase 3: Node-Level Observability
+**Status:** Complete
+
 Instrument each active-call node.
 
 For every major node, log:
@@ -180,6 +188,8 @@ Implementation notes:
 - It still excludes passive listener behavior, reranking, dedupe, reaction boost, feedback correlation, weekly metrics, and advanced alerting.
 
 ## Phase 4: Stage 1 Retrieval Refusal Gate
+**Status:** Complete
+
 Harden the Qdrant-stage refusal logic before adding reranking or dedupe.
 
 This phase only owns the Stage 1 gate from the retrieval contract. It does not decide reranker refusal, dedupe sufficiency, or final LLM grounding refusal.
@@ -225,6 +235,8 @@ Implementation notes:
 - Keeps the Phase 3B Phoenix trace emitter path and durable Postgres transaction state.
 
 ## Phase 5: Reranker
+**Status:** Complete
+
 Add the CrossEncoder reranker after raw Qdrant retrieval is working.
 
 Flow:
@@ -260,6 +272,8 @@ Implementation notes:
 - Emits Phoenix rerank spans.
 
 ## Phase 6: Dedupe Placeholder
+**Status:** Complete
+
 Add message-overlap dedupe after reranking and before context assembly.
 
 Detailed design and implementation readiness review:
@@ -300,6 +314,8 @@ Note:
 Full reply-root dedupe can be added later when `root_message_id` is available in the Qdrant payload.
 
 ## Phase 7: Context Assembly And Prompt Contract
+**Status:** Complete
+
 Implement the context block exactly from the retrieval/context/prompt contract.
 
 Implementation artifact:
@@ -335,6 +351,8 @@ Budget gate:
 - Log `context.overflow` for trimming and `context.insufficient` for refusal.
 
 ## Phase 8: Regression Evaluation Harness
+**Status:** Complete
+
 Add an automated regression harness before expanding into passive listener behavior.
 
 Reason:
@@ -386,6 +404,8 @@ Deferred CI work:
 CI execution is intentionally deferred until the manual and batch regression paths are stable. A later phase should add a GitHub Actions workflow that validates the JSONL file and runs a no-secret retrieval-only regression path against either local services or a restored Qdrant snapshot. CI should start as non-blocking or structural-only until the team agrees on hard quality gates.
 
 ## Phase 9: Passive Listener
+**Status:** Complete
+
 Add passive listener behavior only after the active-call path is stable.
 
 Reason:
@@ -404,24 +424,60 @@ Expected outcome:
 
 Passive behavior expands coverage without making the bot noisy.
 
+## Phase 9B: Passive Monitoring With Discord Responses
+
+Start this phase only after the active-call bot has completed a production pilot
+and Phase 9 shadow-mode evidence has been reviewed.
+
+Phase 9B promotes passive monitoring from observation to a user-visible feature.
+It may post a response to an ordinary Discord message only when the message and
+retrieved context pass the approved passive-response policy.
+
+It needs:
+
+- explicit channel opt-in
+- reviewed message-intent and relevance rules
+- thresholds calibrated from Phase 9 shadow-mode evidence
+- conversation-level cooldowns and anti-noise controls
+- user suppression or opt-out behavior
+- a small canary rollout
+- a kill switch and rollback plan
+- separate metrics for passive candidates, silent drops, and posted responses
+
+Expected outcome:
+
+The bot can contribute useful unsolicited responses in selected channels without
+interrupting normal conversation or weakening the active-call experience.
+
 ## Phase 10: Feedback Correlation
-Add Discord reaction monitoring after bot responses store `discord_response_message_id`.
+Start this phase after Phase 9B is complete. PR #14 is superseded by the
+Phase 8-compatible observability and schema work already on `main`; do not merge
+that PR. Use its feedback-correlation intent only as design input.
+
+Add Discord feedback monitoring after bot responses store
+`discord_response_message_id`. Support:
+
+- 👍 / 👎 reactions on bot responses
+- explicit context-menu critiques with a reason category and optional text
+- reaction removal or replacement without leaving stale feedback
 
 Flow:
 
 ```text
-reaction event
+reaction or critique event
 -> check whether target message is a bot response
 -> look up transaction by discord_response_message_id
 -> normalize feedback
--> upsert feedback row
+-> upsert or remove the author's feedback signal
 -> flag review candidates when feedback is negative or explicit critique
--> update trace or metrics
+-> emit feedback trace events
 ```
 
 Expected outcome:
 
-User reactions can be tied back to the original retrieval and answer transaction.
+User feedback can be tied back to the original retrieval and answer transaction.
+Negative feedback creates a human-review candidate, not an automatic evaluation
+failure.
 
 Schema contract:
 
@@ -430,6 +486,15 @@ Schema contract:
 - `feedback_value` stores the normalized sentiment or structured value.
 - Negative reactions and explicit critique set `review_candidate = true` and `review_status = pending`.
 - Unmatched feedback writes `matched = false` and is excluded from weekly quality metrics until linked.
+- Feedback never writes a pass/fail row directly to `rag_eval_labels`; a human reviewer owns that decision.
+
+Implementation prerequisites:
+
+- Verify the feedback-correlation migration has been applied to the deployed Postgres database.
+- Reconcile the unique feedback key with the intended last-write-wins behavior. The current key includes `feedback_type`, which can preserve both positive and negative rows for the same author, response, and source. Phase 10 should enforce the chosen one-signal-per-author/response/source rule or explicitly document different semantics.
+- Define how reaction removal clears or replaces an existing feedback signal and its review-candidate state.
+- Emit `feedback.received`, `feedback.linked` or `feedback.unmatched`, and `feedback.review_flagged` when applicable.
+- Add narrow workflow tests for positive, negative, explicit, unmatched, repeated, replaced, and removed feedback.
 
 ## Phase 11: Weekly Metrics And Alerts
 Add reporting after transactions, retrieval, refusals, responses, and feedback are flowing.
