@@ -5,6 +5,12 @@ const vm = require('vm');
 const workflow = JSON.parse(
   fs.readFileSync('workflows/n8n/rag-core-execution-phase-8.json', 'utf8')
 );
+const intakeWorkflow = JSON.parse(
+  fs.readFileSync('workflows/n8n/rag-intake-routing-phase-9.json', 'utf8')
+);
+const feedbackWorkflow = JSON.parse(
+  fs.readFileSync('workflows/n8n/rag-feedback-correlation-phase-10.json', 'utf8')
+);
 
 function codeFor(name) {
   const node = workflow.nodes.find((item) => item.name === name);
@@ -69,6 +75,7 @@ const assembled = runCode('Assemble Context Contract', {}, {
 const expectedCitation = '(<#111111111111111111>, [message](https://discord.com/channels/853099205206999050/111111111111111111/222222222222222222), 2024-06-18)';
 assert(assembled.context_block.includes(expectedCitation));
 assert(assembled.prompt.includes('copy the complete Citation value'));
+assert(assembled.prompt.includes('Return only the final Discord-ready answer'));
 
 const linkedResult = runCode(
   'Build Gemini Result',
@@ -102,5 +109,37 @@ const inventedLinkResult = runCode(
 );
 assert.strictEqual(inventedLinkResult.has_citation, false);
 assert.strictEqual(inventedLinkResult.citation_guard_failed, true);
+
+const longAnswer = (`A long grounded claim ${'x'.repeat(400)} ${expectedCitation}\n`).repeat(5);
+const truncatedResult = runCode(
+  'Build Gemini Result',
+  {
+    statusCode: 200,
+    body: { candidates: [{ content: { parts: [{ text: longAnswer }] } }] },
+  },
+  { 'Prepare Gemini Request': { ...assembled, gemini_started_ms: Date.now() } }
+);
+assert.strictEqual(truncatedResult.citation_guard_failed, false);
+assert.strictEqual(truncatedResult.discord_response_truncated, true);
+assert(truncatedResult.discord_response_character_count <= 1900);
+assert(truncatedResult.discord_response_text.endsWith(expectedCitation));
+
+const intakeNormalize = intakeWorkflow.nodes.find((item) => item.name === 'Normalize Intake');
+const intakeBuildCore = intakeWorkflow.nodes.find((item) => item.name === 'Build RAG Core Request');
+const intakeExecuteCore = intakeWorkflow.nodes.find((item) => item.name === 'Execute RAG Core');
+assert(intakeNormalize.parameters.jsCode.includes("input.discord_guild_id || input.guild_id"));
+assert(intakeNormalize.parameters.jsCode.includes("if (!String(merged.gemini_url || '').trim())"));
+assert(intakeBuildCore.parameters.jsCode.includes('discord_guild_id: input.discord_guild_id'));
+assert.strictEqual(
+  intakeExecuteCore.parameters.workflowInputs.value.discord_guild_id,
+  "={{ $('Build RAG Core Request').item.json.discord_guild_id }}"
+);
+
+const feedbackNormalize = feedbackWorkflow.nodes.find((item) => item.name === 'Normalize Feedback');
+const feedbackTrace = feedbackWorkflow.nodes.find((item) => item.name === 'Build Feedback Trace');
+const feedbackResult = feedbackWorkflow.nodes.find((item) => item.name === 'Return Feedback Result');
+assert(feedbackNormalize.parameters.jsCode.includes("discord_response_link: discordResponseLink"));
+assert(feedbackTrace.parameters.jsCode.includes('discord_response_link: result.discord_response_link'));
+assert(feedbackResult.parameters.jsCode.includes('discord_response_link: state.discord_response_link'));
 
 console.log('discord citation link contract ok');
