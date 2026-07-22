@@ -130,7 +130,8 @@ CREATE TABLE IF NOT EXISTS rag_feedback (
     UNIQUE (
         discord_response_message_id,
         feedback_author_id_hash,
-        feedback_source
+        feedback_source,
+        feedback_value
     )
 );
 

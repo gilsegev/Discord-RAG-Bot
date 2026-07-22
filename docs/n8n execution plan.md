@@ -433,12 +433,15 @@ Schema contract:
 - Negative reactions and explicit critique set `review_candidate = true` and `review_status = pending`.
 - Unmatched feedback writes `matched = false` and is excluded from weekly quality metrics until linked.
 
-Current-vote semantics:
+Reaction semantics:
 
 - Different members' reactions are stored and counted independently.
-- One member has at most one current reaction per response and feedback source.
-- Replacing 👍 with 👎, or the reverse, replaces only that member's row.
-- Weekly metrics aggregate all current member votes and preserve differing opinions.
+- One member may retain both 👍 and 👎 on the same response, as Discord permits.
+- Each normalized reaction has its own row; repeated adds are idempotent and a
+  removal deletes only the row for that reaction.
+- Weekly metrics derive positive-only, negative-only, and mixed member states
+  from current rows. Mixed feedback remains reviewable because a negative
+  reaction is present and must not be silently converted to positive.
 
 ## Phase 10B: Explicit Critique Categories And UX
 

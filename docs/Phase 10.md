@@ -13,19 +13,22 @@ Explicit context-menu critiques
 are deferred to Phase 10B because the referenced Feedback & Reaction
 Correlation Design is not currently present in this repository.
 
-## Current-vote contract
+## Reaction contract
 
-Each Discord member has one current reaction vote per bot response. Different
-members retain independent votes, including differing opinions.
+Each Discord member's configured reactions are retained independently per bot
+response. Different members also retain independent reactions. A member may
+therefore have both a positive and a negative reaction on the same response,
+matching Discord's actual reaction state.
 
-| Event | Current vote by the same member | Result |
+| Event | Existing reactions by the same member | Result |
 |---|---|---|
 | Add 👍 | none | Store positive vote |
 | Add 👎 | none | Store negative vote and flag it for review |
-| Add 👎 | positive | Replace that member's vote with negative |
-| Add 👍 | negative | Replace that member's vote with positive |
-| Remove current emoji | matching vote | Remove that member's vote |
-| Remove old emoji | different vote | No-op |
+| Add 👎 | 👍 | Keep 👍 and store a separate negative vote; flag the negative row for review |
+| Add 👍 | 👎 | Keep 👎 and store a separate positive vote |
+| Remove 👍 | 👍 and 👎 | Remove only the positive row; retain the negative row |
+| Remove 👎 | 👍 and 👎 | Remove only the negative row; retain the positive row |
+| Remove absent emoji | no matching row | No-op |
 | Repeat same event | same state | Idempotent upsert or no-op |
 
 Negative feedback is a satisfaction signal and human-review trigger. It never
@@ -39,7 +42,7 @@ Discord GUILD_MESSAGE_REACTIONS event
 -> POST /webhook/rag-feedback-phase-10
 -> RAG Feedback Correlation - Phase 10
 -> correlate rag_transactions.discord_response_message_id
--> upsert/remove rag_feedback current vote
+-> upsert/remove the matching rag_feedback reaction row
 -> rag_trace_events + Phoenix
 ```
 
@@ -70,6 +73,7 @@ channels and read message history.
 
 ## Verification
 
-Test with two members on one stored bot response: A adds 👍, B adds 👎, A changes
-to 👎, then A removes 👎. Verify the current rows and `feedback.linked` trace
-events in Postgres. Weekly metrics should aggregate all members' current rows.
+Test with two members on one stored bot response: A adds 👍 and 👎, B adds 👎,
+then A removes 👍. Verify that A's negative row and B's negative row remain and
+that the matching `feedback.linked` trace events exist. Weekly metrics should
+derive member-level positive, negative, and mixed states from current rows.
