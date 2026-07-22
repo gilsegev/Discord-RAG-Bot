@@ -32,10 +32,12 @@ Grant only:
 
 - `View Channels`
 - `Read Message History`
+- `Send Messages` in channels where active-call responses are enabled
 
-For Phase 9 shadow mode, do not grant `Send Messages`. Active-call posting can
-continue through the existing configured Discord webhook. Phase 9B should review
-the posting mechanism and permissions separately.
+Active-call responses are posted by n8n through Discord's authenticated Bot API
+using the originating channel ID. Phase 9 passive shadow-mode events continue to
+set `allow_discord_post = false`, so granting the permission does not enable
+passive posting by itself.
 
 Discord channel permissions remain the primary visibility boundary. The
 server-side exclusion list provides an additional denylist for channels the bot
