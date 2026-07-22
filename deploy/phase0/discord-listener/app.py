@@ -138,11 +138,14 @@ class DiscordListener(discord.Client):
         if member and member.bot:
             return None
         reaction_name = str(payload.emoji)
+        normalized_reaction_name = reaction_name.replace("\ufe0f", "")
+        for skin_tone in ("🏻", "🏼", "🏽", "🏾", "🏿"):
+            normalized_reaction_name = normalized_reaction_name.replace(skin_tone, "")
         reaction_map = {
             "👍": ("positive", "thumbs_up"),
             "👎": ("negative", "thumbs_down"),
         }
-        normalized = reaction_map.get(reaction_name)
+        normalized = reaction_map.get(normalized_reaction_name)
         if normalized is None:
             return None
         feedback_type, feedback_value = normalized
@@ -166,6 +169,13 @@ class DiscordListener(discord.Client):
     ) -> None:
         event = self._feedback_event(payload, "reaction_added")
         if event:
+            logger.info(
+                "Queued Discord feedback event kind=%s message_id=%s channel_id=%s reaction=%s",
+                event["event_kind"],
+                event["discord_response_message_id"],
+                event["channel_id"],
+                event["reaction_name"],
+            )
             self._enqueue(event)
 
     async def on_raw_reaction_remove(
@@ -173,6 +183,13 @@ class DiscordListener(discord.Client):
     ) -> None:
         event = self._feedback_event(payload, "reaction_removed")
         if event:
+            logger.info(
+                "Queued Discord feedback event kind=%s message_id=%s channel_id=%s reaction=%s",
+                event["event_kind"],
+                event["discord_response_message_id"],
+                event["channel_id"],
+                event["reaction_name"],
+            )
             self._enqueue(event)
 
     def _enqueue(self, event: dict[str, Any]) -> None:

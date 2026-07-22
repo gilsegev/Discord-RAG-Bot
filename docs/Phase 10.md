@@ -5,8 +5,11 @@
 Phase 10 provides shared feedback plumbing for every bot response whose
 `discord_response_message_id` is persisted. It is not gated on Phase 9B and
 works for active calls, passive responses, and future response modes.
+Those response IDs come from the n8n Discord Bot API output writer, which posts
+to the originating channel; Phase 10 does not depend on channel webhooks.
 
-Version 1 captures Unicode 👍 and 👎 reactions. Explicit context-menu critiques
+Version 1 captures Unicode 👍 and 👎 reactions, including skin-tone variants.
+Explicit context-menu critiques
 are deferred to Phase 10B because the referenced Feedback & Reaction
 Correlation Design is not currently present in this repository.
 

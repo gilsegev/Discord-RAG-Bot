@@ -31,6 +31,13 @@ class FeedbackEventTests(unittest.TestCase):
         self.assertEqual(len(event["feedback_author_id_hash"]), 64)
         self.assertNotIn("user_id", event)
 
+    def test_normalizes_skin_tone_positive_reaction(self):
+        event = app.DiscordListener._feedback_event(
+            self.listener(), self.payload("👍🏻"), "reaction_added")
+        self.assertEqual(event["feedback_type"], "positive")
+        self.assertEqual(event["feedback_value"], "thumbs_up")
+        self.assertEqual(event["reaction_name"], "👍🏻")
+
     def test_normalizes_negative_removal(self):
         event = app.DiscordListener._feedback_event(
             self.listener(), self.payload("👎"), "reaction_removed")
