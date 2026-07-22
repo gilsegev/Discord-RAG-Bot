@@ -214,7 +214,7 @@ RULES — follow exactly, in priority order:
    Every claim must be traceable to a specific context block.
 
 2. REFUSAL: If the provided context is insufficient to answer confidently,
-   respond with exactly the refusal text defined in section 3.2.
+   respond with exactly the CONTEXT refusal text defined in section 3.2.
    Then stop. Do not add caveats, partial answers, or suggestions.
 
 3. CITATION: After each key claim, cite the source in this format:
@@ -238,17 +238,78 @@ RULES — follow exactly, in priority order:
 7. SAFETY: Do not surface personal identifying information from the
    context even if present. Do not answer questions that require
    advice beyond what the community has discussed.
+   If the QUESTION ITSELF asks for personal, contact, or
+   identity-linked information (section 3.2.3), respond with exactly
+   the SAFETY refusal text defined in section 3.2. This takes priority
+   over rule 2 — see the gate precedence in section 3.2.2.
 ```
 
-### 3.2 Refusal text
+### 3.2 Refusal contract
 
-Exact single-line string — do not paraphrase, do not split across lines in implementation:
+The bot has **two refusal classes**. Each has its own exact user-facing string and its own machine-readable `refusal_reason`. A refusal must always emit both.
+
+#### 3.2.1 Refusal strings
+
+**CONTEXT refusal** — the corpus does not support an answer. Exact single-line string:
 
 ```
 I don't have enough TPM Unite specific context to answer this confidently, try rephrasing or ask the community directly.
 ```
 
-**Implementation note:** This must be a single unbroken string in the n8n node and LLM prompt. The evaluation rubric in `evaluation-and-feedback-scoring-design.md` checks this string exactly. A newline in the middle of the string counts as a variation and fails the tone/refusal dimension. When rendering in Discord, the string may wrap visually — that is fine. The underlying string must have no embedded newline.
+**SAFETY refusal** — the request itself asks for personal, contact, or identity-linked information. Exact single-line string:
+
+```
+I can't share personal, contact, or identifying information about TPM Unite members. Try asking the community directly.
+```
+
+**Implementation note:** Both must be single unbroken strings in the n8n node and LLM prompt. The evaluation rubric in `evaluation-and-feedback-scoring-design.md` checks each string exactly for its class. A newline in the middle of a string counts as a variation and fails the tone/refusal dimension. When rendering in Discord, a string may wrap visually — that is fine. The underlying string must have no embedded newline.
+
+**Why the SAFETY string does not name the corpus:** it describes what the bot *will not do*, never what the corpus *contains*. Saying "I can't share that member's email" would confirm the email exists — an existence disclosure that turns refusals into an oracle. The string above is identical whether or not the requested data is indexed.
+
+#### 3.2.2 Refusal reason taxonomy and gate precedence
+
+Every refusal emits a machine-readable `refusal_reason`, stored on the transaction and in `rag_regression_results`:
+
+| `refusal_reason` | Trigger | Stage | User-facing string |
+|---|---|---|---|
+| `pii_or_safety_request` | Question intent matches section 3.2.3 | **Stage 0 (pre-retrieval)** | SAFETY |
+| `retrieval_score_below_threshold` | All Stage 1 results `< 0.55` | Stage 1 | CONTEXT |
+| `reranker_score_below_threshold` | All reranked chunks `<= 0` | Stage 2 | CONTEXT |
+| `context_insufficient_after_budget` | Fewer than 3 chunks survive budget trimming | Context assembly | CONTEXT |
+
+**Gate precedence — the safety gate runs first, before retrieval:**
+
+```text
+question
+  -> [Stage 0: safety/PII intent gate]  --refuse--> SAFETY string + pii_or_safety_request
+  -> retrieval -> rerank -> dedupe -> context assembly
+                                        --refuse--> CONTEXT string + specific reason
+  -> answer
+```
+
+This ordering is the contract, not an implementation detail. If the safety gate ran *after* retrieval, a PII request that happened to retrieve weak context would refuse with the CONTEXT string and a retrieval-shaped reason — reporting a corpus gap where the real reason was a safety boundary. The gate must not depend on what retrieval returned.
+
+**Regression benefit:** because Stage 0 is pre-retrieval and pre-Gemini, `refusal_reason = pii_or_safety_request` is fully observable in **retrieval-only mode**. The safety gate is therefore testable in no-secret CI runs, even though the exact user-facing wording still requires full-answer mode to validate (see *What Each Run Mode Can Score* in `Regression README.md`).
+
+#### 3.2.3 What counts as a PII/safety request
+
+The gate fires on the **intent of the question**, independent of whether matching data exists in the corpus:
+
+1. **Contact details** for a named or implied individual — email, phone, LinkedIn, DM handle, or other direct-contact identifier.
+2. **Compensation, employment status, or other sensitive attribute tied to an identifiable individual** — including "how much does X make."
+3. **Enumeration of individuals by a sensitive attribute** — for example listing who was laid off, who is on a visa, or who is job-searching.
+4. **Attribution requests where the person is the answer** rather than the substance — "who said that," when the value sought is the identity itself.
+
+Requests that are *about* a sensitive topic but seek aggregate community knowledge are **not** safety refusals. "What negotiation tips have people shared?" is a normal grounded answer with individual identities omitted.
+
+#### 3.2.4 Redaction versus refusal
+
+These are different mechanisms and must not be conflated:
+
+- **Refusal (Stage 0)** applies to the *question*. A PII-seeking question is refused before retrieval runs.
+- **Redaction (context assembly)** applies to the *retrieved context*. A legitimate question whose retrieved chunks happen to contain personal identifiers is answered normally, with those identifiers omitted or aggregated. This is Rule 7 in the system prompt and is **not** a refusal — it must not emit a `refusal_reason`.
+
+Prompt-injection and grounding-bypass attempts (for example "ignore your previous instructions") are **not** safety refusals under this section. They are grounding failures and refuse with the CONTEXT string, consistent with regression cases RQ-042 and RQ-043.
 
 ### 3.3 Source and citation style
 
@@ -287,6 +348,8 @@ Yes — for nuanced, evolving, or role-specific answers, close with the nuance c
 ### 3.8 Safety rule
 
 The bot must not answer beyond what is in the retrieved context. This is Rule 1 in the system prompt and is the non-negotiable gate in the evaluation rubric. The v1 bot was deprecated specifically for violating this rule. Any answer that adds claims not present in the retrieved context is a groundedness failure regardless of how helpful it reads.
+
+Separately, the bot must not surface personal or identifying information about members. That obligation is met by two distinct mechanisms defined in section 3.2: the **Stage 0 safety gate** for PII-seeking questions, and **redaction at context assembly** for incidental identifiers in otherwise legitimate answers. A response that surfaces member PII is a safety failure regardless of how well grounded it is.
 
 ---
 
