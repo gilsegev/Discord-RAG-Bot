@@ -18,7 +18,7 @@ Manual grading (Phases 0–1) is a strict **binary Pass/Fail** per dimension —
 These are complementary, not redundant: production feedback can't grade a bot before launch, and a 👍 measures satisfaction, not groundedness. The curated set covers both gaps.
 
 ## Metrics
-Quality side of the weekly **#bot-metrics** digest (rolled up by Observability from `rag_eval_labels`): context-found rate, groundedness pass rate, correct-refusal rate, thumbs-up %, and a single **RAG Reliability Index (RRI)** — a weighted composite of the critical gates that gives one comparable trend line across weeks of varying traffic (it's a rate, so already traffic-normalized). Formula: **RRI = 0.7 × groundedness pass rate + 0.3 × correct-refusal rate**. The component rates are always shown *alongside* RRI — a single number can hide a groundedness drop offset by a refusal rise — as is the week's sample size (n), since low-traffic weeks make the percentage swing. The hard no-context gate (below) stays *separate* from RRI: it's a pass/fail floor, not part of the average. Operational metrics (latency, volume) stay with Observability.
+Quality side of the weekly **#bot-metrics** digest (rolled up by Observability from `rag_eval_labels`): context-found rate, groundedness pass rate, correct-refusal rate, thumbs-up % (denominator and mixed-reaction handling defined in Appendix B), and a single **RAG Reliability Index (RRI)** — a weighted composite of the critical gates that gives one comparable trend line across weeks of varying traffic (it's a rate, so already traffic-normalized). Formula: **RRI = 0.7 × groundedness pass rate + 0.3 × correct-refusal rate**. The component rates are always shown *alongside* RRI — a single number can hide a groundedness drop offset by a refusal rise — as is the week's sample size (n), since low-traffic weeks make the percentage swing. The hard no-context gate (below) stays *separate* from RRI: it's a pass/fail floor, not part of the average. Operational metrics (latency, volume) stay with Observability.
 
 ## Launch gates (ratified)
 Groundedness ≥ 90%; **zero** ungrounded answers on no-context questions (non-negotiable — the v1 failure); correct-refusal ≥ 85%; framing/tone ≥ 90% on nuanced cases.
@@ -80,3 +80,62 @@ This backs the rubric named in *What we measure*. It sits **outside** the one-pa
 - **Verdict:** the case fails on groundedness despite reading as helpful — and any groundedness Fail fails the case. This is exactly the v1 failure the rubric exists to catch: the fix isn't a tone tweak, it's stopping the model from adding claims the context doesn't support. Note retrieval itself was fine (the right threads came back) — proof that good retrieval doesn't guarantee a grounded answer, which is why groundedness is graded directly and retrieval only inferred.
 
 **Calibration.** Before trusting the rubric, two people independently grade the same ~10 cases. Frequent disagreement means a Pass/Fail boundary is underspecified — tighten the wording before scaling. (Binary marks make this far easier to reach agreement on than a graded scale, which is the point of the switch.)
+
+---
+
+## Appendix B — Reaction feedback semantics
+
+Discord permits the same member to hold both 👍 and 👎 on one bot response at the same time. The main doc's thumbs-up % needs that edge case defined, or mixed members get silently counted as positive or negative. This appendix defines persistence, removal, review, and weekly aggregation. It covers reaction *semantics*; how reactions are captured and tied to a transaction stays in the Feedback & Reaction Correlation design.
+
+### B.1 Storage model
+
+Phase 10 mirrors Discord state rather than reducing it to a single verdict. One row per **bot response + hashed member + source + normalized reaction**.
+
+1. **Each currently present configured reaction is retained independently** per member and bot response. A later reaction does not overwrite an earlier one that is still present.
+2. **A member may simultaneously hold positive and negative feedback** on the same response. This is a valid state, not a data error, and must not be collapsed at write time.
+3. **Removing a reaction removes only that matching signal.** If a member removes 👍, delete the `thumbs_up` row; any `thumbs_down` row remains.
+4. **Duplicate adds of the same reaction are idempotent** — no duplicate rows, no double counting.
+5. **Different members are independent** and may disagree on the same response. Disagreement across members is a signal to preserve, never an inconsistency to resolve.
+
+**Worked example.** For bot response `5000`, member hash `abc123` adds both reactions:
+
+| response | member hash | source | feedback value | feedback type | review candidate |
+|---|---|---|---|---|---|
+| 5000 | abc123 | reaction | thumbs_up | positive | false |
+| 5000 | abc123 | reaction | thumbs_down | negative | true |
+
+If `abc123` then removes 👍, only the first row is deleted. The response remains a review candidate on the strength of the surviving 👎.
+
+### B.2 Derived member-level states
+
+Weekly reporting derives one state per **(bot response, member)** pair from the reactions currently present:
+
+| Reactions present | Derived state |
+|---|---|
+| 👍 only | `positive` |
+| 👎 only | `negative` |
+| both 👍 and 👎 | `mixed` |
+| neither | `no_feedback` |
+
+States are **derived at reporting time from present reactions**, never stored as a running verdict — otherwise removals cannot be honoured correctly.
+
+### B.3 Thumbs-up percentage
+
+The denominator is **(response, member) pairs in a decided state** — `positive` or `negative` only:
+
+```text
+thumbs-up % = count(positive) / (count(positive) + count(negative)) × 100
+```
+
+- `mixed` pairs are excluded from **both the numerator and the denominator**. A member holding both reactions has not expressed a net judgement, and forcing one would fabricate a signal the member did not give.
+- `no_feedback` pairs are excluded from both, as they always have been.
+- **Mixed pairs are reported separately** — as a count alongside the percentage, never folded into it. A rising mixed count is itself a signal (typically a partially useful answer) and is lost if it only ever suppresses the denominator.
+- Report the decided-pair count (n) alongside the percentage, consistent with the sample-size rule in *Metrics*.
+
+### B.4 Review candidacy
+
+**Any currently present 👎 makes the response a human-review candidate — including a `mixed` state.** Review candidacy is evaluated per response, not per derived member state: one negative reaction from one member is sufficient, regardless of how many positives the response also carries.
+
+This is deliberately independent of the thumbs-up % treatment. A `mixed` member is excluded from the *metric* because their judgement is ambiguous, but is exactly the case a *human* should look at. Excluding mixed states from review as well would hide the most informative responses in the set.
+
+Consistent with the main doc, a 👎-triggered review is a **review trigger and a candidate new curated case** — not an eval label.
