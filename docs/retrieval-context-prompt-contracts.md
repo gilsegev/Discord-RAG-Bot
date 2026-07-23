@@ -147,8 +147,9 @@ For each of the top 5 reranked, boosted, and deduped chunks, include the followi
 
 ```
 --- Context chunk {n} of {total} ---
-Channel:      #{channel}
+Channel:      <#{channel_id}> (#{channel})
 Thread:       {thread_name or "N/A"}
+Citation:     (<#{channel_id}>, [message](https://discord.com/channels/853099205206999050/{channel_id}/{first_message_id}), {start_ts[:10]})
 Date range:   {start_ts[:10]} to {end_ts[:10]}
 Authors:      {comma-joined authors}
 Score:        {reranker_score, 2 decimal places}
@@ -159,7 +160,8 @@ Discord link: https://discord.com/channels/853099205206999050/{channel_id}/{firs
 ```
 
 Fields rationale:
-- **Channel + Thread** — grounds the LLM in where the conversation happened
+- **Channel + Thread** — grounds the LLM in where the conversation happened; the response uses Discord's native `<#channel_id>` mention so Discord renders the channel name as a clickable link
+- **Citation** — a ready-to-copy Discord citation containing the native channel mention and a masked jump link to the first source message; if source IDs are absent, context assembly emits readable plain text and the model must refuse rather than invent a link
 - **Date range** — lets the LLM note if context is old; critical for fast-changing topics like hiring
 - **Authors** — preserves community attribution; supports citation style
 - **Score** — `reranker_score` (not `retrieval_score`) — the more meaningful confidence signal at context assembly time
@@ -217,9 +219,10 @@ RULES — follow exactly, in priority order:
    respond with exactly the refusal text defined in section 3.2.
    Then stop. Do not add caveats, partial answers, or suggestions.
 
-3. CITATION: After each key claim, cite the source in this format:
-   (#{channel}, {YYYY-MM-DD})
-   For forum threads: (#{channel} > {thread_name}, {YYYY-MM-DD})
+3. CITATION: After each key claim, copy the complete Citation value from the
+   supporting context block verbatim. It must contain the native Discord
+   channel mention and the clickable message jump link. For forum threads,
+   include the thread name after the channel mention.
 
 4. FRAMING: Frame answers as community wisdom, not authoritative rulings.
    Use language like "TPM Unite members have discussed...",
@@ -254,10 +257,18 @@ I don't have enough TPM Unite specific context to answer this confidently, try r
 
 | Situation | Citation format |
 |---|---|
-| Normal channel | `(#tpm-interview-resources, 2023-06-15)` |
-| Forum thread | `(#forum-discussion > Future of TPMs with AI, 2023-06-15)` |
+| Normal channel | `(<#123456789>, [message](https://discord.com/channels/853099205206999050/123456789/987654321), 2023-06-15)` |
+| Forum thread | `(<#123456789> > Future of TPMs with AI, [message](https://discord.com/channels/853099205206999050/123456789/987654321), 2023-06-15)` |
 | Multiple sources | List each on a new line after the answer |
 | No citable source | Do not cite — trigger refusal instead |
+
+Before the citation guard runs, the response builder canonicalizes citations
+whose Discord jump URL exactly matches a selected context source. This replaces
+model-formatted variants (for example, a linked citation that omitted its date)
+with the authoritative channel, thread, URL, and date from `selected_context`.
+URLs that do not match selected context are not rewritten and fail the citation
+guard. `citation_normalized_count` records how many citations were rendered from
+selected source metadata.
 
 ### 3.4 Uncertainty handling
 
