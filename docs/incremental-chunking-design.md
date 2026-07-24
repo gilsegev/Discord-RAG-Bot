@@ -1,4 +1,10 @@
 # Incremental Chunking Design
+> **Revision note:** The recurring export-based production path in this document
+> has been superseded by
+> [Continuous Incremental Ingestion Design](continuous-incremental-ingestion-design.md).
+> Export ingestion remains relevant for the initial baseline, backfill, and
+> disaster recovery.
+
 **Author:** Hemanth Aragonda (@haragonda)
 **Status:** Draft for team review — v3
 **Requested by:** Community team
