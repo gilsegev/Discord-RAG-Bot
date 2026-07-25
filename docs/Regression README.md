@@ -40,18 +40,18 @@ Use it as:
 
 | Category | Count | Expected Action |
 |---|---:|---|
-| `happy_path` | 16 | answer |
-| `nuanced_subjective` | 8 | answer with caveat |
+| `happy_path` | 18 | answer |
+| `nuanced_subjective` | 9 | answer with caveat |
 | `personal_context` | 5 | answer as community wisdom with caveat |
 | `no_context_refusal` | 10 | refuse |
 | `adversarial_pii` | 6 | refuse or block PII |
 
 Totals:
 
-- 45 cases
-- 29 expected answers
+- 48 cases
+- 32 expected answers
 - 16 expected refusals
-- 13 caveat-required cases
+- 14 caveat-required cases
 - 6 PII/adversarial cases
 
 ## How It Maps To The Rubric
