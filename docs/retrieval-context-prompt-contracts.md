@@ -171,7 +171,24 @@ Fields rationale:
 Feedback correlation note:
 `message_ids` and `first_message_id` identify the evidence shown to the user. User feedback on the bot response is stored separately in `rag_feedback`, where `feedback_source` records the input channel (`reaction`, `context_menu`, `slash_command`, `form`, or `manual`) and `feedback_type` / `feedback_value` record the normalized sentiment or critique. Do not overload `feedback_type` to mean both source and sentiment.
 
-### 2.2 Token budget
+### 2.2 Phase 9C capture versus retrieval metadata
+
+The existing Qdrant/context contract already includes `channel_id`,
+`thread_name`, `first_message_id`, `message_ids`, `start_ts`, `end_ts`, and
+authors.
+
+Phase 9C.1 additionally captures `parent_channel_id`, `thread_id`,
+`parent_message_id`, Discord creation time, author hash, message type, attachment
+presence, and `normalizer_version` in Postgres. These fields are operational
+source data for later rechunk planning; they are not added to the LLM context
+block.
+
+Later Phase 9C ownership work must add `root_message_id`, a deterministic
+conversation/window identity, and chunker/embedding/corpus versions to the
+Postgres chunk manifest and Qdrant payload. Until that baseline migration is
+verified, n8n continues to use the existing `message_ids` overlap dedupe rule.
+
+### 2.3 Token budget
 
 **Updated per Issue #19:** Phase 7 testing confirmed the previous 1,200-token context budget caused frequent `context_token_budget_insufficient` refusals on the real Discord corpus. Budget updated to 2,200 tokens, matching the implemented n8n `context_token_budget = 2200`.
 
@@ -186,7 +203,7 @@ Feedback correlation note:
 
 The 154 tokens/chunk figure is derived from the current Qdrant index average (153.6 tokens/chunk across 1,232 indexed chunks). The ~50 tokens/header estimate accounts for channel, thread, date range, authors, score, message IDs, and Discord link.
 
-### 2.3 Context overflow handling
+### 2.4 Context overflow handling
 
 **Single chunk overflow:** The current largest chunk is 692 tokens — well under the 2,200-token context budget for 5 chunks. The ingestion pipeline's `_split_if_needed()` function splits oversized chunks at line boundaries before indexing, including a single-line overflow guard (v8). n8n does not need to handle single-chunk overflow at retrieval time.
 
