@@ -134,5 +134,10 @@ class MessageCaptureEnvelopeTests(unittest.TestCase):
         self.assertTrue(event["is_system_event"])
 
 
+class WebhookAuthenticationTests(unittest.TestCase):
+    def test_webhook_secret_defaults_to_empty(self):
+        self.assertEqual(app.N8N_WEBHOOK_SHARED_SECRET, "")
+
+
 if __name__ == "__main__":
     unittest.main()

@@ -14,6 +14,7 @@ function node(name) {
 function runCodeNode(name, input) {
   const code = node(name).parameters.jsCode;
   const context = {
+    $env: {},
     $json: input,
     $items(requestedName) {
       assert.strictEqual(requestedName, "Normalize Intake");

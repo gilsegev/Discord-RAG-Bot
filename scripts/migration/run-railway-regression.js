@@ -9,15 +9,19 @@ if (!url || !outputFile) {
 }
 
 const statusFile = `${outputFile}.status.json`;
-const expectedTotalCases = Number(process.env.EXPECTED_TOTAL_CASES || (cases === 'all' ? 45 : 0));
-const minimumPassCount = Number(process.env.MIN_PASS_COUNT || (cases === 'all' ? 40 : 0));
+const expectedTotalCases = Number(process.env.EXPECTED_TOTAL_CASES || (cases === 'all' ? 48 : 0));
+const minimumPassCount = Number(process.env.MIN_PASS_COUNT || (cases === 'all' ? 43 : 0));
 const maximumFailCount = Number(process.env.MAX_FAIL_COUNT || (cases === 'all' ? 1 : 0));
 const maximumReviewCount = Number(process.env.MAX_REVIEW_COUNT || (cases === 'all' ? 4 : 0));
 
 async function main() {
+  const headers = { 'content-type': 'application/json' };
+  if (process.env.N8N_WEBHOOK_SHARED_SECRET) {
+    headers['x-rag-webhook-secret'] = process.env.N8N_WEBHOOK_SHARED_SECRET;
+  }
   const response = await fetch(url, {
     method: 'POST',
-    headers: { 'content-type': 'application/json' },
+    headers,
     body: JSON.stringify({
       cases,
       mode: 'retrieval_only',

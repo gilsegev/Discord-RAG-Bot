@@ -3,6 +3,8 @@
     "n8n:list": "node scripts/n8n-sync.js list",
     "n8n:pull": "node scripts/n8n-sync.js pull",
     "n8n:push": "node scripts/n8n-sync.js push",
-    "test:phase9c1": "node scripts/test-phase9c1-capture.js"
+    "test:phase9c1": "node scripts/test-phase9c1-capture.js",
+    "sync:regression-cases": "node scripts/sync-regression-cases.js",
+    "test:regression-cases": "node scripts/sync-regression-cases.js --check"
   }
 }

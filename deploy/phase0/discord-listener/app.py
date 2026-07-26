@@ -48,6 +48,7 @@ N8N_INTAKE_URL = os.getenv(
 N8N_FEEDBACK_URL = os.getenv(
     "N8N_FEEDBACK_URL", "http://n8n:5678/webhook/rag-feedback-phase-10"
 ).strip()
+N8N_WEBHOOK_SHARED_SECRET = os.getenv("N8N_WEBHOOK_SHARED_SECRET", "").strip()
 N8N_REQUEST_TIMEOUT_SECONDS = float(os.getenv("N8N_REQUEST_TIMEOUT_SECONDS", "600"))
 DELIVERY_QUEUE_SIZE = int(os.getenv("DISCORD_DELIVERY_QUEUE_SIZE", "100"))
 SEEN_MESSAGE_CACHE_SIZE = int(os.getenv("DISCORD_SEEN_MESSAGE_CACHE_SIZE", "1000"))
@@ -303,7 +304,12 @@ class DiscordListener(discord.Client):
         delivery_kind = event.get("delivery_kind", "message")
         target_url = N8N_FEEDBACK_URL if delivery_kind == "feedback" else N8N_INTAKE_URL
         outbound = {key: value for key, value in event.items() if key != "delivery_kind"}
-        async with self.http_session.post(target_url, json=outbound) as response:
+        headers = {}
+        if N8N_WEBHOOK_SHARED_SECRET:
+            headers["X-RAG-Webhook-Secret"] = N8N_WEBHOOK_SHARED_SECRET
+        async with self.http_session.post(
+            target_url, json=outbound, headers=headers
+        ) as response:
             response_body = await response.text()
             if response.status < 200 or response.status >= 300:
                 raise RuntimeError(
