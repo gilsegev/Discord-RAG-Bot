@@ -21,6 +21,41 @@ Discord Gateway
 
 The listener does not expose a public port.
 
+## Phase 9C.1 Continuous Capture
+
+The listener marks each accepted `MESSAGE_CREATE` envelope as a capture
+candidate and includes the metadata needed to reproduce the historical
+chunker's message record:
+
+- Discord creation timestamp
+- parent channel and thread IDs/names
+- direct reply-parent message ID
+- author hash and Discord username
+- message type and attachment presence
+
+The Phase 9 intake workflow normalizes and validates this envelope, then writes
+eligible human messages to `rag_discord_messages` as its first durable action.
+The same transaction adds one `rag_pending_chunk_work` row. Both inserts are
+idempotent by Discord message ID. Manual, regression, evaluator, bot, webhook,
+system, excluded-channel, and corpus-ineligible events are not captured.
+
+Capture precedes active/passive routing, but the accepted MVP delivery limitation
+remains: a queue overflow or failure to reach n8n is logged and the message is
+not retried.
+
+Before pushing the Phase 9C.1 workflow to an existing deployment, apply:
+
+```bash
+cd ~/Discord-RAG-Bot/deploy/phase0
+docker compose exec -T postgres \
+  psql -U ragbot_admin -d ragbot \
+  < sql/07-phase9c1-incremental-capture-migration.sql
+```
+
+Docker initialization scripts do not rerun against an existing Postgres volume,
+so deploying the workflow before this migration would make intake fail at its
+first database action.
+
 ## Discord Application Configuration
 
 Create a dedicated Discord application and bot in the Discord Developer Portal.
