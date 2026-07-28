@@ -472,7 +472,7 @@ Exit criteria:
 
 ### Phase 9C.2: Seed chunk ownership manifest
 
-**Status:** In implementation
+**Status:** Completed in PR #45
 
 Phase 9C.2 creates the ownership baseline needed for safe targeted replacement.
 It is additive: it must not consume pending work, re-embed chunks, or mutate the
@@ -533,12 +533,63 @@ comparisons because SQL alone cannot prove that each Qdrant point and payload
 matches its manifest row. A failed validation leaves Phase 9C.2 unaccepted and
 does not authorize production replacement.
 
-### Later Phase 9C work
+### Phase 9C.3: Offline planner and shadow rechunking
 
-Later increments prepare bounded replacement plans using the existing chunker,
-validate without production mutation, apply verified replacements during
-maintenance, and run structural plus Phase 8 regression gates before reopening
-RAG service.
+**Status:** Implemented in the Phase 9C.3 PR
+
+Phase 9C.3 turns pending capture rows into deterministic replacement plans
+without changing the production corpus.
+
+Implementation:
+
+1. Read a fixed pending-work cutoff without claiming or completing work.
+2. Coalesce replies by proven conversation root and reproduce the v10
+   non-reply window behavior. A singleton remains buffered until the next
+   same-scope message; once a window contains two messages, a later message
+   beyond 15 minutes starts the next window.
+3. Resolve affected existing points through `rag_chunk_manifest` and Qdrant
+   payload timestamps, including the configured two-message overlap.
+4. Run the existing v10 chunker on the bounded region.
+5. Produce stable old-point and replacement-point IDs. A final unmatched
+   singleton remains `deferred`, matching the full v10 chunker.
+6. Optionally call the production embedding service for every replacement chunk
+   to validate the 768-dimension contract and measure Railway throughput.
+7. Persist the immutable plan and evidence in
+   `rag_chunk_replacement_plans` without changing Qdrant or pending-work status.
+
+The entry point is `python -m ingestion.incremental_planner`. It requires
+`--database-url` and `--qdrant-url`; `--embedder-url` adds live shadow embedding,
+`--output` writes the review artifact, and `--persist` stores the validated plan.
+
+Exit criteria:
+
+- reply and window work is deterministically coalesced
+- repeated planning at the same cutoff produces the same plan ID and digest
+- selected old points belong only to affected channel/thread/conversation scopes
+- fixture shadow output matches full v10 chunker output for the affected scope
+- every shadow embedding is 768 dimensions
+- output and static validation report zero Qdrant mutations
+- measured replacement throughput and duration are recorded for Phase 9C.4
+- the complete Phase 8 regression remains at the accepted baseline
+
+Initial Railway validation measured 10 representative 768-dimension
+embeddings in 5.361 seconds (111.92 chunks/minute). Historical transactions,
+excluding `n8n-regression` and `rag-bot-testing`, recorded 81 real-server
+messages across the seven complete days from July 21 through July 27: 11.6
+messages/day on average and a peak of 23. At the measured embedding rate, the
+worst-case one-chunk-per-message embedding time is approximately 6 seconds for
+an average day, 12 seconds for the observed peak, and 27 seconds for a
+conservative 50-message day.
+
+The complete 48-case regression consistently takes 118–120 seconds. Including
+the observed request-drain tail (p95 approximately 16 seconds, maximum 27
+seconds) and a buffer for Qdrant replacement plus structural verification, the
+expected Phase 9C.4 maintenance window is approximately 2.5–3 minutes for a
+typical day and 3–4 minutes for a conservative peak. The planner itself runs
+before maintenance and does not contribute to user-visible downtime.
+
+Later increments apply verified replacements during maintenance, then run
+structural plus Phase 8 regression gates before reopening RAG service.
 
 The July 2026 138.4-minute full rebuild ran on Gil's higher-performance 8-core
 workstation. Incremental production execution now runs on Railway, so later

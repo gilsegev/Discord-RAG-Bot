@@ -416,6 +416,10 @@ deterministically fails the seed instead of being guessed.
 
 ### Phase 9C.3 — Offline planner and shadow rechunking
 
+**Implementation:** `ingestion/incremental_planner.py` and the additive
+`09-phase9c3-shadow-plans-migration.sql`. Planning and shadow embedding are
+strictly read-only toward Qdrant; pending work is not claimed in this phase.
+
 - Coalesce reply conversations and non-reply windows.
 - Produce deterministic old-point and replacement-point plans.
 - Run chunking and embedding without modifying production Qdrant.
