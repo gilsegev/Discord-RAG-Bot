@@ -437,6 +437,8 @@ These are logical observability events, not native events emitted directly by Di
 | Response | `discord.response_sent`, `discord.response_failed` |
 | Regression | `regression.run_started`, `regression.case_completed`, `regression.result_written`, `regression.run_completed` |
 | Feedback | `feedback.received`, `feedback.linked`, `feedback.unmatched` |
+| Incremental plan | `incremental.plan_started`, `incremental.plan_deferred`, `incremental.plan_shadow_validated`, `incremental.plan_invalidated` |
+| Incremental runtime | `incremental.run_created`, `incremental.draining_started`, `incremental.maintenance_entered`, `incremental.replacement_started`, `incremental.replacement_completed`, `incremental.validation_started`, `incremental.validation_completed`, `incremental.rollback_started`, `incremental.rollback_completed`, `incremental.serving_restored`, `incremental.run_failed` |
 
 Required attributes:
 
@@ -451,6 +453,24 @@ Required attributes:
 - `latency_ms`
 - `error_type`, when applicable
 - `failure_reason`, when applicable
+
+Incremental events additionally require `incremental_run_id`, `plan_id`,
+`corpus_version_before`, `corpus_version_after` when known, `batch_cutoff`,
+old/replacement/new/reused/deleted point counts, processed/deferred message
+counts, rollback snapshot bytes/digest, and lifecycle state.
+
+Durable incremental records live in the `ragbot` Postgres database:
+
+- `rag_incremental_runs` stores one permanent summary per run.
+- `rag_incremental_run_events` stores append-only timestamped transitions.
+- `rag_runtime_state` coordinates serving and maintenance.
+- `rag_active_execution_leases` supports bounded drain behavior.
+
+n8n owns the lifecycle. Its coordinator workflow writes each transition in one
+Postgres transaction and emits a correlated Phoenix span through the existing
+trace-emitter. Python helpers do not independently advance lifecycle state.
+Affected-point rollback artifacts are retained for 14 days; summary and
+transition audit rows are permanent.
 
 ## 7. n8n Integration Points
 

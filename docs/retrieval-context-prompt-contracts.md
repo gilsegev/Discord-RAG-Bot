@@ -190,6 +190,13 @@ without mutating production points. Payload enrichment and targeted replacement
 remain later phases. Until those migrations are verified, n8n continues to use
 the existing `message_ids` overlap dedupe rule.
 
+During Phase 9C.4 maintenance, durable Discord capture occurs before the runtime
+gate. Active calls receive the approved maintenance response; passive calls are
+captured as post-cutoff pending work and do not enter retrieval. The shared RAG
+core repeats the gate immediately before Qdrant so no normal caller can observe
+a partially replaced corpus. Only the n8n coordinator's correlated validation
+run may use the internal maintenance-validation path.
+
 ### 2.3 Token budget
 
 **Updated per Issue #19:** Phase 7 testing confirmed the previous 1,200-token context budget caused frequent `context_token_budget_insufficient` refusals on the real Discord corpus. Budget updated to 2,200 tokens, matching the implemented n8n `context_token_budget = 2200`.

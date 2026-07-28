@@ -540,6 +540,28 @@ does not authorize production replacement.
 Phase 9C.3 turns pending capture rows into deterministic replacement plans
 without changing the production corpus.
 
+Plan lifecycle is separate from the runtime serving-state machine:
+
+```text
+planned -> shadow_validated -> applied
+   |              |
+   +-> deferred   +-> invalidated / failed
+```
+
+`shadow_validated` is the only plan state eligible for Phase 9C.4. It requires:
+
+- deterministic replanning with the same plan ID and digest
+- exact old/replacement IDs, ownership, and replacement text digests
+- only affected channel/thread/conversation scopes
+- production-model embedding of every replacement chunk
+- embedded count equal to replacement count, with every vector 768 dimensions
+- declared chunker and embedding versions matching observed versions
+- fixture equivalence and zero Qdrant mutations
+
+A structurally complete plan without full embedding evidence remains `planned`.
+Deferred-only work remains `deferred`. Phase 9C.4 revalidates this contract
+immediately before maintenance and invalidates stale plans.
+
 Implementation:
 
 1. Read a fixed pending-work cutoff without claiming or completing work.
@@ -588,8 +610,75 @@ expected Phase 9C.4 maintenance window is approximately 2.5–3 minutes for a
 typical day and 3–4 minutes for a conservative peak. The planner itself runs
 before maintenance and does not contribute to user-visible downtime.
 
-Later increments apply verified replacements during maintenance, then run
-structural plus Phase 8 regression gates before reopening RAG service.
+### Phase 9C.3.5: Incremental-run state and observability
+
+**Status:** Planned prerequisite for Phase 9C.4
+
+This interim phase keeps production mutation focused. It adds these durable
+tables to the `ragbot` Postgres database:
+
+- `rag_incremental_runs`: one permanent summary per run
+- `rag_incremental_run_events`: timestamped append-only transitions
+- `rag_runtime_state`: singleton serving/maintenance coordination
+- `rag_active_execution_leases`: bounded leases for draining RAG work
+
+It also tightens the Phase 9C.3 persistence path so `shadow_validated` cannot be
+written unless complete replacement embedding/version evidence satisfies the
+contract above.
+
+The n8n maintenance coordinator owns these records. Each transition uses one
+Postgres transaction to verify the prior state, update run/runtime state, and
+append the audit event. Phoenix receives correlated spans using the same
+`incremental_run_id`; Postgres is the durable source of truth.
+
+Run evidence includes plan/corpus IDs, cutoff, timestamps, state,
+pending/claimed/processed/deferred message counts, affected groups,
+old/replacement/new/reused/deleted point counts, snapshot bytes/digest, phase
+durations, regression run/result, retries, failure step/reason, and rollback.
+
+**Gate:** valid and invalid transitions are tested; duplicate workflow delivery
+is idempotent; counts reconcile to source rows; and Phoenix spans correlate to
+the durable Postgres run.
+
+### Phase 9C.4: Maintenance mode and production replacement
+
+**Status:** Planned; manual and feature-flagged initially
+
+Runtime lifecycle:
+
+```text
+serving -> draining -> maintenance -> validating -> serving
+              |             |              |
+              +-> serving   +-> review_needed
+                               -> rolling_back -> serving
+```
+
+`shadow_validated` is absent from this chart because it is a prerequisite plan
+state checked before `serving -> draining`.
+
+Phase 9C.4 accepts and revalidates only `shadow_validated` plans, gates both
+shared intake and RAG core, drains execution leases, continues durable capture,
+snapshots affected old points, applies deterministic replacement, verifies the
+corpus, runs regression while gated, and restores `serving` only on success.
+
+Rollback snapshots are created for every production run and retained for
+14 days. The first production canary also requires a full Qdrant snapshot.
+Snapshots cannot expire while a related run is `review_needed` or before the
+replacement passes structural verification and regression.
+
+Required validation:
+
+- active calls receive the maintenance response without reaching Qdrant,
+  reranker, or Gemini
+- passive calls are captured as post-cutoff pending work without entering RAG
+- all runtime transitions behave correctly under races, retries, and failures
+- full regression before replacement and before reopening matches baseline
+- injected failure after every mutation step is retryable or reversible
+- no normal query observes a partially updated corpus
+
+The coordinator is an n8n workflow. Python provides deterministic
+planning/chunking and narrow Qdrant operations invoked by n8n; no separate
+always-on orchestration service is introduced.
 
 The July 2026 138.4-minute full rebuild ran on Gil's higher-performance 8-core
 workstation. Incremental production execution now runs on Railway, so later
