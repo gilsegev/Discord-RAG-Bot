@@ -1,7 +1,13 @@
 import unittest
+import json
+import subprocess
+import sys
+import tempfile
+from pathlib import Path
 
 from ingestion.incremental_planner import (
-    PlanningError, WorkItem, coalesce_work, create_shadow_plan, render_plan,
+    PlanningError, WorkItem, _validate_existing_groups,
+    _validate_status_transition, coalesce_work, create_shadow_plan, render_plan,
 )
 
 
@@ -11,6 +17,27 @@ def message(mid, minute, parent=None, channel="10", thread=None):
         "thread_id": thread, "thread_name": None, "parent_id": str(parent) if parent else None,
         "author": "user", "content": f"message {mid} with useful content",
         "timestamp": f"2026-07-28T00:{minute:02d}:00+00:00",
+    }
+
+
+SOURCE_CORPUS = {
+    "corpus_version_id": "corpus-fixture",
+    "manifest_digest": "a" * 64,
+}
+FIXTURE_ATTESTATION = {
+    "passed": True,
+    "chunker_version": "v10",
+    "suite_digest": "b" * 64,
+}
+
+
+def complete_measurement(plan):
+    return {
+        "measurement_kind": "shadow_replacements",
+        "embedded_chunk_count": plan["replacement_point_count"],
+        "embedding_dimensions": [768],
+        "observed_embedding_models": [plan["embedding_version"]],
+        "measured_embedding_seconds": 0.1,
     }
 
 
@@ -133,6 +160,264 @@ class IncrementalPlannerTests(unittest.TestCase):
     def test_output_explicitly_reports_zero_qdrant_mutations(self):
         plan = create_shadow_plan([], [], [], [])
         self.assertEqual(render_plan(plan)["qdrant_mutations"], 0)
+
+    def test_ready_plan_without_complete_evidence_remains_planned(self):
+        records = [message(1, 0), message(2, 1)]
+        plan = create_shadow_plan(
+            [
+                WorkItem("1", 1, "recent_window", "10", None, None),
+                WorkItem("2", 2, "recent_window", "10", None, None),
+            ],
+            records,
+            [],
+            [],
+            source_corpus=SOURCE_CORPUS,
+        )
+        rendered = render_plan(
+            plan,
+            deterministic_replan=create_shadow_plan(
+                [
+                    WorkItem("1", 1, "recent_window", "10", None, None),
+                    WorkItem("2", 2, "recent_window", "10", None, None),
+                ],
+                records,
+                [],
+                [],
+                source_corpus=SOURCE_CORPUS,
+            ),
+            source_corpus_current=True,
+            fixture_attestation=FIXTURE_ATTESTATION,
+        )
+        self.assertEqual(rendered["validation"]["status"], "planned")
+        self.assertIn(
+            "production replacement embedding evidence",
+            rendered["validation"]["missing_evidence"],
+        )
+
+    def test_complete_evidence_is_required_for_shadow_validation(self):
+        records = [message(1, 0), message(2, 1)]
+        work = [
+            WorkItem("1", 1, "recent_window", "10", None, None),
+            WorkItem("2", 2, "recent_window", "10", None, None),
+        ]
+        plan = create_shadow_plan(
+            work, records, [], [], source_corpus=SOURCE_CORPUS
+        )
+        rendered = render_plan(
+            plan,
+            complete_measurement(plan),
+            deterministic_replan=create_shadow_plan(
+                reversed(work),
+                reversed(records),
+                [],
+                [],
+                source_corpus=SOURCE_CORPUS,
+            ),
+            source_corpus_current=True,
+            fixture_attestation=FIXTURE_ATTESTATION,
+        )
+        self.assertEqual(rendered["validation"]["status"], "shadow_validated")
+        self.assertTrue(all(rendered["validation"]["checks"].values()))
+
+    def test_embedding_contradictions_fail_closed(self):
+        records = [message(1, 0), message(2, 1)]
+        work = [
+            WorkItem("1", 1, "recent_window", "10", None, None),
+            WorkItem("2", 2, "recent_window", "10", None, None),
+        ]
+        plan = create_shadow_plan(
+            work, records, [], [], source_corpus=SOURCE_CORPUS
+        )
+        measurement = complete_measurement(plan)
+        measurement["embedding_dimensions"] = [384]
+        rendered = render_plan(
+            plan,
+            measurement,
+            deterministic_replan=plan,
+            source_corpus_current=True,
+        )
+        self.assertEqual(rendered["validation"]["status"], "failed")
+        self.assertIn(
+            "embedding dimensions are not exactly 768",
+            rendered["validation"]["contradictions"],
+        )
+
+    def test_observed_embedding_model_must_match_declared_version(self):
+        records = [message(1, 0), message(2, 1)]
+        work = [
+            WorkItem("1", 1, "recent_window", "10", None, None),
+            WorkItem("2", 2, "recent_window", "10", None, None),
+        ]
+        plan = create_shadow_plan(
+            work, records, [], [], source_corpus=SOURCE_CORPUS
+        )
+        measurement = complete_measurement(plan)
+        measurement["observed_embedding_models"] = ["wrong/model"]
+        rendered = render_plan(
+            plan,
+            measurement,
+            deterministic_replan=plan,
+            source_corpus_current=True,
+        )
+        self.assertEqual(rendered["validation"]["status"], "failed")
+        self.assertIn(
+            "observed embedding model/version mismatch",
+            rendered["validation"]["contradictions"],
+        )
+
+    def test_stale_source_corpus_fails_closed(self):
+        records = [message(1, 0), message(2, 1)]
+        work = [
+            WorkItem("1", 1, "recent_window", "10", None, None),
+            WorkItem("2", 2, "recent_window", "10", None, None),
+        ]
+        plan = create_shadow_plan(
+            work, records, [], [], source_corpus=SOURCE_CORPUS
+        )
+        rendered = render_plan(
+            plan,
+            complete_measurement(plan),
+            deterministic_replan=plan,
+            source_corpus_current=False,
+        )
+        self.assertEqual(rendered["validation"]["status"], "failed")
+        self.assertIn(
+            "source corpus is stale", rendered["validation"]["contradictions"]
+        )
+
+    def test_deferred_only_batch_remains_deferred(self):
+        records = [message(1, 0)]
+        plan = create_shadow_plan(
+            [WorkItem("1", 1, "recent_window", "10", None, None)],
+            records,
+            [],
+            [],
+            source_corpus=SOURCE_CORPUS,
+        )
+        rendered = render_plan(
+            plan,
+            deterministic_replan=plan,
+            source_corpus_current=True,
+        )
+        self.assertEqual(rendered["validation"]["status"], "deferred")
+
+    def test_fixture_attestation_is_version_bound(self):
+        records = [message(1, 0), message(2, 1)]
+        work = [
+            WorkItem("1", 1, "recent_window", "10", None, None),
+            WorkItem("2", 2, "recent_window", "10", None, None),
+        ]
+        plan = create_shadow_plan(
+            work, records, [], [], source_corpus=SOURCE_CORPUS
+        )
+        rendered = render_plan(
+            plan,
+            complete_measurement(plan),
+            deterministic_replan=plan,
+            source_corpus_current=True,
+            fixture_attestation={
+                **FIXTURE_ATTESTATION,
+                "chunker_version": "v9",
+            },
+        )
+        self.assertEqual(rendered["validation"]["status"], "failed")
+        self.assertIn(
+            "fixture-suite attestation mismatch",
+            rendered["validation"]["contradictions"],
+        )
+
+    def test_terminal_plan_status_cannot_be_downgraded(self):
+        for terminal in ("applied", "invalidated", "failed"):
+            with self.subTest(terminal=terminal):
+                with self.assertRaisesRegex(PlanningError, "invalid persisted"):
+                    _validate_status_transition(terminal, "planned")
+                _validate_status_transition(terminal, terminal)
+
+    def test_shadow_validated_plan_cannot_lose_evidence(self):
+        with self.assertRaisesRegex(PlanningError, "invalid persisted"):
+            _validate_status_transition("shadow_validated", "planned")
+
+    def test_existing_persisted_groups_must_match_immutable_evidence(self):
+        group = {
+            "group_key": "window:10:-:2026-07-28T00:00:00+00:00",
+            "work_kind": "recent_window",
+            "channel_id": "10",
+            "thread_id": None,
+            "root_message_id": None,
+            "source_message_ids": ["1", "2"],
+            "old_point_ids": [],
+            "replacement_point_ids": ["123"],
+            "status": "ready",
+            "selected_message_count": 2,
+            "replacement_points": [],
+        }
+        row = (
+            group["group_key"],
+            group["work_kind"],
+            group["channel_id"],
+            group["thread_id"],
+            group["root_message_id"],
+            group["source_message_ids"],
+            group["old_point_ids"],
+            group["replacement_point_ids"],
+            group["status"],
+            group,
+        )
+        _validate_existing_groups("plan", [row], [group])
+        with self.assertRaisesRegex(PlanningError, "immutable evidence"):
+            _validate_existing_groups(
+                "plan",
+                [(*row[:-1], {**group, "selected_message_count": 99})],
+                [group],
+            )
+        with self.assertRaisesRegex(PlanningError, "different group set"):
+            _validate_existing_groups("plan", [], [group])
+
+    def test_simulation_input_produces_no_write_review_artifact(self):
+        fixture = {
+            "work": [
+                {
+                    "message_id": "1",
+                    "capture_sequence": 1,
+                    "work_kind": "recent_window",
+                    "channel_id": "10",
+                    "thread_id": None,
+                    "parent_message_id": None,
+                },
+                {
+                    "message_id": "2",
+                    "capture_sequence": 2,
+                    "work_kind": "recent_window",
+                    "channel_id": "10",
+                    "thread_id": None,
+                    "parent_message_id": None,
+                },
+            ],
+            "records": [message(1, 0), message(2, 1)],
+            "manifest": [],
+            "points": [],
+            "source_corpus": SOURCE_CORPUS,
+        }
+        with tempfile.TemporaryDirectory() as directory:
+            fixture_path = Path(directory) / "simulation.json"
+            output_path = Path(directory) / "artifact.json"
+            fixture_path.write_text(json.dumps(fixture), encoding="utf-8")
+            subprocess.run(
+                [
+                    sys.executable,
+                    "-m",
+                    "ingestion.incremental_planner",
+                    "--simulation-input",
+                    str(fixture_path),
+                    "--output",
+                    str(output_path),
+                ],
+                check=True,
+            )
+            artifact = json.loads(output_path.read_text(encoding="utf-8"))
+        self.assertEqual(artifact["qdrant_mutations"], 0)
+        self.assertEqual(artifact["validation"]["status"], "planned")
+        self.assertEqual(artifact["replacement_point_count"], 1)
 
 
 if __name__ == "__main__":

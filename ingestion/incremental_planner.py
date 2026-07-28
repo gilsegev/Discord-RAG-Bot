@@ -11,6 +11,7 @@ import argparse
 import hashlib
 import json
 import os
+import re
 import time
 import urllib.request
 from dataclasses import asdict, dataclass
@@ -284,6 +285,7 @@ def create_shadow_plan(
     collection: str = DEFAULT_COLLECTION,
     chunker_version: str = "v10",
     embedding_version: str = "nomic-ai/nomic-embed-text-v1.5",
+    source_corpus: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     work_list = list(work)
     records_list = list(records)
@@ -333,6 +335,12 @@ def create_shadow_plan(
         "batch_cutoff_sequence": cutoff,
         "chunker_version": chunker_version,
         "embedding_version": embedding_version,
+        "source_corpus_version_id": (
+            source_corpus.get("corpus_version_id") if source_corpus else None
+        ),
+        "source_manifest_digest": (
+            source_corpus.get("manifest_digest") if source_corpus else None
+        ),
         "groups": public_groups,
     }
     digest = _digest(identity)
@@ -351,6 +359,20 @@ def create_shadow_plan(
                 value["replacement_points"] for value in planned_groups
             ))
         },
+        "_fixture_equivalence": all(
+            [
+                {
+                    key: item
+                    for key, item in _chunk_row(chunk).items()
+                    if key != "text"
+                }
+                for chunk in chunk_records(
+                    _shadow_records(group, index, payloads, manifest_list)[0]
+                )
+            ]
+            == group["replacement_points"]
+            for group in public_groups
+        ),
     }
 
 
@@ -358,6 +380,7 @@ def _measure_embeddings(texts: Iterable[str], embedder_url: str, kind: str) -> d
     started = time.perf_counter()
     count = 0
     dimensions: set[int] = set()
+    models: set[str] = set()
     for text in texts:
         request = urllib.request.Request(
             embedder_url.rstrip("/") + "/embed",
@@ -368,14 +391,15 @@ def _measure_embeddings(texts: Iterable[str], embedder_url: str, kind: str) -> d
         with urllib.request.urlopen(request, timeout=180) as response:
             result = json.load(response)
         dimensions.add(int(result["dimension"]))
+        if result.get("model"):
+            models.add(str(result["model"]))
         count += 1
     elapsed = time.perf_counter() - started
-    if dimensions and dimensions != {768}:
-        raise PlanningError(f"unexpected embedding dimensions: {dimensions}")
     return {
         "measurement_kind": kind,
         "embedded_chunk_count": count,
         "embedding_dimensions": sorted(dimensions),
+        "observed_embedding_models": sorted(models),
         "measured_embedding_seconds": round(elapsed, 3),
         "chunks_per_minute": round(count / elapsed * 60, 2) if elapsed else None,
     }
@@ -405,55 +429,322 @@ def benchmark_embedder(
     return _measure_embeddings(sample, embedder_url, "existing_point_sample")
 
 
-def render_plan(plan: dict[str, Any], measurement: dict[str, Any] | None = None) -> dict[str, Any]:
+def _identity_from_plan(plan: dict[str, Any]) -> dict[str, Any]:
+    return {
+        key: plan.get(key)
+        for key in (
+            "plan_version",
+            "collection_name",
+            "batch_cutoff_sequence",
+            "chunker_version",
+            "embedding_version",
+            "source_corpus_version_id",
+            "source_manifest_digest",
+            "groups",
+        )
+    }
+
+
+def render_plan(
+    plan: dict[str, Any],
+    measurement: dict[str, Any] | None = None,
+    *,
+    deterministic_replan: dict[str, Any] | None = None,
+    source_corpus_current: bool | None = None,
+    fixture_attestation: dict[str, Any] | None = None,
+) -> dict[str, Any]:
     rendered = {key: value for key, value in plan.items() if not key.startswith("_")}
     rendered["measurement"] = measurement
     rendered["qdrant_mutations"] = 0
     rendered["ready_group_count"] = sum(g["status"] == "ready" for g in rendered["groups"])
     rendered["deferred_group_count"] = sum(g["status"] == "deferred" for g in rendered["groups"])
+    replacement_rows = [
+        row
+        for group in rendered["groups"]
+        for row in group["replacement_points"]
+    ]
+    identity_valid = (
+        rendered.get("plan_digest") == _digest(_identity_from_plan(rendered))
+        and rendered.get("plan_id")
+        == f"shadow-{str(rendered.get('plan_digest', ''))[:20]}"
+    )
+    deterministic_match = (
+        deterministic_replan is not None
+        and deterministic_replan.get("plan_id") == rendered.get("plan_id")
+        and deterministic_replan.get("plan_digest") == rendered.get("plan_digest")
+    )
+    ownership_complete = (
+        len(replacement_rows) == rendered["replacement_point_count"]
+        and all(
+            row.get("point_id")
+            and row.get("text_digest")
+            and row.get("message_ids")
+            and row.get("first_message_id")
+            for row in replacement_rows
+        )
+        and {
+            row["point_id"] for row in replacement_rows
+        }
+        == {
+            point_id
+            for group in rendered["groups"]
+            for point_id in group["replacement_point_ids"]
+        }
+    )
+    embedded_count = (measurement or {}).get("embedded_chunk_count")
+    dimensions = (measurement or {}).get("embedding_dimensions")
+    observed_models = (measurement or {}).get("observed_embedding_models")
+    measurement_kind = (measurement or {}).get("measurement_kind")
+    embedding_complete = (
+        rendered["replacement_point_count"] == 0
+        or (
+            measurement_kind == "shadow_replacements"
+            and embedded_count == rendered["replacement_point_count"]
+            and dimensions == [768]
+            and observed_models == [rendered["embedding_version"]]
+        )
+    )
+    fixture_equivalent = bool(
+        fixture_attestation
+        and fixture_attestation.get("passed") is True
+        and fixture_attestation.get("chunker_version")
+        == rendered["chunker_version"]
+        and re.fullmatch(
+            r"[0-9a-fA-F]{64}",
+            str(fixture_attestation.get("suite_digest", "")),
+        )
+    )
+    source_linked = bool(
+        rendered.get("source_corpus_version_id")
+        and rendered.get("source_manifest_digest")
+    )
+    checks = {
+        "deterministic_identity": identity_valid,
+        "deterministic_replan": deterministic_match,
+        "replacement_ownership_and_text_digests": ownership_complete,
+        "complete_production_embeddings": embedding_complete,
+        "affected_scope_chunker_equivalence": (
+            plan.get("_fixture_equivalence") is True
+        ),
+        "fixture_equivalence": fixture_equivalent,
+        "zero_qdrant_mutations": rendered["qdrant_mutations"] == 0,
+        "source_corpus_linked": source_linked,
+        "source_corpus_current": source_corpus_current is True,
+    }
+    contradictions: list[str] = []
+    missing: list[str] = []
+    if not identity_valid:
+        contradictions.append("plan identity/digest mismatch")
+    if deterministic_replan is None:
+        missing.append("deterministic replan evidence")
+    elif not deterministic_match:
+        contradictions.append("deterministic replan mismatch")
+    if not ownership_complete:
+        contradictions.append("replacement ownership/text digest mismatch")
+    if plan.get("_fixture_equivalence") is not True:
+        contradictions.append("affected-scope fixture equivalence mismatch")
+    if fixture_attestation is None:
+        missing.append("accepted fixture-suite attestation")
+    elif not fixture_equivalent:
+        contradictions.append("fixture-suite attestation mismatch")
+    if measurement is None:
+        if rendered["replacement_point_count"]:
+            missing.append("production replacement embedding evidence")
+    elif rendered["replacement_point_count"]:
+        if embedded_count != rendered["replacement_point_count"]:
+            contradictions.append("embedded count does not equal replacement count")
+        if dimensions != [768]:
+            contradictions.append("embedding dimensions are not exactly 768")
+        if observed_models != [rendered["embedding_version"]]:
+            contradictions.append("observed embedding model/version mismatch")
+        if measurement_kind != "shadow_replacements":
+            contradictions.append("measurement is not replacement embedding evidence")
+    if not source_linked:
+        missing.append("source corpus linkage")
+    if source_corpus_current is None:
+        missing.append("source corpus freshness evidence")
+    elif source_corpus_current is not True:
+        contradictions.append("source corpus is stale")
+    if rendered["qdrant_mutations"] != 0:
+        contradictions.append("Qdrant mutation evidence is non-zero")
+
+    if contradictions:
+        status = "failed"
+    elif not rendered["ready_group_count"]:
+        status = "deferred"
+    elif all(checks.values()):
+        status = "shadow_validated"
+    else:
+        status = "planned"
+    rendered["validation"] = {
+        "status": status,
+        "checks": checks,
+        "missing_evidence": missing,
+        "contradictions": contradictions,
+        "fixture_attestation": fixture_attestation,
+    }
     return rendered
+
+
+def _validate_status_transition(existing: str, requested: str) -> None:
+    allowed = {
+        "planned": {
+            "planned", "shadow_validated", "deferred", "failed", "invalidated"
+        },
+        "shadow_validated": {"shadow_validated", "failed", "invalidated"},
+        "deferred": {"deferred", "failed", "invalidated"},
+        "failed": {"failed"},
+        "invalidated": {"invalidated"},
+        "applied": {"applied"},
+    }
+    if requested not in allowed.get(existing, set()):
+        raise PlanningError(
+            f"invalid persisted plan transition {existing} -> {requested}"
+        )
+
+
+def _validate_existing_groups(
+    plan_id: str,
+    existing_groups: Iterable[tuple[Any, ...]],
+    expected_groups: Iterable[dict[str, Any]],
+) -> None:
+    rows = list(existing_groups)
+    groups = sorted(expected_groups, key=lambda group: group["group_key"])
+    if len(rows) != len(groups):
+        raise PlanningError(f"existing plan {plan_id} has a different group set")
+    for row, group in zip(rows, groups):
+        group_identity = (
+            group["group_key"],
+            group["work_kind"],
+            group["channel_id"],
+            group["thread_id"],
+            group["root_message_id"],
+            list(group["source_message_ids"]),
+            list(group["old_point_ids"]),
+            list(group["replacement_point_ids"]),
+            group["status"],
+        )
+        if tuple(row[:-1]) != group_identity or _digest(row[-1]) != _digest(group):
+            raise PlanningError(
+                f"existing plan {plan_id} group "
+                f"{group['group_key']} differs from immutable evidence"
+            )
 
 
 def persist_plan(connection: Any, rendered: dict[str, Any]) -> None:
     """Persist immutable plan evidence without claiming or completing work."""
-    status = (
-        "shadow_validated"
-        if rendered["ready_group_count"]
-        else "deferred"
-    )
-    measurement = rendered.get("measurement") or {}
-    estimated = measurement.get("measured_embedding_seconds")
     with connection.transaction():
         with connection.cursor() as cursor:
             cursor.execute(
                 """
+                SELECT corpus_version_id, manifest_digest
+                FROM rag_corpus_versions
+                WHERE collection_name=%s AND status='healthy'
+                FOR SHARE
+                """,
+                (rendered["collection_name"],),
+            )
+            current_corpus = cursor.fetchone()
+            current_matches = bool(
+                current_corpus
+                and current_corpus[0] == rendered.get("source_corpus_version_id")
+                and current_corpus[1] == rendered.get("source_manifest_digest")
+            )
+            validation = dict(rendered.get("validation") or {})
+            contradictions = list(validation.get("contradictions") or [])
+            if not current_matches:
+                contradictions.append("source corpus changed before persistence")
+                validation["status"] = "invalidated"
+                validation["contradictions"] = contradictions
+                checks = dict(validation.get("checks") or {})
+                checks["source_corpus_current"] = False
+                validation["checks"] = checks
+                rendered["validation"] = validation
+            status = validation.get("status", "planned")
+            measurement = rendered.get("measurement") or {}
+            estimated = measurement.get("measured_embedding_seconds")
+
+            cursor.execute(
+                """
+                SELECT collection_name, batch_cutoff_sequence, chunker_version,
+                       embedding_version, source_corpus_version_id,
+                       source_manifest_digest, plan_digest, old_point_count,
+                       replacement_point_count, pending_message_count, status
+                FROM rag_chunk_replacement_plans
+                WHERE plan_id=%s
+                FOR UPDATE
+                """,
+                (rendered["plan_id"],),
+            )
+            existing = cursor.fetchone()
+            immutable = (
+                rendered["collection_name"],
+                rendered["batch_cutoff_sequence"],
+                rendered["chunker_version"],
+                rendered["embedding_version"],
+                rendered.get("source_corpus_version_id"),
+                rendered.get("source_manifest_digest"),
+                rendered["plan_digest"],
+                rendered["old_point_count"],
+                rendered["replacement_point_count"],
+                rendered["pending_message_count"],
+            )
+            if existing is not None and tuple(existing[:-1]) != immutable:
+                raise PlanningError(
+                    f"existing plan {rendered['plan_id']} has different immutable identity"
+                )
+            if existing is not None:
+                _validate_status_transition(str(existing[-1]), status)
+                cursor.execute(
+                    """
+                    SELECT group_key, work_kind, channel_id, thread_id,
+                           root_message_id, source_message_ids, old_point_ids,
+                           replacement_point_ids, status, evidence
+                    FROM rag_chunk_replacement_plan_groups
+                    WHERE plan_id=%s
+                    ORDER BY group_key
+                    """,
+                    (rendered["plan_id"],),
+                )
+                existing_groups = cursor.fetchall()
+                _validate_existing_groups(
+                    rendered["plan_id"], existing_groups, rendered["groups"]
+                )
+            cursor.execute(
+                """
                 INSERT INTO rag_chunk_replacement_plans
                     (plan_id, collection_name, batch_cutoff_sequence,
-                     chunker_version, embedding_version, status, plan_digest,
+                     chunker_version, embedding_version, source_corpus_version_id,
+                     source_manifest_digest, status, plan_digest,
                      old_point_count, replacement_point_count,
                      pending_message_count, estimated_seconds,
                      measured_embedding_seconds, evidence, validated_at)
-                VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s::jsonb,now())
+                VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s::jsonb,
+                        CASE WHEN %s='shadow_validated' THEN now() ELSE NULL END)
                 ON CONFLICT (plan_id) DO UPDATE SET
                     status=EXCLUDED.status,
                     estimated_seconds=EXCLUDED.estimated_seconds,
                     measured_embedding_seconds=EXCLUDED.measured_embedding_seconds,
                     evidence=EXCLUDED.evidence,
-                    validated_at=now()
+                    validated_at=CASE
+                        WHEN EXCLUDED.status='shadow_validated' THEN now()
+                        ELSE rag_chunk_replacement_plans.validated_at
+                    END
                 """,
                 (
                     rendered["plan_id"], rendered["collection_name"],
                     rendered["batch_cutoff_sequence"], rendered["chunker_version"],
-                    rendered["embedding_version"], status, rendered["plan_digest"],
+                    rendered["embedding_version"],
+                    rendered.get("source_corpus_version_id"),
+                    rendered.get("source_manifest_digest"),
+                    status, rendered["plan_digest"],
                     rendered["old_point_count"], rendered["replacement_point_count"],
                     rendered["pending_message_count"], estimated, estimated,
-                    json.dumps(rendered, sort_keys=True),
+                    json.dumps(rendered, sort_keys=True), status,
                 ),
             )
-            cursor.execute(
-                "DELETE FROM rag_chunk_replacement_plan_groups WHERE plan_id=%s",
-                (rendered["plan_id"],),
-            )
+            if existing is not None:
+                return
             for group in rendered["groups"]:
                 cursor.execute(
                     """
@@ -473,7 +764,16 @@ def persist_plan(connection: Any, rendered: dict[str, Any]) -> None:
                 )
 
 
-def load_postgres(connection: Any, cutoff: int | None = None) -> tuple[list[WorkItem], list[dict[str, Any]], list[dict[str, Any]]]:
+def load_postgres(
+    connection: Any,
+    cutoff: int | None = None,
+    collection: str = DEFAULT_COLLECTION,
+) -> tuple[
+    list[WorkItem],
+    list[dict[str, Any]],
+    list[dict[str, Any]],
+    dict[str, Any] | None,
+]:
     cutoff_sql = cutoff if cutoff is not None else 9223372036854775807
     with connection.cursor() as cursor:
         cursor.execute(
@@ -515,7 +815,24 @@ def load_postgres(connection: Any, cutoff: int | None = None) -> tuple[list[Work
             "thread_id": row[3], "root_message_id": row[4],
             "message_ids": row[5], "active": row[6],
         } for row in cursor.fetchall()]
-    return work, live, manifest
+        cursor.execute(
+            """
+            SELECT corpus_version_id, manifest_digest
+            FROM rag_corpus_versions
+            WHERE collection_name=%s AND status='healthy'
+            """,
+            (collection,),
+        )
+        corpus_row = cursor.fetchone()
+        source_corpus = (
+            {
+                "corpus_version_id": corpus_row[0],
+                "manifest_digest": corpus_row[1],
+            }
+            if corpus_row
+            else None
+        )
+    return work, live, manifest, source_corpus
 
 
 def main() -> int:
@@ -527,18 +844,53 @@ def main() -> int:
     parser.add_argument("--embedder-url", default=os.getenv("EMBEDDER_URL"))
     parser.add_argument("--output", type=Path)
     parser.add_argument("--persist", action="store_true")
+    parser.add_argument(
+        "--fixture-attestation",
+        type=Path,
+        help=(
+            "JSON attestation with passed=true, the matching chunker_version, "
+            "and a stable accepted fixture-suite digest"
+        ),
+    )
+    parser.add_argument(
+        "--simulation-input",
+        type=Path,
+        help=(
+            "read work/records/manifest/points/source_corpus from JSON; "
+            "does not connect to Postgres or Qdrant and cannot persist"
+        ),
+    )
     args = parser.parse_args()
-    if not args.database_url or not args.qdrant_url:
+    if args.simulation_input and args.persist:
+        parser.error("--simulation-input cannot be combined with --persist")
+    if not args.simulation_input and (not args.database_url or not args.qdrant_url):
         parser.error("--database-url and --qdrant-url are required")
-    import psycopg
-    from qdrant_client import QdrantClient
-    with psycopg.connect(args.database_url) as connection:
-        work, live, manifest = load_postgres(connection)
-    exports = parse_all_exports(args.exports)
-    points = scan_qdrant(QdrantClient(url=args.qdrant_url), args.collection)
+    if args.simulation_input:
+        simulation = json.loads(args.simulation_input.read_text(encoding="utf-8"))
+        work = [WorkItem(**row) for row in simulation.get("work", [])]
+        records = simulation.get("records", [])
+        manifest = simulation.get("manifest", [])
+        points = [
+            (str(row["point_id"]), row.get("payload", {}))
+            for row in simulation.get("points", [])
+        ]
+        source_corpus = simulation.get("source_corpus")
+    else:
+        import psycopg
+        from qdrant_client import QdrantClient
+        with psycopg.connect(args.database_url) as connection:
+            work, live, manifest, source_corpus = load_postgres(
+                connection, collection=args.collection
+            )
+        records = parse_all_exports(args.exports) + live
+        points = scan_qdrant(QdrantClient(url=args.qdrant_url), args.collection)
     plan = create_shadow_plan(
-        work, exports + live, manifest, points,
-        args.collection,
+        work, records, manifest, points, args.collection,
+        source_corpus=source_corpus,
+    )
+    deterministic_replan = create_shadow_plan(
+        work, records, manifest, points, args.collection,
+        source_corpus=source_corpus,
     )
     measurement = None
     if args.embedder_url:
@@ -547,7 +899,18 @@ def main() -> int:
             if plan["replacement_point_count"]
             else benchmark_embedder(points, args.embedder_url)
         )
-    rendered = render_plan(plan, measurement)
+    fixture_attestation = (
+        json.loads(args.fixture_attestation.read_text(encoding="utf-8"))
+        if args.fixture_attestation
+        else None
+    )
+    rendered = render_plan(
+        plan,
+        measurement,
+        deterministic_replan=deterministic_replan,
+        source_corpus_current=True if source_corpus else None,
+        fixture_attestation=fixture_attestation,
+    )
     if args.persist:
         with psycopg.connect(args.database_url) as connection:
             persist_plan(connection, rendered)

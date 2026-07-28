@@ -14,9 +14,18 @@ assert.match(planner, /chunk_records\(selected\)/);
 assert.match(planner, /def embed_shadow\(/);
 assert.match(planner, /def benchmark_embedder\(/);
 assert.match(planner, /rendered\["qdrant_mutations"\]\s*=\s*0/);
+assert.match(planner, /def _validate_status_transition\(/);
+assert.match(planner, /source_corpus_version_id/);
+assert.match(planner, /source_manifest_digest/);
+assert.match(planner, /fixture_attestation/);
+assert.match(planner, /--simulation-input/);
 assert.doesNotMatch(planner, /\.upsert\(/);
 assert.doesNotMatch(planner, /\.delete\(/);
 assert.doesNotMatch(planner, /\.set_payload\(/);
+assert.doesNotMatch(
+  planner,
+  /UPDATE\s+rag_pending_chunk_work|DELETE\s+FROM\s+rag_pending_chunk_work/i,
+);
 assert.match(migration, /CREATE TABLE IF NOT EXISTS rag_chunk_replacement_plans/);
 assert.match(migration, /CREATE TABLE IF NOT EXISTS rag_chunk_replacement_plan_groups/);
 assert.match(executionPlan, /### Phase 9C\.3: Offline planner and shadow rechunking/);

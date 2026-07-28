@@ -612,7 +612,7 @@ before maintenance and does not contribute to user-visible downtime.
 
 ### Phase 9C.3.5: Incremental-run state and observability
 
-**Status:** Planned prerequisite for Phase 9C.4
+**Status:** Implemented as the prerequisite for Phase 9C.4
 
 This interim phase keeps production mutation focused. It adds these durable
 tables to the `ragbot` Postgres database:
@@ -639,6 +639,21 @@ durations, regression run/result, retries, failure step/reason, and rollback.
 **Gate:** valid and invalid transitions are tested; duplicate workflow delivery
 is idempotent; counts reconcile to source rows; and Phoenix spans correlate to
 the durable Postgres run.
+
+Implementation artifacts:
+
+- `10-phase9c35-run-state-observability-migration.sql` adds revisioned runtime
+  state, append-only events, fail-closed transition functions, and bounded
+  execution leases.
+- `incremental_planner.py` requires deterministic replanning, source-corpus
+  freshness, complete production embedding evidence, and a version-bound
+  fixture attestation before persisting `shadow_validated`.
+- `RAG Incremental Coordinator - Phase 9C.3.5` is manual and disabled. Its
+  simulation path persists the run/event while keeping runtime `serving`,
+  pending work unclaimed, and Qdrant untouched.
+- The shared RAG core acquires, heartbeats, and releases a bounded execution
+  lease. The future Phase 9C.4 drain transition uses these leases instead of a
+  second RAG execution path.
 
 ### Phase 9C.4: Maintenance mode and production replacement
 

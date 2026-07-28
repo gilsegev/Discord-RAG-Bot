@@ -455,6 +455,7 @@ throughput.
 
 ### Phase 9C.3.5 — Incremental-run state and observability
 
+- **Status:** Implemented; manual and non-mutating until Phase 9C.4.
 - Add durable run summaries, append-only transition events, runtime serving
   state, and active-execution leases to the `ragbot` Postgres database.
 - Make n8n the single coordinator and lifecycle-state writer.

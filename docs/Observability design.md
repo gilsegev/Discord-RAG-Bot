@@ -440,7 +440,7 @@ These are logical observability events, not native events emitted directly by Di
 | Incremental plan | `incremental.plan_started`, `incremental.plan_deferred`, `incremental.plan_shadow_validated`, `incremental.plan_invalidated` |
 | Incremental runtime | `incremental.run_created`, `incremental.draining_started`, `incremental.maintenance_entered`, `incremental.replacement_started`, `incremental.replacement_completed`, `incremental.validation_started`, `incremental.validation_completed`, `incremental.rollback_started`, `incremental.rollback_completed`, `incremental.serving_restored`, `incremental.run_failed` |
 
-Required attributes:
+Required online request attributes:
 
 - `transaction_id`
 - `trigger_source`
@@ -454,10 +454,17 @@ Required attributes:
 - `error_type`, when applicable
 - `failure_reason`, when applicable
 
-Incremental events additionally require `incremental_run_id`, `plan_id`,
-`corpus_version_before`, `corpus_version_after` when known, `batch_cutoff`,
-old/replacement/new/reused/deleted point counts, processed/deferred message
-counts, rollback snapshot bytes/digest, and lifecycle state.
+These attributes apply to Discord, retrieval, response, regression-case, and
+feedback events. Offline incremental control-plane events do not invent a
+`transaction_id`, `route_type`, `channel_id`, or `query_hash`.
+
+Incremental events require `incremental_run_id` when a durable run exists,
+`plan_id`, `collection_name`, `batch_cutoff`, lifecycle state, and durable
+incremental event ID. They also carry the source corpus version/digest and the
+old/replacement point and processed/deferred message counts available at that
+stage. `corpus_version_after`, new/reused/deleted point counts, rollback
+snapshot bytes/digest, regression result, failure, and rollback attributes are
+nullable until the corresponding Phase 9C.4 or 9C.5 operation occurs.
 
 Durable incremental records live in the `ragbot` Postgres database:
 
