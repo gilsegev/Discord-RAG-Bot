@@ -89,7 +89,7 @@ Discord permits the same member to hold both 👍 and 👎 on one bot response a
 
 ### B.1 Storage model
 
-Phase 10 mirrors Discord state rather than reducing it to a single verdict. One row per **bot response + hashed member + source + normalized reaction**.
+Phase 11 mirrors Discord state rather than reducing it to a single verdict. One row per **bot response + hashed member + source + normalized reaction**.
 
 1. **Each currently present configured reaction is retained independently** per member and bot response. A later reaction does not overwrite an earlier one that is still present.
 2. **A member may simultaneously hold positive and negative feedback** on the same response. This is a valid state, not a data error, and must not be collapsed at write time.

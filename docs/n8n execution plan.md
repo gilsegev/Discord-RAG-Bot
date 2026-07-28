@@ -706,9 +706,71 @@ workstation. Incremental production execution now runs on Railway, so later
 batch and maintenance budgets must use measured Railway throughput rather than
 the retired Oracle host or workstation result.
 
-## Phase 10: Feedback Correlation
+## Phase 10: Contributor Access And Production Operations
+
+Implement the permission boundary defined in
+[Contributor Access And Permissions Design](contributor-access-and-permissions-design.md)
+before expanding the production feedback and reporting surfaces.
+
+This phase gives Haragonda and AltCtrlDeliver the access required to contribute
+code, develop and run n8n workflows, inspect transactions and reports, and
+review pending issues without sharing Gil's private key or production
+administrator credentials.
+
+The central rule is:
+
+```text
+development: contributors can edit and run
+production: contributors can run reviewed workflows, but cannot edit them
+```
+
+Implementation:
+
+- protect `main` and production-sensitive paths with required reviews and
+  CODEOWNERS
+- create separate Railway development and production projects
+- give contributors Railway Editor access in development
+- keep production Railway ownership and deployment credentials restricted
+- run separate development and production n8n instances
+- add authenticated, purpose-specific production run endpoints or GitHub
+  Actions run controls
+- derive the production run actor from authentication and persist audit
+  evidence
+- create individual read-only Postgres roles limited to reporting views
+- provide contributor access to the required Phoenix projects and pending
+  review evidence
+- seal and rotate production secrets
+- remove contributor access to the shared Oracle `ubuntu` account after the
+  replacement paths have been verified
+
+Exit criteria:
+
+- Haragonda and AltCtrlDeliver can edit and run workflows in development
+- both contributors can run approved production regression and reporting
+  workflows without receiving the credentials used by those workflows
+- production run inputs are schema-validated and server-side policy prevents
+  unauthorized Discord posting, arbitrary SQL, arbitrary URLs, and arbitrary
+  workflow selection
+- every production run records the authenticated actor, inputs, outcome, and
+  related transaction or regression run ID
+- contributors can read approved transaction, regression, metric, failure, and
+  pending-review views but cannot directly write production application tables
+- a development change cannot reach production without the required GitHub
+  review
+- no contributor requires Gil's SSH private key, a shared human login, or a
+  production administrator password
+- removing one contributor's access does not interrupt the other contributor or
+  application services
+
+Expected outcome:
+
+Contributors can build, operate, diagnose, and review the system through
+individual identities and least-privilege paths. Production workflow definitions
+and secrets remain protected by review and service identities.
+
+## Phase 11: Feedback Correlation
 Add shared Discord reaction monitoring after bot responses store
-`discord_response_message_id`. Phase 10 is not gated on Phase 9B: active calls,
+`discord_response_message_id`. Phase 11 is not gated on Phase 9B: active calls,
 Phase 9/9B passive responses, and future response modes use the same path.
 
 Flow:
@@ -745,7 +807,7 @@ Reaction semantics:
   from current rows. Mixed feedback remains reviewable because a negative
   reaction is present and must not be silently converted to positive.
 
-## Phase 10B: Explicit Critique Categories And UX
+## Phase 11B: Explicit Critique Categories And UX
 
 Add structured critique capture after reaction correlation is stable. This
 tracks the deferred context-menu, slash-command, or form UX, reason categories,
@@ -758,7 +820,7 @@ Expected outcome:
 Members can explain why an answer was unhelpful, and explicit critiques enter
 the same human-review path without becoming automatic evaluation failures.
 
-## Phase 11: Weekly Metrics And Alerts
+## Phase 12: Weekly Metrics And Alerts
 Add reporting after transactions, retrieval, refusals, responses, and feedback are flowing.
 
 Weekly metrics:
@@ -779,7 +841,7 @@ Expected outcome:
 
 The system becomes measurable and maintainable without manual query assembly.
 
-## Phase 12: Gemini Prompt Hardening And Stress Testing
+## Phase 13: Gemini Prompt Hardening And Stress Testing
 Harden the generation and refusal behavior after the retrieval pipeline, dedupe, context assembly, feedback, and observability paths are stable.
 
 Scope:
@@ -858,7 +920,7 @@ Each phase should end with:
 
 Do not add the next phase until the current phase can be validated from outside the n8n editor.
 
-## Phase 13: Discord Direct Message Support
+## Phase 14: Discord Direct Message Support
 Add support for users to interact with the bot through Discord direct messages
 (private messaging).
 

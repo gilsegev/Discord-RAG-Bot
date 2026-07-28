@@ -1,17 +1,21 @@
-# Phase 10: Discord Reaction Feedback Correlation
+# Phase 11: Discord Reaction Feedback Correlation
 
 ## Scope
 
-Phase 10 provides shared feedback plumbing for every bot response whose
+Phase 11 provides shared feedback plumbing for every bot response whose
 `discord_response_message_id` is persisted. It is not gated on Phase 9B and
 works for active calls, passive responses, and future response modes.
 Those response IDs come from the n8n Discord Bot API output writer, which posts
-to the originating channel; Phase 10 does not depend on channel webhooks.
+to the originating channel; Phase 11 does not depend on channel webhooks.
 
 Version 1 captures Unicode 👍 and 👎 reactions, including skin-tone variants.
 Explicit context-menu critiques
-are deferred to Phase 10B because the referenced Feedback & Reaction
+are deferred to Phase 11B because the referenced Feedback & Reaction
 Correlation Design is not currently present in this repository.
+
+The deployed workflow, webhook, migration, and filenames retain their original
+`phase-10` identifiers for backward compatibility. Those identifiers are stable
+runtime names, not the current roadmap phase number.
 
 ## Reaction contract
 
@@ -40,7 +44,7 @@ writes a pass/fail label to `rag_eval_labels`.
 Discord GUILD_MESSAGE_REACTIONS event
 -> ragbot-discord-listener
 -> POST /webhook/rag-feedback-phase-10
--> RAG Feedback Correlation - Phase 10
+-> RAG Feedback Correlation - Phase 10 (legacy runtime name)
 -> correlate rag_transactions.discord_response_message_id
 -> upsert/remove the matching rag_feedback reaction row
 -> rag_trace_events + Phoenix
@@ -68,7 +72,7 @@ docker compose --profile discord-listener up -d --build discord-listener
 ```
 
 The reaction intent is not privileged. No context-menu command or new OAuth
-scope is needed for Phase 10 v1. The bot must be able to view the response
+scope is needed for Phase 11 v1. The bot must be able to view the response
 channels and read message history.
 
 ## Verification
