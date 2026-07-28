@@ -555,3 +555,19 @@ Each phase should end with:
 - a short failure checklist
 
 Do not add the next phase until the current phase can be validated from outside the n8n editor.
+
+## Phase 13: Discord Direct Message Support
+Add support for users to interact with the bot through Discord direct messages
+(private messaging).
+
+This phase is a placeholder for future design. Before implementation, define the
+DM intake and response flow, user authorization and abuse controls, privacy and
+data-retention rules, retrieval scope, observability requirements, and how DM
+behavior reuses the shared RAG core without duplicating the existing guild
+message path.
+
+Expected outcome:
+
+The bot can receive and respond to supported questions in Discord DMs while
+preserving the project's retrieval, safety, privacy, and observability
+requirements.
