@@ -472,7 +472,7 @@ Exit criteria:
 
 ### Phase 9C.2: Seed chunk ownership manifest
 
-**Status:** In implementation
+**Status:** Completed in PR #45
 
 Phase 9C.2 creates the ownership baseline needed for safe targeted replacement.
 It is additive: it must not consume pending work, re-embed chunks, or mutate the
@@ -533,12 +533,52 @@ comparisons because SQL alone cannot prove that each Qdrant point and payload
 matches its manifest row. A failed validation leaves Phase 9C.2 unaccepted and
 does not authorize production replacement.
 
-### Later Phase 9C work
+### Phase 9C.3: Offline planner and shadow rechunking
 
-Later increments prepare bounded replacement plans using the existing chunker,
-validate without production mutation, apply verified replacements during
-maintenance, and run structural plus Phase 8 regression gates before reopening
-RAG service.
+**Status:** Implemented in the Phase 9C.3 PR
+
+Phase 9C.3 turns pending capture rows into deterministic replacement plans
+without changing the production corpus.
+
+Implementation:
+
+1. Read a fixed pending-work cutoff without claiming or completing work.
+2. Coalesce replies by proven conversation root and merge adjacent non-reply
+   messages using the chunker's 15-minute window.
+3. Resolve affected existing points through `rag_chunk_manifest` and Qdrant
+   payload timestamps, including the configured two-message overlap.
+4. Run the existing v10 chunker on the bounded region.
+5. Produce stable old-point and replacement-point IDs. An undersized non-reply
+   window remains `deferred` until later traffic makes it chunkable.
+6. Optionally call the production embedding service for every replacement chunk
+   to validate the 768-dimension contract and measure Railway throughput.
+7. Persist the immutable plan and evidence in
+   `rag_chunk_replacement_plans` without changing Qdrant or pending-work status.
+
+The entry point is `python -m ingestion.incremental_planner`. It requires
+`--database-url` and `--qdrant-url`; `--embedder-url` adds live shadow embedding,
+`--output` writes the review artifact, and `--persist` stores the validated plan.
+
+Exit criteria:
+
+- reply and window work is deterministically coalesced
+- repeated planning at the same cutoff produces the same plan ID and digest
+- selected old points belong only to affected channel/thread/conversation scopes
+- fixture shadow output matches full v10 chunker output for the affected scope
+- every shadow embedding is 768 dimensions
+- output and static validation report zero Qdrant mutations
+- measured replacement throughput and duration are recorded for Phase 9C.4
+- the complete Phase 8 regression remains at the accepted baseline
+
+Initial Railway validation measured 10 representative 768-dimension
+embeddings in 5.361 seconds (111.92 chunks/minute). At that measured rate, a
+conservative 50-replacement-chunk daily batch projects to roughly 27 seconds of
+embedding time, before maintenance/drain/verification overhead. The five
+currently pending isolated non-reply messages correctly remain deferred because
+none yet has a second message inside its 15-minute chunking window.
+
+Later increments apply verified replacements during maintenance, then run
+structural plus Phase 8 regression gates before reopening RAG service.
 
 The July 2026 138.4-minute full rebuild ran on Gil's higher-performance 8-core
 workstation. Incremental production execution now runs on Railway, so later
