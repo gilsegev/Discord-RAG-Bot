@@ -1,0 +1,22 @@
+{
+    "transport_ok":  true,
+    "quality_ok":  true,
+    "execution_id":  3149,
+    "quality_checks":  {
+                           "total_cases":  true,
+                           "pass_count":  true,
+                           "fail_count":  true,
+                           "review_count":  true
+                       },
+    "thresholds":  {
+                       "expected_total_cases":  48,
+                       "minimum_pass_count":  43,
+                       "maximum_fail_count":  1,
+                       "maximum_review_count":  4
+                   },
+    "run_id":  "5229fc5c-3a78-4f10-a098-ab35e71b85c9",
+    "total_cases":  48,
+    "pass_count":  43,
+    "fail_count":  1,
+    "review_count":  4
+}

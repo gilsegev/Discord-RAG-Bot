@@ -404,6 +404,83 @@ Expected outcome:
 
 Passive behavior expands coverage without making the bot noisy.
 
+## Phase 9C: Continuous Incremental Ingestion
+
+Phase 9C implements the production path proposed in
+[PR #24](https://github.com/gilsegev/Discord-RAG-Bot/pull/24). The continuous
+design in that PR is authoritative; export fingerprinting remains a
+baseline/backfill/recovery mechanism rather than the normal update path.
+
+The goal is to capture new eligible Discord messages as they arrive, then update
+only the affected reply conversations or recent time windows. It does not embed
+each message immediately and it does not change the chunking rules in
+`ingestion/chunker.py`.
+
+### Phase 9C.1: Capture before routing
+
+**Status:** Implemented in the Phase 9 intake workflow
+
+The listener adds creation time, reply parent, parent channel, thread,
+attachment, message type, and author-display metadata to each accepted
+`MESSAGE_CREATE` envelope.
+
+n8n remains the persistence owner:
+
+```text
+Discord Gateway listener
+-> Normalize Intake
+-> validate corpus capture policy
+-> Capture Discord Message in Postgres
+-> restore the intake envelope
+-> existing active/passive/ignored routing
+```
+
+The Postgres operation is the first durable intake action. It atomically inserts
+one `rag_discord_messages` row and one `rag_pending_chunk_work` row. Discord
+message ID conflict handling makes delivery idempotent, and database-backed
+duplicate state prevents a repeated direct mention from executing RAG twice.
+
+Capture eligibility mirrors the historical export parser:
+
+- only the configured guild and corpus-eligible parent channels
+- human-authored default/reply messages
+- no bots, webhooks, or system events
+- nonempty supported content, with attachment-only messages retained
+- export-compatible mention, channel, role, emoji, URL, and whitespace
+  normalization
+
+Manual, regression, CI, and evaluator workflow invocations are not capture
+candidates. Existing active/passive routing continues after capture.
+
+The MVP accepts the existing delivery limitation: if the listener queue
+overflows, n8n is unreachable, or n8n fails before the insert, that message can
+be missed. The listener logs the failure; durable retry/history recovery is
+deferred.
+
+Exit criteria:
+
+- the additive migration applies to the deployed `ragbot` database
+- an eligible message creates one message and one pending-work row
+- thread replies preserve parent-channel, thread, and direct-parent IDs
+- a repeated message ID leaves one row in each table and routes as
+  `duplicate_event`
+- bot, webhook, system, wrong-guild, excluded, and corpus-ineligible messages do
+  not enter the capture tables
+- regression/manual invocations do not enter the capture tables
+- active and passive behavior has no retrieval-quality regression
+
+### Later Phase 9C work
+
+Later increments seed the Qdrant ownership manifest, prepare bounded replacement
+plans using the existing chunker, validate without production mutation, apply
+verified replacements during maintenance, and run structural plus Phase 8
+regression gates before reopening RAG service.
+
+The July 2026 138.4-minute full rebuild ran on Gil's higher-performance 8-core
+workstation. Incremental production execution will run on the lower-performance
+Oracle host, so its batch and maintenance budgets must use measured Oracle
+throughput.
+
 ## Phase 10: Feedback Correlation
 Add shared Discord reaction monitoring after bot responses store
 `discord_response_message_id`. Phase 10 is not gated on Phase 9B: active calls,

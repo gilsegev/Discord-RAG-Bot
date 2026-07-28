@@ -1,19 +1,28 @@
 import os
+import threading
 import time
 from typing import Any, Dict, List
+
+os.environ.setdefault("OMP_NUM_THREADS", "1")
+os.environ.setdefault("MKL_NUM_THREADS", "1")
+os.environ.setdefault("OPENBLAS_NUM_THREADS", "1")
+os.environ.setdefault("NUMEXPR_NUM_THREADS", "1")
+os.environ.setdefault("TOKENIZERS_PARALLELISM", "false")
+
+MODEL_NAME = os.getenv("MODEL_NAME", "cross-encoder/ms-marco-MiniLM-L-6-v2")
+MODEL_CACHE = os.getenv("MODEL_CACHE", "/models")
+MODEL_MAX_CONCURRENCY = max(1, int(os.getenv("MODEL_MAX_CONCURRENCY", "1")))
+os.environ.setdefault("HF_HOME", MODEL_CACHE)
+os.environ.setdefault("SENTENCE_TRANSFORMERS_HOME", MODEL_CACHE)
+os.environ.setdefault("TRANSFORMERS_CACHE", MODEL_CACHE)
 
 from fastapi import FastAPI
 from pydantic import BaseModel, Field
 from sentence_transformers import CrossEncoder
 
-MODEL_NAME = os.getenv("MODEL_NAME", "cross-encoder/ms-marco-MiniLM-L-6-v2")
-MODEL_CACHE = os.getenv("MODEL_CACHE", "/models")
-os.environ.setdefault("HF_HOME", MODEL_CACHE)
-os.environ.setdefault("SENTENCE_TRANSFORMERS_HOME", MODEL_CACHE)
-os.environ.setdefault("TRANSFORMERS_CACHE", MODEL_CACHE)
-
 app = FastAPI(title="Discord RAG Bot Reranker")
 model: CrossEncoder | None = None
+model_semaphore = threading.BoundedSemaphore(MODEL_MAX_CONCURRENCY)
 
 
 class Candidate(BaseModel):
@@ -30,7 +39,7 @@ class RerankRequest(BaseModel):
 @app.on_event("startup")
 def load_model() -> None:
     global model
-    model = CrossEncoder(MODEL_NAME)
+    model = CrossEncoder(MODEL_NAME, cache_dir=MODEL_CACHE)
 
 
 @app.get("/health")
@@ -53,7 +62,8 @@ def rerank(request: RerankRequest) -> Dict[str, Any]:
 
     started = time.time()
     pairs = [(request.query, candidate.text) for candidate in request.candidates]
-    scores = model.predict(pairs).tolist()  # type: ignore[union-attr]
+    with model_semaphore:
+        scores = model.predict(pairs).tolist()  # type: ignore[union-attr]
 
     results = []
     for candidate, score in zip(request.candidates, scores):

@@ -48,6 +48,7 @@ N8N_INTAKE_URL = os.getenv(
 N8N_FEEDBACK_URL = os.getenv(
     "N8N_FEEDBACK_URL", "http://n8n:5678/webhook/rag-feedback-phase-10"
 ).strip()
+N8N_WEBHOOK_SHARED_SECRET = os.getenv("N8N_WEBHOOK_SHARED_SECRET", "").strip()
 N8N_REQUEST_TIMEOUT_SECONDS = float(os.getenv("N8N_REQUEST_TIMEOUT_SECONDS", "600"))
 DELIVERY_QUEUE_SIZE = int(os.getenv("DISCORD_DELIVERY_QUEUE_SIZE", "100"))
 SEEN_MESSAGE_CACHE_SIZE = int(os.getenv("DISCORD_SEEN_MESSAGE_CACHE_SIZE", "1000"))
@@ -211,6 +212,58 @@ class DiscordListener(discord.Client):
             self.seen_message_ids.popitem(last=False)
         return duplicate
 
+    def _message_event(
+        self, message: discord.Message, duplicate: bool
+    ) -> dict[str, Any]:
+        channel = message.channel
+        parent_id = getattr(channel, "parent_id", None)
+        parent = getattr(channel, "parent", None)
+        is_thread = parent_id is not None
+        reference = getattr(message, "reference", None)
+        parent_message_id = getattr(reference, "message_id", None)
+        bot_user_id = self.user.id if self.user else None
+        direct_mention = bool(
+            bot_user_id and any(user.id == bot_user_id for user in message.mentions)
+        )
+        is_system_event = message.type not in {
+            discord.MessageType.default,
+            discord.MessageType.reply,
+        }
+
+        return {
+            "delivery_kind": "message",
+            "capture_candidate": True,
+            "trigger_source": "discord_active" if direct_mention else "discord_passive",
+            "discord_message_id": str(message.id),
+            "guild_id": str(message.guild.id),
+            "channel_id": str(channel.id),
+            "channel_name": getattr(channel, "name", ""),
+            "parent_channel_id": str(parent_id if is_thread else channel.id),
+            "parent_channel_name": (
+                getattr(parent, "name", "") if is_thread
+                else getattr(channel, "name", "")
+            ),
+            "thread_id": str(channel.id) if is_thread else None,
+            "thread_name": getattr(channel, "name", "") if is_thread else None,
+            "parent_message_id": (
+                str(parent_message_id) if parent_message_id is not None else None
+            ),
+            "message_created_at": message.created_at.isoformat(),
+            "message_type": getattr(message.type, "name", str(message.type)),
+            "has_attachments": bool(message.attachments),
+            "author_id_hash": hash_author(message.author.id),
+            "author_display_name": message.author.name,
+            "user_query": message.content or "",
+            "author_is_bot": bool(message.author.bot),
+            "is_webhook": message.webhook_id is not None,
+            "is_system_event": is_system_event,
+            "is_duplicate": duplicate,
+            "is_direct_mention": direct_mention,
+            "passive_enabled": True,
+            "allow_discord_post": direct_mention,
+            "requested_by": "bot",
+        }
+
     async def on_message(self, message: discord.Message) -> None:
         if message.guild is None or message.guild.id != ALLOWED_GUILD_ID:
             return
@@ -226,36 +279,7 @@ class DiscordListener(discord.Client):
         )
 
         duplicate = self._mark_and_check_duplicate(message.id)
-        bot_user_id = self.user.id if self.user else None
-        direct_mention = bool(
-            bot_user_id and any(user.id == bot_user_id for user in message.mentions)
-        )
-        is_system_event = message.type not in {
-            discord.MessageType.default,
-            discord.MessageType.reply,
-            discord.MessageType.thread_starter_message,
-        }
-
-        event = {
-            "delivery_kind": "message",
-            "trigger_source": "discord_active" if direct_mention else "discord_passive",
-            "discord_message_id": str(message.id),
-            "guild_id": str(message.guild.id),
-            "channel_id": str(message.channel.id),
-            "channel_name": getattr(message.channel, "name", ""),
-            "author_id_hash": hash_author(message.author.id),
-            "user_query": message.content or "",
-            "author_is_bot": bool(message.author.bot),
-            "is_webhook": message.webhook_id is not None,
-            "is_system_event": is_system_event,
-            "is_duplicate": duplicate,
-            "is_direct_mention": direct_mention,
-            "passive_enabled": True,
-            "allow_discord_post": direct_mention,
-            "requested_by": "bot",
-        }
-
-        self._enqueue(event)
+        self._enqueue(self._message_event(message, duplicate))
 
     async def _delivery_loop(self) -> None:
         while True:
@@ -280,7 +304,12 @@ class DiscordListener(discord.Client):
         delivery_kind = event.get("delivery_kind", "message")
         target_url = N8N_FEEDBACK_URL if delivery_kind == "feedback" else N8N_INTAKE_URL
         outbound = {key: value for key, value in event.items() if key != "delivery_kind"}
-        async with self.http_session.post(target_url, json=outbound) as response:
+        headers = {}
+        if N8N_WEBHOOK_SHARED_SECRET:
+            headers["X-RAG-Webhook-Secret"] = N8N_WEBHOOK_SHARED_SECRET
+        async with self.http_session.post(
+            target_url, json=outbound, headers=headers
+        ) as response:
             response_body = await response.text()
             if response.status < 200 or response.status >= 300:
                 raise RuntimeError(

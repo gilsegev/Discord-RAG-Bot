@@ -12,6 +12,7 @@ PHOENIX_OTLP_HTTP_ENDPOINT = os.getenv(
     "http://phoenix:6006/v1/traces",
 )
 REQUEST_TIMEOUT_SECONDS = float(os.getenv("REQUEST_TIMEOUT_SECONDS", "5"))
+PHOENIX_AUTH_TOKEN = os.getenv("PHOENIX_AUTH_TOKEN", "").strip()
 
 app = FastAPI(title="Discord RAG Bot Trace Emitter")
 
@@ -34,10 +35,14 @@ async def emit_traces(request: Request) -> Dict[str, Any]:
         ) from exc
 
     try:
+        headers = {"content-type": "application/x-protobuf"}
+        if PHOENIX_AUTH_TOKEN:
+            headers["authorization"] = f"Bearer {PHOENIX_AUTH_TOKEN}"
+
         response = requests.post(
             PHOENIX_OTLP_HTTP_ENDPOINT,
             data=export_request.SerializeToString(),
-            headers={"content-type": "application/x-protobuf"},
+            headers=headers,
             timeout=REQUEST_TIMEOUT_SECONDS,
         )
     except requests.RequestException as exc:
