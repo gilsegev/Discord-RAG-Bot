@@ -97,7 +97,8 @@ def coalesce_work(
     roots = baseline_roots or {}
     reply_groups: dict[tuple[str, str | None, str], list[WorkItem]] = {}
     windows: dict[tuple[str, str | None], list[WorkItem]] = {}
-    for item in sorted(work, key=lambda value: value.capture_sequence):
+    ordered_work = sorted(work, key=lambda value: value.capture_sequence)
+    for item in ordered_work:
         if item.message_id not in index:
             raise PlanningError(f"pending message {item.message_id} is missing")
         if item.work_kind == "reply_conversation":
@@ -105,10 +106,28 @@ def coalesce_work(
             reply_groups.setdefault(
                 (item.channel_id, item.thread_id, root), []
             ).append(item)
-        elif item.work_kind == "recent_window":
-            windows.setdefault((item.channel_id, item.thread_id), []).append(item)
-        else:
+        elif item.work_kind != "recent_window":
             raise PlanningError(f"unsupported work kind {item.work_kind}")
+
+    # A root captured earlier in this same batch starts as recent_window work.
+    # If a reply to it is also present, absorb that root into the proven reply
+    # conversation instead of producing a duplicate window plan.
+    for item in ordered_work:
+        if item.work_kind != "recent_window":
+            continue
+        matching_reply_key = next(
+            (
+                key for key in reply_groups
+                if key[0] == item.channel_id
+                and key[1] == item.thread_id
+                and key[2] == item.message_id
+            ),
+            None,
+        )
+        if matching_reply_key:
+            reply_groups[matching_reply_key].append(item)
+        else:
+            windows.setdefault((item.channel_id, item.thread_id), []).append(item)
 
     groups: list[dict[str, Any]] = []
     for (channel_id, thread_id, root), items in reply_groups.items():

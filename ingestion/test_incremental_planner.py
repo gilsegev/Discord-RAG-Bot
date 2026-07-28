@@ -25,6 +25,24 @@ class IncrementalPlannerTests(unittest.TestCase):
         self.assertEqual(len(groups), 1)
         self.assertEqual(groups[0]["root_message_id"], "1")
 
+    def test_same_batch_late_reply_absorbs_root_window_work(self):
+        records = [message(1, 0), message(2, 40, 1)]
+        work = [
+            WorkItem("1", 1, "recent_window", "10", None, None),
+            WorkItem("2", 2, "reply_conversation", "10", None, "1"),
+        ]
+        groups = coalesce_work(work, records)
+        self.assertEqual(len(groups), 1)
+        self.assertEqual(groups[0]["work_kind"], "reply_conversation")
+        self.assertEqual(groups[0]["root_message_id"], "1")
+        self.assertEqual(groups[0]["source_message_ids"], ["1", "2"])
+
+        plan = create_shadow_plan(work, records, [], [])
+        self.assertEqual(plan["ready_group_count"] if "ready_group_count" in plan else sum(
+            group["status"] == "ready" for group in plan["groups"]
+        ), 1)
+        self.assertEqual(plan["replacement_point_count"], 1)
+
     def test_adjacent_windows_coalesce_and_distant_windows_do_not(self):
         records = [message(1, 0), message(2, 10), message(3, 40)]
         work = [
