@@ -406,9 +406,10 @@ Passive behavior expands coverage without making the bot noisy.
 
 ## Phase 9C: Continuous Incremental Ingestion
 
-Phase 9C implements the production path proposed in
-[PR #24](https://github.com/gilsegev/Discord-RAG-Bot/pull/24). The continuous
-design in that PR is authoritative; export fingerprinting remains a
+Phase 9C implements the production path approved and merged in
+[PR #24](https://github.com/gilsegev/Discord-RAG-Bot/pull/24). The
+[continuous incremental ingestion design](continuous-incremental-ingestion-design.md)
+is authoritative; export fingerprinting remains a
 baseline/backfill/recovery mechanism rather than the normal update path.
 
 The goal is to capture new eligible Discord messages as they arrive, then update
@@ -469,17 +470,80 @@ Exit criteria:
 - regression/manual invocations do not enter the capture tables
 - active and passive behavior has no retrieval-quality regression
 
+### Phase 9C.2: Seed chunk ownership manifest
+
+**Status:** In implementation
+
+Phase 9C.2 creates the ownership baseline needed for safe targeted replacement.
+It is additive: it must not consume pending work, re-embed chunks, or mutate the
+production Qdrant collection.
+
+Implementation:
+
+1. Apply the additive manifest and corpus-version migration to `ragbot`.
+2. Read every current Qdrant point and derive one deterministic logical owner
+   from its existing payload metadata.
+3. Dry-run first and fail on missing, conflicting, or ambiguous ownership.
+4. Seed one active manifest row per Qdrant point, preserving point ID,
+   per-piece message IDs, first/last message IDs, and version metadata.
+5. Add indexed lookup paths for message, logical group, and reply root.
+6. Verify Postgres against a fresh Qdrant scan.
+7. Rerun the seed and prove it is idempotent.
+
+The implementation entry point is `python -m ingestion.chunk_manifest`. It is
+read-only by default; use `--output <plan.json>` for the reviewed plan,
+`--verify-plan <plan.json>` for a fresh Qdrant comparison, and add `--apply`
+plus `--database-url` only after verification to seed Postgres atomically.
+
+Required evidence:
+
+- Qdrant point count equals active manifest row count
+- no duplicate active `point_id`
+- no Qdrant point is missing from the manifest
+- no active manifest point is missing from Qdrant
+- message IDs and ownership metadata match Qdrant payloads
+- the seed run reports all ambiguous/unowned points and exits nonzero
+- a second run changes zero manifest rows
+- Qdrant collection count and point digest are unchanged before versus after
+- the complete Phase 8 retrieval regression remains at the accepted baseline
+
+Operational checks run from a Railway shell connected to the `ragbot` database:
+
+```sql
+SELECT COUNT(*) AS active_manifest_points
+FROM rag_chunk_manifest
+WHERE active;
+
+SELECT point_id, COUNT(*)
+FROM rag_chunk_manifest
+WHERE active
+GROUP BY point_id
+HAVING COUNT(*) <> 1;
+
+SELECT cv.corpus_version_id, m.chunker_version, m.embedding_version, COUNT(*)
+FROM rag_chunk_manifest AS m
+JOIN rag_corpus_versions AS cv
+  ON cv.ingestion_run_id = m.ingestion_run_id
+WHERE m.active AND cv.status = 'healthy'
+GROUP BY cv.corpus_version_id, m.chunker_version, m.embedding_version;
+```
+
+The implementation validator remains the source of truth for cross-system
+comparisons because SQL alone cannot prove that each Qdrant point and payload
+matches its manifest row. A failed validation leaves Phase 9C.2 unaccepted and
+does not authorize production replacement.
+
 ### Later Phase 9C work
 
-Later increments seed the Qdrant ownership manifest, prepare bounded replacement
-plans using the existing chunker, validate without production mutation, apply
-verified replacements during maintenance, and run structural plus Phase 8
-regression gates before reopening RAG service.
+Later increments prepare bounded replacement plans using the existing chunker,
+validate without production mutation, apply verified replacements during
+maintenance, and run structural plus Phase 8 regression gates before reopening
+RAG service.
 
 The July 2026 138.4-minute full rebuild ran on Gil's higher-performance 8-core
-workstation. Incremental production execution will run on the lower-performance
-Oracle host, so its batch and maintenance budgets must use measured Oracle
-throughput.
+workstation. Incremental production execution now runs on Railway, so later
+batch and maintenance budgets must use measured Railway throughput rather than
+the retired Oracle host or workstation result.
 
 ## Phase 10: Feedback Correlation
 Add shared Discord reaction monitoring after bot responses store
