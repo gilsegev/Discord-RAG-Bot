@@ -1,8 +1,10 @@
 # Continuous Incremental Ingestion Design
 
-**Status:** Draft for team review  
-**Supersedes for production use:** recurring export-based ingestion in PR #24  
-**Retains from PR #24:** bounded rechunking, durable state, verification, observability, regression gates, and full-rebuild recovery
+**Status:** Accepted production design (merged in PR #24)
+
+**Supersedes for production use:** recurring export-based ingestion
+
+**Retains from the original incremental design:** bounded rechunking, durable state, verification, observability, regression gates, and full-rebuild recovery
 
 ## 1. Decision Summary
 
@@ -52,11 +54,13 @@ but it substantially lowers consistency and implementation risk.
 
 The maintenance-window design is recommended for MVP.
 
-### Measured Oracle capacity
+### Measured capacity and Railway budgeting
 
-The July 2026 full rebuild measured approximately 64 chunks per minute on the
-2-vCPU Oracle host, with CPU saturated and memory constrained but stable. At that
-rate, rebuilding 32,756 chunks projects to approximately 8.5 hours.
+The retired Oracle host measured approximately 64 chunks per minute during a
+July 2026 full rebuild. That result remains a conservative historical benchmark,
+not a production capacity guarantee. Production incremental jobs now run on
+Railway, where CPU and memory allocation, model startup, and shared-disk I/O can
+produce different throughput.
 
 This confirms two design constraints:
 
@@ -75,12 +79,13 @@ planning, verification, and regression:
 | 640 | 10 minutes |
 | 1,920 | 30 minutes |
 
-The scheduler must estimate the replacement chunk count before entering
-maintenance. If the estimate exceeds the configured maintenance budget, the run
-must remain pending for admin review or be split into safe batches. Local
-workstation acceleration through an SSH tunnel is useful for an exceptional
-baseline migration, but it is not a dependency of the steady-state production
-design.
+Before maintenance scheduling is enabled, measure chunking and embedding
+throughput on the deployed Railway services and store that result with the
+validation evidence. The scheduler must estimate replacement count and duration
+from the Railway measurement before entering maintenance. If the estimate
+exceeds the configured budget, the run remains pending for admin review or is
+split into ownership-safe batches. Workstation acceleration is useful for an
+exceptional baseline migration, but is not a steady-state production dependency.
 
 ## 3. Scope
 
@@ -364,10 +369,9 @@ unvalidated corpus.
 
 ## 12. Phased Execution Plan
 
-### Phase 0 ? Approve design and establish baseline
+### Phase 9C.0 — Approve design and establish baseline
 
-- Review this proposal with Haragonda and the ingestion owners.
-- Reconcile it into PR #24 as the production path.
+- Merge the reviewed production design in PR #24.
 - Retain export fingerprinting only for baseline/backfill and recovery imports.
 - Complete the final full export ingestion.
 - Record the baseline corpus version, chunker version, embedding version, and
@@ -375,7 +379,7 @@ unvalidated corpus.
 
 **Gate:** baseline Qdrant and regression suite are healthy and reproducible.
 
-### Phase 1 ? Durable `MESSAGE_CREATE` capture
+### Phase 9C.1 — Durable `MESSAGE_CREATE` capture
 
 - Add the canonical message and work-queue tables.
 - Extend the listener event contract with reply/thread/timestamp fields.
@@ -387,32 +391,45 @@ unvalidated corpus.
 **Gate:** test traffic is durably recorded once, excluded content is absent, and
 answer routing has no regression.
 
-### Phase 2 ? Seed chunk ownership manifest
+### Phase 9C.2 — Seed chunk ownership manifest
 
-- Add `rag_chunk_manifest` and ingestion-run/corpus-version state.
-- Update full rebuild ingestion to populate manifest rows and Qdrant source
-  metadata.
-- Add message-to-point and reply-root lookup support for the baseline.
-- Implement structural verification without changing incremental chunks.
+- Add the additive `rag_chunk_manifest` schema and the minimal
+  ingestion-run/corpus-version state needed to identify the seeded baseline.
+- Build the manifest from the current Qdrant payloads without deleting,
+  replacing, or re-embedding any production point.
+- Record deterministic logical ownership for every point using its channel,
+  thread, reply-root where known, and bounded window identity otherwise.
+- Preserve the current point ID, complete per-piece `message_ids`, first/last
+  message IDs, chunker version, embedding version, and corpus version.
+- Add indexed message-to-point, logical-group-to-point, and reply-root lookup
+  paths for later planning.
+- Make seeding restartable and idempotent: rerunning the same corpus version
+  produces the same active manifest and cannot create duplicate ownership.
+- Produce machine-readable structural verification and a dry-run summary before
+  any write.
 
-**Gate:** every baseline Qdrant point and message can be reconciled to the
-manifest.
+**Gate:** the seeded manifest has exactly one active row per production Qdrant
+point; every manifest point exists in Qdrant; every Qdrant point is represented;
+point payload metadata and message membership match; no point is mutated; and a
+second seed run produces zero changes. Any payload that cannot be assigned
+deterministically fails the seed instead of being guessed.
 
-### Phase 3 ? Offline planner and shadow rechunking
+### Phase 9C.3 — Offline planner and shadow rechunking
 
 - Coalesce reply conversations and non-reply windows.
 - Produce deterministic old-point and replacement-point plans.
 - Run chunking and embedding without modifying production Qdrant.
 - Compare shadow output with expected full-chunker output for selected channels.
 - Measure update duration to set a realistic maintenance window.
-- Estimate replacement chunk count and projected Oracle processing time before
+- Estimate replacement chunk count and projected Railway processing time before
   maintenance begins.
 
 **Gate:** affected-region output matches full-chunker behavior for the validation
 fixtures, no unrelated point is selected for replacement, and normal daily
-traffic fits within the agreed maintenance budget at measured Oracle throughput.
+traffic fits within the agreed maintenance budget at measured Railway
+throughput.
 
-### Phase 4 ? Maintenance mode and production replacement
+### Phase 9C.4 — Maintenance mode and production replacement
 
 - Add the maintenance-mode gate to shared intake.
 - Continue durable listener capture during maintenance.
@@ -424,7 +441,7 @@ traffic fits within the agreed maintenance budget at measured Oracle throughput.
 **Gate:** simulated failures at each replacement step are recoverable, and no
 query runs against a partially updated corpus.
 
-### Phase 5 ? Full regression and scheduled operation
+### Phase 9C.5 — Full regression and scheduled operation
 
 - Invoke the complete Phase 8 regression suite after structural verification.
 - Associate regression results with the ingestion run and corpus version.
@@ -436,34 +453,22 @@ query runs against a partially updated corpus.
 **Gate:** repeated incremental batches pass structural checks and the complete
 regression suite without quality degradation.
 
-### Future Phase 6 ? Edits and deletions
+### Future Phase 9C.6 — Edits and deletions
 
 - Capture update/delete events.
 - Rebuild or remove affected chunks.
 - Add historical mutation validation cases.
 
-### Future Phase 7 ? Downtime gap workflow
+### Future Phase 9C.7 — Downtime gap workflow
 
 - Detect unresumable gaps.
 - Automatically create a review issue with recovery evidence.
 - Add admin-provided missing-message bulk import.
 - Run structural and full regression gates after recovery.
 
-## 13. PR Collaboration Recommendation
+## 13. PR sequencing
 
-Continue the design work in PR #24 so Haragonda remains the design owner and the
-existing discussion, validation cases, and implementation sequencing are
-preserved.
-
-PR #24 should be revised before merge:
-
-- change the primary production mechanism from recurring export fingerprints to
-  durable Gateway capture;
-- retain export ingestion as baseline, backfill, and recovery functionality;
-- replace live Qdrant mutation with the maintenance-window MVP;
-- add the chunk ownership manifest;
-- make the complete regression suite a mandatory final gate;
-- defer edits, deletions, and downtime recovery to explicit later phases.
-
-Implementation should then land in small follow-up PRs for the individual phases
-rather than placing all runtime changes in the design PR.
+PR #24 merged the reviewed design. Runtime implementation lands in focused
+follow-up PRs. Phase 9C.2 is strictly an additive ownership-baseline change:
+production Qdrant point mutation and pending-work consumption remain prohibited
+until the later planner and replacement phases pass their own gates.

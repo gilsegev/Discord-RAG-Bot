@@ -183,10 +183,12 @@ presence, and `normalizer_version` in Postgres. These fields are operational
 source data for later rechunk planning; they are not added to the LLM context
 block.
 
-Later Phase 9C ownership work must add `root_message_id`, a deterministic
+Phase 9C.2 adds `root_message_id` where deterministically known, a deterministic
 conversation/window identity, and chunker/embedding/corpus versions to the
-Postgres chunk manifest and Qdrant payload. Until that baseline migration is
-verified, n8n continues to use the existing `message_ids` overlap dedupe rule.
+Postgres chunk manifest. It seeds ownership from the existing Qdrant payload
+without mutating production points. Payload enrichment and targeted replacement
+remain later phases. Until those migrations are verified, n8n continues to use
+the existing `message_ids` overlap dedupe rule.
 
 ### 2.3 Token budget
 
