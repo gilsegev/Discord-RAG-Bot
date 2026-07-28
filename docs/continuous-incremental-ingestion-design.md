@@ -1,0 +1,469 @@
+# Continuous Incremental Ingestion Design
+
+**Status:** Draft for team review  
+**Supersedes for production use:** recurring export-based ingestion in PR #24  
+**Retains from PR #24:** bounded rechunking, durable state, verification, observability, regression gates, and full-rebuild recovery
+
+## 1. Decision Summary
+
+Production incremental ingestion will use the existing Discord Gateway listener as
+the source of new messages. It will not require recurring full-channel exports.
+
+The MVP will:
+
+1. capture new Discord messages and reply metadata durably in Postgres;
+2. coalesce new messages into dirty conversation/window work items;
+3. enter a short scheduled maintenance window during low traffic;
+4. stop RAG retrieval and generation while Qdrant is updated;
+5. rebuild only the complete affected conversations or time windows;
+6. verify the resulting Qdrant and manifest state;
+7. run the complete Phase 8 regression suite;
+8. reopen the RAG service only after the update and validation pass.
+
+Message edits, message deletions, and recovery of messages missed during an
+unresumable listener outage are explicitly deferred beyond MVP.
+
+## 2. Why a Maintenance Window
+
+Keeping retrieval live during partial Qdrant replacement requires coordination
+across Postgres and Qdrant, which cannot participate in one atomic transaction.
+It introduces transient duplicates, incomplete replacement windows, complicated
+rollback behavior, and more difficult incident diagnosis.
+
+The expected update volume is small enough that a short low-traffic maintenance
+window is the safer MVP tradeoff. During maintenance:
+
+- the Discord listener continues capturing new events into Postgres;
+- active calls receive a clear temporary-maintenance response or are queued;
+- passive RAG processing is paused;
+- no retrieval queries read Qdrant while replacement is in progress.
+
+This removes user-visible partial-index states. It does not make Postgres and
+Qdrant transactional, so the update job must remain idempotent and recoverable,
+but it substantially lowers consistency and implementation risk.
+
+### Complexity and risk assessment
+
+| Design | Complexity | Initial operational risk | User impact |
+|---|---|---|---|
+| Live in-place Qdrant replacement | High | Medium to high | No planned downtime |
+| Short maintenance-window replacement | Medium | Low to medium | Brief planned unavailability |
+| Full rebuild for every update | Low implementation complexity, high operational cost | Low consistency risk | Long downtime |
+
+The maintenance-window design is recommended for MVP.
+
+### Measured Oracle capacity
+
+The July 2026 full rebuild measured approximately 64 chunks per minute on the
+2-vCPU Oracle host, with CPU saturated and memory constrained but stable. At that
+rate, rebuilding 32,756 chunks projects to approximately 8.5 hours.
+
+This confirms two design constraints:
+
+- recurring full-corpus rebuilds or bulk re-exports are not a sustainable
+  production update path;
+- daily incremental maintenance is viable only when affected-region rechunking
+  remains small and bounded.
+
+Approximate embedding time at the observed rate, excluding model startup,
+planning, verification, and regression:
+
+| Replacement chunks | Approximate embedding time |
+|---:|---:|
+| 64 | 1 minute |
+| 320 | 5 minutes |
+| 640 | 10 minutes |
+| 1,920 | 30 minutes |
+
+The scheduler must estimate the replacement chunk count before entering
+maintenance. If the estimate exceeds the configured maintenance budget, the run
+must remain pending for admin review or be split into safe batches. Local
+workstation acceleration through an SSH tunnel is useful for an exceptional
+baseline migration, but it is not a dependency of the steady-state production
+design.
+
+## 3. Scope
+
+### MVP scope
+
+- `MESSAGE_CREATE` events from permitted server channels and threads
+- durable capture before active/passive relevance routing
+- direct Discord reply references
+- conversation identity using known reply chains
+- time-window grouping for non-reply messages
+- coalesced offline work items
+- scheduled maintenance mode
+- affected-region rechunking and embedding
+- Qdrant replacement using a durable chunk manifest
+- structural verification
+- complete Phase 8 regression run
+- update audit records and Phoenix spans
+
+### Deferred scope
+
+- `MESSAGE_UPDATE`
+- `MESSAGE_DELETE` and bulk delete events
+- automatic REST history catch-up
+- automated ingestion of messages missed during an unresumable listener outage
+- zero-downtime Qdrant updates
+- real-time per-message embedding
+
+## 4. Runtime Architecture
+
+```text
+Discord MESSAGE_CREATE
+        |
+        v
+Discord Gateway listener
+        |
+        +--> durable message capture in Postgres
+        |        |
+        |        +--> dirty conversation/window queue
+        |
+        +--> existing active/passive intake and response routing
+
+Scheduled low-traffic update
+        |
+        v
+Enter maintenance mode
+        |
+        v
+Drain in-flight RAG executions
+        |
+        v
+Claim dirty work items
+        |
+        v
+Load complete affected regions from Postgres
+        |
+        v
+Chunk -> embed -> replace affected Qdrant points
+        |
+        v
+Structural verification
+        |
+        v
+Complete Phase 8 regression suite
+        |
+        +--> pass: mark corpus healthy and leave maintenance mode
+        |
+        +--> fail: keep maintenance mode, mark review_needed, alert admin
+```
+
+The listener must remain available during maintenance so messages arriving during
+the update are not lost. Those messages are stored for the next update unless
+they were included before the current batch cutoff.
+
+## 5. Durable Message Capture
+
+The listener currently forwards messages to n8n through a bounded in-memory
+queue. MVP adds a durable capture write before answer-routing eligibility is
+evaluated.
+
+Proposed canonical table:
+
+```sql
+CREATE TABLE rag_discord_messages (
+    message_id         TEXT PRIMARY KEY,
+    guild_id           TEXT NOT NULL,
+    channel_id         TEXT NOT NULL,
+    channel_name       TEXT,
+    thread_id          TEXT,
+    parent_message_id  TEXT,
+    root_message_id    TEXT,
+    author_id_hash     TEXT NOT NULL,
+    content            TEXT NOT NULL,
+    created_at         TIMESTAMPTZ NOT NULL,
+    captured_at        TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    capture_run_id     TEXT NOT NULL
+);
+```
+
+The exact schema may add safe message metadata already required by the chunker.
+Raw author IDs and excluded-channel content must not be persisted.
+
+Capture is idempotent on `message_id`. Bot, webhook, and system-message policy
+must be explicit; content excluded from the historical corpus today should not
+silently enter the new corpus.
+
+## 6. Conversation and Window Tracking
+
+### Replies
+
+For a reply, persist `parent_message_id` from Discord's message reference.
+Follow known parents in Postgres to determine the oldest known
+`root_message_id`. The work key is:
+
+```text
+(channel_id, thread_id, root_message_id)
+```
+
+If the direct parent is already present in the baseline corpus manifest but not
+in the live-message table, the baseline message-to-chunk map supplies its root or
+conversation identity.
+
+### Non-reply messages
+
+Non-reply traffic is assigned to a provisional channel/thread time window using
+the chunker's existing window rules. Adjacent dirty windows are merged before
+processing so the chunker receives enough preceding and following context to
+reproduce overlap correctly.
+
+### Coalescing
+
+The work queue has one active row per conversation/window key. Additional
+messages expand the affected range and increment counters rather than creating
+independent rechunk jobs.
+
+```sql
+CREATE TABLE rag_chunk_work_queue (
+    work_key             TEXT PRIMARY KEY,
+    channel_id           TEXT NOT NULL,
+    thread_id            TEXT,
+    root_message_id      TEXT,
+    earliest_message_id  TEXT NOT NULL,
+    latest_message_id    TEXT NOT NULL,
+    pending_message_count INTEGER NOT NULL,
+    status               TEXT NOT NULL,
+    first_seen_at        TIMESTAMPTZ NOT NULL,
+    last_seen_at         TIMESTAMPTZ NOT NULL,
+    claimed_run_id       TEXT
+);
+```
+
+## 7. Chunk Ownership Manifest
+
+Aggregate per-file state is insufficient for targeted replacement. The system
+needs a manifest connecting Qdrant points to their messages:
+
+```sql
+CREATE TABLE rag_chunk_manifest (
+    point_id             TEXT PRIMARY KEY,
+    logical_group_id     TEXT NOT NULL,
+    channel_id           TEXT NOT NULL,
+    thread_id            TEXT,
+    root_message_id      TEXT,
+    message_ids          TEXT[] NOT NULL,
+    first_message_id     TEXT NOT NULL,
+    last_message_id      TEXT NOT NULL,
+    chunker_version      TEXT NOT NULL,
+    embedding_version    TEXT NOT NULL,
+    ingestion_run_id     TEXT NOT NULL,
+    active               BOOLEAN NOT NULL DEFAULT TRUE,
+    superseded_at        TIMESTAMPTZ
+);
+```
+
+The final full export/rebuild seeds this manifest and is the baseline from which
+continuous ingestion begins.
+
+## 8. Maintenance-Window Update Procedure
+
+1. Create an ingestion run with status `preparing`.
+2. Record a fixed batch cutoff. Messages captured after it remain pending.
+3. Enable maintenance mode for active and passive RAG execution.
+4. Allow already-running retrieval/generation executions to finish, with a
+   bounded drain timeout.
+5. Claim all eligible dirty work rows for the run.
+6. Resolve every affected old point through `rag_chunk_manifest`.
+7. Load the complete affected conversation/window, including required overlap.
+8. Run the existing chunker and embedding model.
+9. Record the planned old and replacement point sets.
+10. Upsert replacement Qdrant points.
+11. Delete superseded Qdrant points that are not part of the replacement set.
+12. Update the manifest and mark work rows processed.
+13. Run structural verification.
+14. Run the complete Phase 8 regression suite in retrieval-only mode.
+15. If all gates pass, mark the corpus version `healthy`, complete the run, and
+    disable maintenance mode.
+16. If any gate fails, keep the corpus unavailable, mark the run
+    `review_needed`, preserve evidence, and alert an admin.
+
+The procedure must be safe to retry using the same run plan. The replacement set
+must be deterministic for a fixed input, chunker version, and embedding version.
+
+## 9. Verification and Regression Gates
+
+### Structural gate
+
+- every replacement manifest point exists in Qdrant;
+- every superseded point is absent from Qdrant;
+- every processed message appears in at least one active chunk;
+- active chunk message IDs are valid canonical or baseline messages;
+- no unexpected active point IDs exist for the affected groups;
+- Qdrant payload metadata matches the manifest;
+- no claimed work row is left in an ambiguous state.
+
+### Regression gate
+
+Run all canonical cases described in
+[Regression README.md](Regression%20README.md) after every update batch.
+
+MVP uses retrieval-only mode:
+
+```json
+{
+  "mode": "retrieval_only",
+  "allow_gemini": false,
+  "allow_discord_post": false,
+  "write_eval_labels": false,
+  "requested_by": "incremental_ingestion"
+}
+```
+
+The run report must be associated with the ingestion run and corpus version.
+Any failed case or `review_needed` outcome beyond the agreed baseline prevents
+the corpus version from being marked healthy until reviewed.
+
+## 10. Listener Downtime Policy
+
+### MVP
+
+Normal short disconnects rely on Discord Gateway resume and replay. MVP does not
+implement REST history fetching and does not claim guaranteed recovery after an
+unresumable session, extended outage, queue overflow, or failed delivery before
+durable capture.
+
+The listener must record:
+
+- last successful durable capture time;
+- disconnect and reconnect times;
+- whether the Gateway session resumed;
+- queue overflow or durable-write failures;
+- suspected gap start and end.
+
+### Future phase: manual gap review and bulk recovery
+
+When the listener cannot resume or a gap is suspected:
+
+1. create a corpus-gap issue for admin review;
+2. mark the incident `review_needed`, consistent with the regression review
+   vocabulary;
+3. include affected time range, known channels/threads, last captured message
+   IDs, and listener evidence;
+4. ask an authorized admin to export only the missing period/messages;
+5. ingest the recovery export through a controlled bulk-import path;
+6. run structural verification and the complete regression suite.
+
+This phase is intentionally outside MVP. No automatic history pulling is
+required for MVP.
+
+## 11. Failure and Recovery Policy
+
+- Failure before maintenance mode leaves the current corpus available.
+- Failure after maintenance begins keeps RAG unavailable until the run is
+  retried, completed, or explicitly rolled back.
+- New Discord messages continue to be captured throughout the failure.
+- Work rows are never marked complete before Qdrant and manifest verification.
+- The run stores old point IDs and replacement point IDs so an admin can diagnose
+  or retry deterministically.
+- A full rebuild remains the final recovery option.
+
+MVP favors a clearly unavailable service over serving a partially updated or
+unvalidated corpus.
+
+## 12. Phased Execution Plan
+
+### Phase 0 ? Approve design and establish baseline
+
+- Review this proposal with Haragonda and the ingestion owners.
+- Reconcile it into PR #24 as the production path.
+- Retain export fingerprinting only for baseline/backfill and recovery imports.
+- Complete the final full export ingestion.
+- Record the baseline corpus version, chunker version, embedding version, and
+  full regression report.
+
+**Gate:** baseline Qdrant and regression suite are healthy and reproducible.
+
+### Phase 1 ? Durable `MESSAGE_CREATE` capture
+
+- Add the canonical message and work-queue tables.
+- Extend the listener event contract with reply/thread/timestamp fields.
+- Persist permitted messages before active/passive classification.
+- Make capture idempotent by message ID.
+- Keep existing answer routing behavior unchanged.
+- Add capture health metrics and failure alerts.
+
+**Gate:** test traffic is durably recorded once, excluded content is absent, and
+answer routing has no regression.
+
+### Phase 2 ? Seed chunk ownership manifest
+
+- Add `rag_chunk_manifest` and ingestion-run/corpus-version state.
+- Update full rebuild ingestion to populate manifest rows and Qdrant source
+  metadata.
+- Add message-to-point and reply-root lookup support for the baseline.
+- Implement structural verification without changing incremental chunks.
+
+**Gate:** every baseline Qdrant point and message can be reconciled to the
+manifest.
+
+### Phase 3 ? Offline planner and shadow rechunking
+
+- Coalesce reply conversations and non-reply windows.
+- Produce deterministic old-point and replacement-point plans.
+- Run chunking and embedding without modifying production Qdrant.
+- Compare shadow output with expected full-chunker output for selected channels.
+- Measure update duration to set a realistic maintenance window.
+- Estimate replacement chunk count and projected Oracle processing time before
+  maintenance begins.
+
+**Gate:** affected-region output matches full-chunker behavior for the validation
+fixtures, no unrelated point is selected for replacement, and normal daily
+traffic fits within the agreed maintenance budget at measured Oracle throughput.
+
+### Phase 4 ? Maintenance mode and production replacement
+
+- Add the maintenance-mode gate to shared intake.
+- Continue durable listener capture during maintenance.
+- Drain in-flight RAG executions.
+- Apply planned Qdrant replacement and manifest updates.
+- Add idempotent retry and failure-state handling.
+- Run structural verification.
+
+**Gate:** simulated failures at each replacement step are recoverable, and no
+query runs against a partially updated corpus.
+
+### Phase 5 ? Full regression and scheduled operation
+
+- Invoke the complete Phase 8 regression suite after structural verification.
+- Associate regression results with the ingestion run and corpus version.
+- Reopen the service only when all gates pass.
+- Schedule updates for a configurable low-traffic window.
+- Publish run duration, processed-message count, affected chunks, regression
+  result, and maintenance duration.
+
+**Gate:** repeated incremental batches pass structural checks and the complete
+regression suite without quality degradation.
+
+### Future Phase 6 ? Edits and deletions
+
+- Capture update/delete events.
+- Rebuild or remove affected chunks.
+- Add historical mutation validation cases.
+
+### Future Phase 7 ? Downtime gap workflow
+
+- Detect unresumable gaps.
+- Automatically create a review issue with recovery evidence.
+- Add admin-provided missing-message bulk import.
+- Run structural and full regression gates after recovery.
+
+## 13. PR Collaboration Recommendation
+
+Continue the design work in PR #24 so Haragonda remains the design owner and the
+existing discussion, validation cases, and implementation sequencing are
+preserved.
+
+PR #24 should be revised before merge:
+
+- change the primary production mechanism from recurring export fingerprints to
+  durable Gateway capture;
+- retain export ingestion as baseline, backfill, and recovery functionality;
+- replace live Qdrant mutation with the maintenance-window MVP;
+- add the chunk ownership manifest;
+- make the complete regression suite a mandatory final gate;
+- defer edits, deletions, and downtime recovery to explicit later phases.
+
+Implementation should then land in small follow-up PRs for the individual phases
+rather than placing all runtime changes in the design PR.
