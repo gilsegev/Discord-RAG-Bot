@@ -21,5 +21,7 @@ assert.match(migration, /CREATE TABLE IF NOT EXISTS rag_chunk_replacement_plans/
 assert.match(migration, /CREATE TABLE IF NOT EXISTS rag_chunk_replacement_plan_groups/);
 assert.match(executionPlan, /### Phase 9C\.3: Offline planner and shadow rechunking/);
 assert.match(executionPlan, /111\.92 chunks\/minute/);
+assert.match(executionPlan, /81 real-server/);
+assert.match(executionPlan, /3–4 minutes/);
 
 console.log('phase9c3 planner specification checks passed');

@@ -35,6 +35,18 @@ class IncrementalPlannerTests(unittest.TestCase):
         groups = coalesce_work(work, records)
         self.assertEqual([len(g["source_message_ids"]) for g in groups], [2, 1])
 
+    def test_two_distant_singletons_match_original_chunker_buffering(self):
+        records = [message(1, 0), message(2, 40)]
+        groups = coalesce_work(
+            [
+                WorkItem("1", 1, "recent_window", "10", None, None),
+                WorkItem("2", 2, "recent_window", "10", None, None),
+            ],
+            records,
+        )
+        self.assertEqual(len(groups), 1)
+        self.assertEqual(groups[0]["source_message_ids"], ["1", "2"])
+
     def test_cycle_fails_closed(self):
         records = [message(1, 0, 2), message(2, 1, 1)]
         with self.assertRaisesRegex(PlanningError, "cycle"):

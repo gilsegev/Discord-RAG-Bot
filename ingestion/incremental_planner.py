@@ -92,7 +92,7 @@ def coalesce_work(
     records: Iterable[dict[str, Any]],
     baseline_roots: dict[str, str] | None = None,
 ) -> list[dict[str, Any]]:
-    """Coalesce replies by root and standalone messages by adjacent 15m windows."""
+    """Coalesce replies by root and windows exactly as the v10 chunker does."""
     index = _record_index(records)
     roots = baseline_roots or {}
     reply_groups: dict[tuple[str, str | None, str], list[WorkItem]] = {}
@@ -126,14 +126,20 @@ def coalesce_work(
     for (channel_id, thread_id), items in windows.items():
         ordered = sorted(items, key=lambda item: _dt(index[item.message_id]["timestamp"]))
         batches: list[list[WorkItem]] = []
+        batch_start: datetime | None = None
         for item in ordered:
             if not batches:
                 batches.append([item])
+                batch_start = _dt(index[item.message_id]["timestamp"])
                 continue
-            previous = _dt(index[batches[-1][-1].message_id]["timestamp"])
             current = _dt(index[item.message_id]["timestamp"])
-            if current - previous > threshold:
-                batches.append([])
+            # chunker._window_chunk only closes a >15m window after it has
+            # MIN_MSGS messages. A singleton therefore waits for the next
+            # same-scope message even when that message arrives much later.
+            if current - batch_start > threshold and len(batches[-1]) >= 2:
+                batches.append([item])
+                batch_start = current
+                continue
             batches[-1].append(item)
         for batch in batches:
             source_ids = [item.message_id for item in batch]
