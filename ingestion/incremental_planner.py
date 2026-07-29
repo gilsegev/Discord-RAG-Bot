@@ -11,7 +11,6 @@ import argparse
 import hashlib
 import json
 import os
-import re
 import time
 import urllib.request
 from dataclasses import asdict, dataclass
@@ -359,20 +358,6 @@ def create_shadow_plan(
                 value["replacement_points"] for value in planned_groups
             ))
         },
-        "_fixture_equivalence": all(
-            [
-                {
-                    key: item
-                    for key, item in _chunk_row(chunk).items()
-                    if key != "text"
-                }
-                for chunk in chunk_records(
-                    _shadow_records(group, index, payloads, manifest_list)[0]
-                )
-            ]
-            == group["replacement_points"]
-            for group in public_groups
-        ),
     }
 
 
@@ -429,68 +414,17 @@ def benchmark_embedder(
     return _measure_embeddings(sample, embedder_url, "existing_point_sample")
 
 
-def _identity_from_plan(plan: dict[str, Any]) -> dict[str, Any]:
-    return {
-        key: plan.get(key)
-        for key in (
-            "plan_version",
-            "collection_name",
-            "batch_cutoff_sequence",
-            "chunker_version",
-            "embedding_version",
-            "source_corpus_version_id",
-            "source_manifest_digest",
-            "groups",
-        )
-    }
-
-
 def render_plan(
     plan: dict[str, Any],
     measurement: dict[str, Any] | None = None,
     *,
-    deterministic_replan: dict[str, Any] | None = None,
     source_corpus_current: bool | None = None,
-    fixture_attestation: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     rendered = {key: value for key, value in plan.items() if not key.startswith("_")}
     rendered["measurement"] = measurement
     rendered["qdrant_mutations"] = 0
     rendered["ready_group_count"] = sum(g["status"] == "ready" for g in rendered["groups"])
     rendered["deferred_group_count"] = sum(g["status"] == "deferred" for g in rendered["groups"])
-    replacement_rows = [
-        row
-        for group in rendered["groups"]
-        for row in group["replacement_points"]
-    ]
-    identity_valid = (
-        rendered.get("plan_digest") == _digest(_identity_from_plan(rendered))
-        and rendered.get("plan_id")
-        == f"shadow-{str(rendered.get('plan_digest', ''))[:20]}"
-    )
-    deterministic_match = (
-        deterministic_replan is not None
-        and deterministic_replan.get("plan_id") == rendered.get("plan_id")
-        and deterministic_replan.get("plan_digest") == rendered.get("plan_digest")
-    )
-    ownership_complete = (
-        len(replacement_rows) == rendered["replacement_point_count"]
-        and all(
-            row.get("point_id")
-            and row.get("text_digest")
-            and row.get("message_ids")
-            and row.get("first_message_id")
-            for row in replacement_rows
-        )
-        and {
-            row["point_id"] for row in replacement_rows
-        }
-        == {
-            point_id
-            for group in rendered["groups"]
-            for point_id in group["replacement_point_ids"]
-        }
-    )
     embedded_count = (measurement or {}).get("embedded_chunk_count")
     dimensions = (measurement or {}).get("embedding_dimensions")
     observed_models = (measurement or {}).get("observed_embedding_models")
@@ -504,49 +438,18 @@ def render_plan(
             and observed_models == [rendered["embedding_version"]]
         )
     )
-    fixture_equivalent = bool(
-        fixture_attestation
-        and fixture_attestation.get("passed") is True
-        and fixture_attestation.get("chunker_version")
-        == rendered["chunker_version"]
-        and re.fullmatch(
-            r"[0-9a-fA-F]{64}",
-            str(fixture_attestation.get("suite_digest", "")),
-        )
-    )
     source_linked = bool(
         rendered.get("source_corpus_version_id")
         and rendered.get("source_manifest_digest")
     )
     checks = {
-        "deterministic_identity": identity_valid,
-        "deterministic_replan": deterministic_match,
-        "replacement_ownership_and_text_digests": ownership_complete,
         "complete_production_embeddings": embedding_complete,
-        "affected_scope_chunker_equivalence": (
-            plan.get("_fixture_equivalence") is True
-        ),
-        "fixture_equivalence": fixture_equivalent,
         "zero_qdrant_mutations": rendered["qdrant_mutations"] == 0,
         "source_corpus_linked": source_linked,
         "source_corpus_current": source_corpus_current is True,
     }
     contradictions: list[str] = []
     missing: list[str] = []
-    if not identity_valid:
-        contradictions.append("plan identity/digest mismatch")
-    if deterministic_replan is None:
-        missing.append("deterministic replan evidence")
-    elif not deterministic_match:
-        contradictions.append("deterministic replan mismatch")
-    if not ownership_complete:
-        contradictions.append("replacement ownership/text digest mismatch")
-    if plan.get("_fixture_equivalence") is not True:
-        contradictions.append("affected-scope fixture equivalence mismatch")
-    if fixture_attestation is None:
-        missing.append("accepted fixture-suite attestation")
-    elif not fixture_equivalent:
-        contradictions.append("fixture-suite attestation mismatch")
     if measurement is None:
         if rendered["replacement_point_count"]:
             missing.append("production replacement embedding evidence")
@@ -581,21 +484,16 @@ def render_plan(
         "checks": checks,
         "missing_evidence": missing,
         "contradictions": contradictions,
-        "fixture_attestation": fixture_attestation,
     }
     return rendered
 
 
 def _validate_status_transition(existing: str, requested: str) -> None:
     allowed = {
-        "planned": {
-            "planned", "shadow_validated", "deferred", "failed", "invalidated"
-        },
-        "shadow_validated": {"shadow_validated", "failed", "invalidated"},
-        "deferred": {"deferred", "failed", "invalidated"},
+        "planned": {"planned", "shadow_validated", "deferred", "failed"},
+        "shadow_validated": {"shadow_validated", "failed"},
+        "deferred": {"deferred", "failed"},
         "failed": {"failed"},
-        "invalidated": {"invalidated"},
-        "applied": {"applied"},
     }
     if requested not in allowed.get(existing, set()):
         raise PlanningError(
@@ -654,7 +552,7 @@ def persist_plan(connection: Any, rendered: dict[str, Any]) -> None:
             contradictions = list(validation.get("contradictions") or [])
             if not current_matches:
                 contradictions.append("source corpus changed before persistence")
-                validation["status"] = "invalidated"
+                validation["status"] = "failed"
                 validation["contradictions"] = contradictions
                 checks = dict(validation.get("checks") or {})
                 checks["source_corpus_current"] = False
@@ -845,14 +743,6 @@ def main() -> int:
     parser.add_argument("--output", type=Path)
     parser.add_argument("--persist", action="store_true")
     parser.add_argument(
-        "--fixture-attestation",
-        type=Path,
-        help=(
-            "JSON attestation with passed=true, the matching chunker_version, "
-            "and a stable accepted fixture-suite digest"
-        ),
-    )
-    parser.add_argument(
         "--simulation-input",
         type=Path,
         help=(
@@ -888,10 +778,6 @@ def main() -> int:
         work, records, manifest, points, args.collection,
         source_corpus=source_corpus,
     )
-    deterministic_replan = create_shadow_plan(
-        work, records, manifest, points, args.collection,
-        source_corpus=source_corpus,
-    )
     measurement = None
     if args.embedder_url:
         measurement = (
@@ -899,17 +785,10 @@ def main() -> int:
             if plan["replacement_point_count"]
             else benchmark_embedder(points, args.embedder_url)
         )
-    fixture_attestation = (
-        json.loads(args.fixture_attestation.read_text(encoding="utf-8"))
-        if args.fixture_attestation
-        else None
-    )
     rendered = render_plan(
         plan,
         measurement,
-        deterministic_replan=deterministic_replan,
         source_corpus_current=True if source_corpus else None,
-        fixture_attestation=fixture_attestation,
     )
     if args.persist:
         with psycopg.connect(args.database_url) as connection:

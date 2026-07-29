@@ -6,10 +6,11 @@ claiming pending work or mutating Qdrant.
 ## Architecture Contract
 
 n8n is the only lifecycle decision-maker. Postgres is the durable source of
-truth and atomically enforces n8n's requested transitions. Phoenix receives
-correlated diagnostic spans after the Postgres transaction commits. Python
-validates deterministic shadow plans but never advances runtime lifecycle
-state.
+truth for current state and outcome and provides narrow atomic operations for
+closing and reopening the serving gate. Phoenix receives correlated diagnostic
+spans after the Postgres transaction commits and is the detailed phase
+timeline. Python validates deterministic shadow plans but never advances
+runtime lifecycle state.
 
 Phase 9C.3.5 must not:
 
@@ -33,39 +34,51 @@ psql "$RAGBOT_DATABASE_URL" -v ON_ERROR_STOP=1 \
 The migration adds:
 
 - `rag_incremental_runs`: permanent run summaries and future nullable
-  replacement, snapshot, regression, failure, and rollback evidence.
-- `rag_incremental_run_events`: append-only transition records with a unique
-  per-run idempotency key.
-- `rag_runtime_state`: one revisioned serving-state row per collection.
+  phase results/timestamps, replacement, snapshot, regression, failure, retry,
+  and rollback evidence.
+- `rag_runtime_state`: one revisioned `serving`, `draining`, or `maintenance`
+  row per collection.
 - `rag_active_execution_leases`: bounded shared-core execution leases used by
   the future drain gate.
 
-It also adds the source corpus identity to replacement plans and extends the
-plan lifecycle with `invalidated` and `applied`.
+It also adds source-corpus identity to replacement plans. A stale plan is
+rejected at application time and the rejection is recorded on its run; the plan
+does not need another lifecycle status.
 
 The migration is additive and safe to rerun. It seeds
 `tpm_unite_history` as `serving` only when no runtime row already exists.
 
-## Transaction And Lease API
+## Run, Maintenance, And Lease API
 
-n8n calls database functions rather than issuing independent state and event
-updates:
+n8n calls explicit database operations rather than a general-purpose transition
+engine:
 
 - `rag_create_incremental_run(...)`
-- `rag_transition_incremental_run(...)`
+- `rag_update_incremental_run(...)`
+- `rag_fail_incremental_run(...)`
+- `rag_begin_incremental_drain(...)`
+- `rag_enter_incremental_maintenance(...)`
+- `rag_exit_incremental_maintenance(...)`
 - `rag_acquire_execution_lease(...)`
 - `rag_heartbeat_execution_lease(...)`
 - `rag_release_execution_lease(...)`
 - `rag_count_live_execution_leases(...)`
 
-Transitions lock the collection runtime row, compare the expected state and
-revision, validate the paired run/runtime transition, update state, and append
-the event in one transaction. Replaying the same idempotency key returns the
-original event; reusing it for different transition data fails closed.
+`rag_begin_incremental_drain` locks the runtime row, verifies the expected
+revision and source corpus, closes the serving gate, and assigns the run in one
+transaction. It does not wait inside that transaction. Already-admitted online
+RAG work keeps its lease while new lease acquisition is denied.
+
+`rag_enter_incremental_maintenance` succeeds only when that run still owns the
+draining state and no live leases remain. `rag_exit_incremental_maintenance`
+records the outcome and reopens serving. Exact duplicate calls return the
+already-achieved state without an event table or idempotency key.
 
 Lease acquisition locks the same runtime row and succeeds only while the
 collection is `serving`. This closes the race between starting a normal RAG
-execution and entering `draining`. Leases have both a renewable expiry and a
+execution and closing the serving gate. Draining means waiting only for online
+RAG work that already passed the gate and may be using Qdrant, the reranker, or
+Gemini. Discord capture continues. Leases have both a renewable expiry and a
 hard maximum lifetime so abandoned n8n executions cannot block draining
 forever.
 
@@ -75,26 +88,27 @@ forever.
 
 - the source corpus version and manifest digest match the current healthy
   corpus;
-- deterministic replanning reproduces the plan ID and digest;
-- every ready replacement has exact point, ownership, and text-digest evidence;
 - every replacement chunk was embedded by the declared production model;
 - embedded and replacement counts match and every vector is 768 dimensions;
-- fixture equivalence passes;
+- the observed embedding model/version matches the declared version;
 - the artifact reports zero Qdrant mutations.
 
 Incomplete evidence remains `planned`. Deferred-only work remains `deferred`.
 Contradictory or stale evidence fails closed.
 
-Simulation mode creates a durable run and append-only event evidence while
-leaving runtime state `serving`, pending work untouched, and Qdrant read-only.
+Deterministic replanning, exact ownership/text digests, affected-scope
+selection, and fixture equivalence remain automated planner tests. They are not
+persisted production attestations.
+
+Simulation mode creates a durable run summary while leaving runtime state
+`serving`, pending work untouched, and Qdrant read-only.
 
 ## n8n Workflows
 
 `RAG Incremental Coordinator - Phase 9C.3.5` is manual and inactive by
-default. It creates a durable simulation run, reads the committed event, emits
-an OTLP span carrying `incremental_run_id` and `incremental_event_id`, and
-returns the authoritative Postgres state. A Phoenix delivery failure does not
-roll back the Postgres record.
+default. It creates or updates a durable simulation run, emits an OTLP span
+carrying `incremental_run_id`, and returns the authoritative Postgres state. A
+Phoenix delivery failure does not roll back the Postgres record.
 
 The shared RAG core acquires a bounded lease before embedding and releases it
 on normal result paths. Phase 9C.3.5 keeps runtime state at `serving`, so this
@@ -125,7 +139,8 @@ DATABASE_URL="$RAGBOT_DATABASE_URL" \
 
 Acceptance additionally requires:
 
-- a simulation run whose summary and append-only events remain queryable;
-- matching `incremental_run_id` and event ID in Phoenix;
+- a simulation run whose summary remains queryable after reconnecting to
+  Postgres;
+- matching `incremental_run_id` in Phoenix;
 - unchanged pending-work and Qdrant counts before and after simulation;
 - the complete Phase 8 retrieval-only regression at the accepted baseline.

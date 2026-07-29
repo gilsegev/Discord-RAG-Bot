@@ -1,8 +1,8 @@
 """End-to-end Phase 9C.3.5 rechunk simulation against real Postgres.
 
 The test uses an isolated schema and a fixture embedder. It exercises canonical
-capture rows -> shadow rechunking -> complete validation -> durable plan -> run
-and append-only event persistence. Qdrant is represented by an empty read-only
+capture rows -> shadow rechunking -> complete validation -> durable plan ->
+durable run-summary persistence. Qdrant is represented by an empty read-only
 point set and is never called or mutated.
 """
 
@@ -173,30 +173,13 @@ def main() -> None:
             collection=COLLECTION,
             source_corpus=source_corpus,
         )
-        replan = create_shadow_plan(
-            work,
-            live,
-            manifest,
-            [],
-            collection=COLLECTION,
-            source_corpus=source_corpus,
-        )
         measurement = embed_shadow(
             plan, f"http://127.0.0.1:{server.server_port}"
         )
-        suite_digest = hashlib.sha256(
-            (ROOT / "ingestion/test_incremental_planner.py").read_bytes()
-        ).hexdigest()
         rendered = render_plan(
             plan,
             measurement,
-            deterministic_replan=replan,
             source_corpus_current=True,
-            fixture_attestation={
-                "passed": True,
-                "chunker_version": "v10",
-                "suite_digest": suite_digest,
-            },
         )
         assert rendered["validation"]["status"] == "shadow_validated", rendered[
             "validation"
@@ -207,7 +190,7 @@ def main() -> None:
         created = admin.execute(
             """
             SELECT * FROM rag_create_incremental_run(
-                %s, %s, %s, %s, 'phase9c35-e2e',
+                %s, %s, %s,
                 '{"simulation":true,"qdrant_mutations":0,"pending_work_claimed":0}'
             )
             """,
@@ -215,7 +198,6 @@ def main() -> None:
                 run_id,
                 rendered["plan_id"],
                 COLLECTION,
-                f"{run_id}:incremental.run_created",
             ),
         ).fetchone()
         assert created[1:4] == ("created", "serving", 0)
@@ -242,16 +224,6 @@ def main() -> None:
                 """,
                 (run_id,),
             ).fetchone()
-            durable_events = verifier.execute(
-                """
-                SELECT event_id, event_name, new_run_state, new_runtime_state,
-                       event_payload
-                FROM rag_incremental_run_events
-                WHERE incremental_run_id=%s
-                ORDER BY event_id
-                """,
-                (run_id,),
-            ).fetchall()
             runtime = verifier.execute(
                 """
                 SELECT runtime_state, active_incremental_run_id, state_revision
@@ -265,12 +237,6 @@ def main() -> None:
         assert before == after == {"pending": 2, "manifest": 0}
         assert durable_run[:4] == ("created", COLLECTION, 2, 1)
         assert durable_run[4]["simulation"] is True
-        assert len(durable_events) == 1
-        assert durable_events[0][1:4] == (
-            "incremental.run_created",
-            "created",
-            "serving",
-        )
         assert runtime == ("serving", None, 0)
 
         print(
@@ -290,8 +256,6 @@ def main() -> None:
                         after["manifest"],
                     ],
                     "incremental_run_id": run_id,
-                    "durable_event_id": durable_events[0][0],
-                    "durable_event_count": len(durable_events),
                     "runtime_state": runtime[0],
                     "runtime_revision": runtime[2],
                 },

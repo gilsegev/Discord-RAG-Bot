@@ -1,37 +1,17 @@
--- Phase 9C.3.5: durable incremental-run lifecycle, audit events, and
--- race-safe execution leases. Postgres enforces transitions atomically; n8n
--- remains the owner of lifecycle decisions.
+-- Phase 9C.3.5: durable incremental-run coordination and bounded execution
+-- leases. n8n owns lifecycle decisions; Postgres only applies them atomically.
 
-CREATE EXTENSION IF NOT EXISTS pgcrypto;
-
--- Phase 9C.4 needs terminal plan states and a durable link to the corpus
--- version against which a plan was computed. Existing plans remain nullable
--- because their source version was not recorded by Phase 9C.3.
 ALTER TABLE rag_chunk_replacement_plans
     ADD COLUMN IF NOT EXISTS source_corpus_version_id TEXT
         REFERENCES rag_corpus_versions(corpus_version_id),
     ADD COLUMN IF NOT EXISTS source_manifest_digest TEXT;
-
-DO $$
-BEGIN
-    ALTER TABLE rag_chunk_replacement_plans
-        DROP CONSTRAINT IF EXISTS rag_chunk_replacement_plans_status_check;
-    ALTER TABLE rag_chunk_replacement_plans
-        ADD CONSTRAINT rag_chunk_replacement_plans_status_check CHECK (
-            status IN (
-                'planned', 'shadow_validated', 'deferred', 'failed',
-                'invalidated', 'applied'
-            )
-        );
-END
-$$;
 
 CREATE INDEX IF NOT EXISTS idx_rag_chunk_replacement_plans_source_corpus
     ON rag_chunk_replacement_plans(source_corpus_version_id);
 
 CREATE TABLE IF NOT EXISTS rag_incremental_runs (
     incremental_run_id TEXT PRIMARY KEY,
-    plan_id TEXT NOT NULL
+    plan_id TEXT NOT NULL UNIQUE
         REFERENCES rag_chunk_replacement_plans(plan_id),
     collection_name TEXT NOT NULL,
     batch_cutoff_sequence BIGINT NOT NULL CHECK (batch_cutoff_sequence >= 0),
@@ -68,8 +48,6 @@ CREATE TABLE IF NOT EXISTS rag_incremental_runs (
     snapshot_retained_until TIMESTAMPTZ,
     phase_durations JSONB NOT NULL DEFAULT '{}'::jsonb
         CHECK (jsonb_typeof(phase_durations) = 'object'),
-    -- Regression execution currently has no durable parent table, so this is
-    -- the external n8n regression run identifier rather than a foreign key.
     regression_run_id TEXT,
     regression_result TEXT,
     retry_count INTEGER NOT NULL DEFAULT 0 CHECK (retry_count >= 0),
@@ -82,17 +60,13 @@ CREATE TABLE IF NOT EXISTS rag_incremental_runs (
     created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
     started_at TIMESTAMPTZ,
     completed_at TIMESTAMPTZ,
-    updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
-    UNIQUE (plan_id)
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
 CREATE TABLE IF NOT EXISTS rag_runtime_state (
     collection_name TEXT PRIMARY KEY,
     runtime_state TEXT NOT NULL DEFAULT 'serving' CHECK (
-        runtime_state IN (
-            'serving', 'draining', 'maintenance', 'validating',
-            'review_needed', 'rolling_back'
-        )
+        runtime_state IN ('serving', 'draining', 'maintenance')
     ),
     active_incremental_run_id TEXT
         REFERENCES rag_incremental_runs(incremental_run_id),
@@ -104,29 +78,6 @@ CREATE TABLE IF NOT EXISTS rag_runtime_state (
         (runtime_state <> 'serving' AND active_incremental_run_id IS NOT NULL)
     )
 );
-
-CREATE TABLE IF NOT EXISTS rag_incremental_run_events (
-    event_id BIGSERIAL PRIMARY KEY,
-    incremental_run_id TEXT NOT NULL
-        REFERENCES rag_incremental_runs(incremental_run_id),
-    idempotency_key TEXT NOT NULL,
-    event_name TEXT NOT NULL,
-    previous_run_state TEXT,
-    new_run_state TEXT NOT NULL,
-    previous_runtime_state TEXT NOT NULL,
-    new_runtime_state TEXT NOT NULL,
-    runtime_revision BIGINT NOT NULL CHECK (runtime_revision >= 0),
-    n8n_execution_id TEXT,
-    event_payload JSONB NOT NULL DEFAULT '{}'::jsonb
-        CHECK (jsonb_typeof(event_payload) = 'object'),
-    created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
-    UNIQUE (incremental_run_id, idempotency_key)
-);
-
-CREATE INDEX IF NOT EXISTS idx_rag_incremental_runs_collection_state
-    ON rag_incremental_runs(collection_name, run_state, created_at);
-CREATE INDEX IF NOT EXISTS idx_rag_incremental_run_events_run_created
-    ON rag_incremental_run_events(incremental_run_id, created_at, event_id);
 
 CREATE TABLE IF NOT EXISTS rag_active_execution_leases (
     lease_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -149,12 +100,12 @@ CREATE TABLE IF NOT EXISTS rag_active_execution_leases (
     UNIQUE (collection_name, n8n_execution_id)
 );
 
+CREATE INDEX IF NOT EXISTS idx_rag_incremental_runs_collection_state
+    ON rag_incremental_runs(collection_name, run_state, created_at);
 CREATE INDEX IF NOT EXISTS idx_rag_active_execution_leases_live
     ON rag_active_execution_leases(collection_name, expires_at)
     WHERE released_at IS NULL;
 
--- Seed every known collection and the production default. ON CONFLICT keeps
--- this migration safe to rerun without resetting live runtime state.
 INSERT INTO rag_runtime_state (collection_name)
 SELECT collection_name
 FROM (
@@ -165,100 +116,6 @@ FROM (
     SELECT collection_name FROM rag_chunk_replacement_plans
 ) known_collections
 ON CONFLICT (collection_name) DO NOTHING;
-
-CREATE OR REPLACE FUNCTION rag_prevent_incremental_event_mutation()
-RETURNS trigger
-LANGUAGE plpgsql
-AS $$
-BEGIN
-    RAISE EXCEPTION 'rag_incremental_run_events is append-only'
-        USING ERRCODE = '55000';
-END
-$$;
-
-DROP TRIGGER IF EXISTS rag_incremental_run_events_append_only
-    ON rag_incremental_run_events;
-CREATE TRIGGER rag_incremental_run_events_append_only
-    BEFORE UPDATE OR DELETE ON rag_incremental_run_events
-    FOR EACH ROW EXECUTE FUNCTION rag_prevent_incremental_event_mutation();
-
-CREATE OR REPLACE FUNCTION rag_valid_run_transition(
-    p_from TEXT,
-    p_to TEXT
-) RETURNS BOOLEAN
-LANGUAGE sql
-IMMUTABLE
-AS $$
-    SELECT p_from = p_to OR (p_from, p_to) IN (
-        ('created', 'draining'),
-        ('created', 'failed'),
-        ('draining', 'maintenance'),
-        ('draining', 'failed'),
-        ('maintenance', 'replacing'),
-        ('maintenance', 'validating'),
-        ('maintenance', 'rolling_back'),
-        ('maintenance', 'review_needed'),
-        ('maintenance', 'failed'),
-        ('replacing', 'validating'),
-        ('replacing', 'rolling_back'),
-        ('replacing', 'review_needed'),
-        ('replacing', 'failed'),
-        ('validating', 'completed'),
-        ('validating', 'rolling_back'),
-        ('validating', 'review_needed'),
-        ('validating', 'failed'),
-        ('rolling_back', 'completed'),
-        ('rolling_back', 'review_needed'),
-        ('rolling_back', 'failed'),
-        ('review_needed', 'rolling_back'),
-        ('review_needed', 'failed'),
-        ('failed', 'rolling_back')
-    )
-$$;
-
-CREATE OR REPLACE FUNCTION rag_valid_runtime_transition(
-    p_from TEXT,
-    p_to TEXT
-) RETURNS BOOLEAN
-LANGUAGE sql
-IMMUTABLE
-AS $$
-    SELECT p_from = p_to OR (p_from, p_to) IN (
-        ('serving', 'draining'),
-        ('draining', 'maintenance'),
-        ('draining', 'serving'),
-        ('maintenance', 'validating'),
-        ('maintenance', 'rolling_back'),
-        ('maintenance', 'review_needed'),
-        ('validating', 'serving'),
-        ('validating', 'rolling_back'),
-        ('validating', 'review_needed'),
-        ('rolling_back', 'serving'),
-        ('rolling_back', 'review_needed'),
-        ('review_needed', 'rolling_back')
-    )
-$$;
-
-CREATE OR REPLACE FUNCTION rag_valid_lifecycle_pair(
-    p_run_state TEXT,
-    p_runtime_state TEXT
-) RETURNS BOOLEAN
-LANGUAGE sql
-IMMUTABLE
-AS $$
-    SELECT (p_run_state, p_runtime_state) IN (
-        ('created', 'serving'),
-        ('draining', 'draining'),
-        ('maintenance', 'maintenance'),
-        ('replacing', 'maintenance'),
-        ('validating', 'validating'),
-        ('rolling_back', 'rolling_back'),
-        ('review_needed', 'review_needed'),
-        ('completed', 'serving'),
-        ('failed', 'serving'),
-        ('failed', 'review_needed')
-    )
-$$;
 
 CREATE OR REPLACE FUNCTION rag_count_live_execution_leases(
     p_collection_name TEXT
@@ -277,39 +134,26 @@ CREATE OR REPLACE FUNCTION rag_create_incremental_run(
     p_run_id TEXT,
     p_plan_id TEXT,
     p_collection_name TEXT,
-    p_event_idempotency_key TEXT,
-    p_n8n_execution_id TEXT DEFAULT NULL,
-    p_event_payload JSONB DEFAULT '{}'::jsonb
+    p_run_metadata JSONB DEFAULT '{}'::jsonb
 ) RETURNS TABLE (
     incremental_run_id TEXT,
     run_state TEXT,
     runtime_state TEXT,
-    runtime_revision BIGINT,
-    event_id BIGINT,
-    event_created BOOLEAN
+    runtime_revision BIGINT
 )
 LANGUAGE plpgsql
 AS $$
 DECLARE
     v_plan rag_chunk_replacement_plans%ROWTYPE;
+    v_source_corpus rag_corpus_versions%ROWTYPE;
     v_run rag_incremental_runs%ROWTYPE;
     v_runtime rag_runtime_state%ROWTYPE;
-    v_event rag_incremental_run_events%ROWTYPE;
-    v_source_corpus rag_corpus_versions%ROWTYPE;
-    v_inserted BOOLEAN := false;
 BEGIN
-    IF coalesce(p_run_id, '') = '' OR coalesce(p_event_idempotency_key, '') = '' THEN
-        RAISE EXCEPTION 'run ID and idempotency key are required'
-            USING ERRCODE = '22023';
-    END IF;
-    IF jsonb_typeof(p_event_payload) <> 'object' THEN
-        RAISE EXCEPTION 'event payload must be a JSON object'
+    IF coalesce(p_run_id, '') = '' OR jsonb_typeof(p_run_metadata) <> 'object' THEN
+        RAISE EXCEPTION 'run ID and object metadata are required'
             USING ERRCODE = '22023';
     END IF;
 
-    -- Return a previously committed create before revalidating mutable plan
-    -- state. For example, a later retry must remain idempotent after Phase
-    -- 9C.4 changes the plan from shadow_validated to applied.
     SELECT * INTO v_run
     FROM rag_incremental_runs r
     WHERE r.incremental_run_id = p_run_id
@@ -317,45 +161,30 @@ BEGIN
     IF FOUND THEN
         IF v_run.plan_id <> p_plan_id
            OR v_run.collection_name <> p_collection_name THEN
-            RAISE EXCEPTION 'run % already exists with different immutable identity',
-                p_run_id USING ERRCODE = '23505';
+            RAISE EXCEPTION 'run ID already belongs to another plan or collection'
+                USING ERRCODE = '23505';
         END IF;
-        SELECT * INTO v_event
-        FROM rag_incremental_run_events e
-        WHERE e.incremental_run_id = p_run_id
-          AND e.idempotency_key = p_event_idempotency_key;
-        IF NOT FOUND THEN
-            RAISE EXCEPTION 'run % was already created with another idempotency key',
-                p_run_id USING ERRCODE = '23505';
-        END IF;
-        IF v_event.n8n_execution_id IS DISTINCT FROM p_n8n_execution_id
-           OR v_event.event_payload <> p_event_payload THEN
-            RAISE EXCEPTION 'idempotency key % was reused with different create data',
-                p_event_idempotency_key USING ERRCODE = '23505';
-        END IF;
-        RETURN QUERY SELECT v_run.incremental_run_id, v_event.new_run_state,
-            v_event.new_runtime_state, v_event.runtime_revision,
-            v_event.event_id, false;
+        SELECT * INTO v_runtime
+        FROM rag_runtime_state rs
+        WHERE rs.collection_name = p_collection_name
+        FOR UPDATE;
+        RETURN QUERY SELECT v_run.incremental_run_id, v_run.run_state,
+            v_runtime.runtime_state, v_runtime.state_revision;
         RETURN;
     END IF;
 
     SELECT * INTO v_plan
     FROM rag_chunk_replacement_plans p
     WHERE p.plan_id = p_plan_id;
-    IF NOT FOUND THEN
-        RAISE EXCEPTION 'unknown replacement plan %', p_plan_id
-            USING ERRCODE = '23503';
-    END IF;
-    IF v_plan.collection_name <> p_collection_name THEN
-        RAISE EXCEPTION 'plan % belongs to collection %, not %',
-            p_plan_id, v_plan.collection_name, p_collection_name
+    IF NOT FOUND OR v_plan.collection_name <> p_collection_name THEN
+        RAISE EXCEPTION 'unknown plan or collection mismatch'
             USING ERRCODE = '22023';
     END IF;
     IF v_plan.status <> 'shadow_validated'
        OR v_plan.source_corpus_version_id IS NULL
        OR v_plan.source_manifest_digest IS NULL THEN
-        RAISE EXCEPTION 'plan % lacks complete shadow-validated source corpus evidence',
-            p_plan_id USING ERRCODE = '55000';
+        RAISE EXCEPTION 'plan lacks complete shadow-validated source evidence'
+            USING ERRCODE = '55000';
     END IF;
     SELECT * INTO v_source_corpus
     FROM rag_corpus_versions cv
@@ -364,14 +193,13 @@ BEGIN
       AND cv.status = 'healthy';
     IF NOT FOUND
        OR v_source_corpus.manifest_digest <> v_plan.source_manifest_digest THEN
-        RAISE EXCEPTION 'plan % source corpus is not the current healthy corpus',
-            p_plan_id USING ERRCODE = '55000';
+        RAISE EXCEPTION 'plan source is not the current healthy corpus'
+            USING ERRCODE = '55000';
     END IF;
 
     INSERT INTO rag_runtime_state (collection_name)
     VALUES (p_collection_name)
     ON CONFLICT (collection_name) DO NOTHING;
-
     SELECT * INTO v_runtime
     FROM rag_runtime_state rs
     WHERE rs.collection_name = p_collection_name
@@ -388,7 +216,7 @@ BEGIN
         (SELECT count(*)::integer
          FROM rag_chunk_replacement_plan_groups g
          WHERE g.plan_id = p_plan_id),
-        p_event_payload
+        p_run_metadata
     )
     ON CONFLICT ON CONSTRAINT rag_incremental_runs_pkey DO NOTHING;
 
@@ -396,92 +224,36 @@ BEGIN
     FROM rag_incremental_runs r
     WHERE r.incremental_run_id = p_run_id
     FOR UPDATE;
-
-    IF v_run.plan_id <> p_plan_id OR v_run.collection_name <> p_collection_name THEN
-        RAISE EXCEPTION 'run % already exists with different immutable identity',
-            p_run_id USING ERRCODE = '23505';
+    IF v_run.plan_id <> p_plan_id
+       OR v_run.collection_name <> p_collection_name THEN
+        RAISE EXCEPTION 'run ID already belongs to another plan or collection'
+            USING ERRCODE = '23505';
     END IF;
-
-    SELECT * INTO v_event
-    FROM rag_incremental_run_events e
-    WHERE e.incremental_run_id = p_run_id
-      AND e.idempotency_key = p_event_idempotency_key;
-
-    IF FOUND THEN
-        IF v_event.n8n_execution_id IS DISTINCT FROM p_n8n_execution_id
-           OR v_event.event_payload <> p_event_payload THEN
-            RAISE EXCEPTION 'idempotency key % was reused with different create data',
-                p_event_idempotency_key USING ERRCODE = '23505';
-        END IF;
-        RETURN QUERY SELECT v_run.incremental_run_id, v_event.new_run_state,
-            v_event.new_runtime_state, v_event.runtime_revision,
-            v_event.event_id, false;
-        RETURN;
-    END IF;
-    IF EXISTS (
-        SELECT 1 FROM rag_incremental_run_events e
-        WHERE e.incremental_run_id = p_run_id
-    ) THEN
-        RAISE EXCEPTION 'run % was already created with another idempotency key',
-            p_run_id USING ERRCODE = '23505';
-    END IF;
-
-    INSERT INTO rag_incremental_run_events (
-        incremental_run_id, idempotency_key, event_name,
-        previous_run_state, new_run_state,
-        previous_runtime_state, new_runtime_state, runtime_revision,
-        n8n_execution_id, event_payload
-    ) VALUES (
-        p_run_id, p_event_idempotency_key, 'incremental.run_created',
-        NULL, 'created', v_runtime.runtime_state, v_runtime.runtime_state,
-        v_runtime.state_revision, p_n8n_execution_id, p_event_payload
-    )
-    RETURNING * INTO v_event;
-    v_inserted := true;
 
     RETURN QUERY SELECT v_run.incremental_run_id, v_run.run_state,
-        v_runtime.runtime_state, v_runtime.state_revision, v_event.event_id,
-        v_inserted;
+        v_runtime.runtime_state, v_runtime.state_revision;
 END
 $$;
 
-CREATE OR REPLACE FUNCTION rag_transition_incremental_run(
+CREATE OR REPLACE FUNCTION rag_update_incremental_run(
     p_run_id TEXT,
-    p_event_idempotency_key TEXT,
-    p_event_name TEXT,
-    p_expected_run_state TEXT,
-    p_new_run_state TEXT,
-    p_expected_runtime_state TEXT,
-    p_new_runtime_state TEXT,
-    p_expected_runtime_revision BIGINT,
-    p_n8n_execution_id TEXT DEFAULT NULL,
-    p_event_payload JSONB DEFAULT '{}'::jsonb
+    p_run_updates JSONB DEFAULT '{}'::jsonb
 ) RETURNS TABLE (
     incremental_run_id TEXT,
     run_state TEXT,
     runtime_state TEXT,
-    runtime_revision BIGINT,
-    event_id BIGINT,
-    event_created BOOLEAN
+    runtime_revision BIGINT
 )
 LANGUAGE plpgsql
 AS $$
 DECLARE
     v_run rag_incremental_runs%ROWTYPE;
     v_runtime rag_runtime_state%ROWTYPE;
-    v_event rag_incremental_run_events%ROWTYPE;
-    v_new_revision BIGINT;
 BEGIN
-    IF coalesce(p_event_idempotency_key, '') = ''
-       OR coalesce(p_event_name, '') = '' THEN
-        RAISE EXCEPTION 'idempotency key and event name are required'
+    IF jsonb_typeof(p_run_updates) <> 'object' THEN
+        RAISE EXCEPTION 'run updates must be a JSON object'
             USING ERRCODE = '22023';
     END IF;
-    IF jsonb_typeof(p_event_payload) <> 'object' THEN
-        RAISE EXCEPTION 'event payload must be a JSON object'
-            USING ERRCODE = '22023';
-    END IF;
-
     SELECT * INTO v_run
     FROM rag_incremental_runs r
     WHERE r.incremental_run_id = p_run_id
@@ -490,130 +262,300 @@ BEGIN
         RAISE EXCEPTION 'unknown incremental run %', p_run_id
             USING ERRCODE = 'P0002';
     END IF;
-
-    -- Idempotency is checked before expected-state validation so a retried
-    -- delivery returns the original committed result.
-    SELECT * INTO v_event
-    FROM rag_incremental_run_events e
-    WHERE e.incremental_run_id = p_run_id
-      AND e.idempotency_key = p_event_idempotency_key;
-    IF FOUND THEN
-        IF v_event.event_name <> p_event_name
-           OR v_event.previous_run_state IS DISTINCT FROM p_expected_run_state
-           OR v_event.new_run_state <> p_new_run_state
-           OR v_event.previous_runtime_state <> p_expected_runtime_state
-           OR v_event.new_runtime_state <> p_new_runtime_state
-           OR v_event.n8n_execution_id IS DISTINCT FROM p_n8n_execution_id
-           OR v_event.event_payload <> p_event_payload THEN
-            RAISE EXCEPTION 'idempotency key % was reused with different transition data',
-                p_event_idempotency_key USING ERRCODE = '23505';
-        END IF;
-        RETURN QUERY SELECT p_run_id, v_event.new_run_state,
-            v_event.new_runtime_state, v_event.runtime_revision,
-            v_event.event_id, false;
-        RETURN;
-    END IF;
-
     SELECT * INTO v_runtime
     FROM rag_runtime_state rs
     WHERE rs.collection_name = v_run.collection_name
     FOR UPDATE;
-
-    IF v_run.run_state <> p_expected_run_state THEN
-        RAISE EXCEPTION 'run state mismatch: expected %, found %',
-            p_expected_run_state, v_run.run_state USING ERRCODE = '40001';
-    END IF;
-    IF v_runtime.runtime_state <> p_expected_runtime_state
-       OR v_runtime.state_revision <> p_expected_runtime_revision THEN
-        RAISE EXCEPTION 'runtime state/revision mismatch: expected %/%, found %/%',
-            p_expected_runtime_state, p_expected_runtime_revision,
-            v_runtime.runtime_state, v_runtime.state_revision
-            USING ERRCODE = '40001';
-    END IF;
-    IF NOT rag_valid_lifecycle_pair(
-        p_expected_run_state, p_expected_runtime_state
-    ) THEN
-        RAISE EXCEPTION 'invalid current run/runtime state pair %/%',
-            p_expected_run_state, p_expected_runtime_state
+    IF v_runtime.runtime_state <> 'serving'
+       AND v_runtime.active_incremental_run_id <> p_run_id THEN
+        RAISE EXCEPTION 'run does not own collection runtime'
             USING ERRCODE = '55000';
     END IF;
-    IF NOT rag_valid_run_transition(p_expected_run_state, p_new_run_state) THEN
-        RAISE EXCEPTION 'invalid run transition % -> %',
-            p_expected_run_state, p_new_run_state USING ERRCODE = '22023';
-    END IF;
-    IF NOT rag_valid_runtime_transition(
-        p_expected_runtime_state, p_new_runtime_state
-    ) THEN
-        RAISE EXCEPTION 'invalid runtime transition % -> %',
-            p_expected_runtime_state, p_new_runtime_state
-            USING ERRCODE = '22023';
-    END IF;
-    IF NOT rag_valid_lifecycle_pair(p_new_run_state, p_new_runtime_state) THEN
-        RAISE EXCEPTION 'invalid combined run/runtime target state %/%',
-            p_new_run_state, p_new_runtime_state USING ERRCODE = '22023';
-    END IF;
-    IF p_expected_runtime_state = 'draining'
-       AND p_new_runtime_state = 'maintenance'
-       AND rag_count_live_execution_leases(v_run.collection_name) <> 0 THEN
-        RAISE EXCEPTION 'collection % still has live execution leases',
-            v_run.collection_name USING ERRCODE = '55000';
-    END IF;
-    IF p_expected_runtime_state = 'serving'
-       AND p_new_runtime_state = 'draining'
-       AND EXISTS (
-           SELECT 1 FROM rag_runtime_state occupied
-           WHERE occupied.collection_name = v_run.collection_name
-             AND occupied.active_incremental_run_id IS NOT NULL
-             AND occupied.active_incremental_run_id <> p_run_id
-       ) THEN
-        RAISE EXCEPTION 'collection % already has an active incremental run',
-            v_run.collection_name USING ERRCODE = '55000';
-    END IF;
-
-    v_new_revision := v_runtime.state_revision
-        + CASE WHEN p_new_runtime_state <> p_expected_runtime_state THEN 1 ELSE 0 END;
 
     UPDATE rag_incremental_runs r
-    SET run_state = p_new_run_state,
-        started_at = CASE
-            WHEN p_new_run_state = 'draining' THEN coalesce(r.started_at, now())
-            ELSE r.started_at
-        END,
-        completed_at = CASE
-            WHEN p_new_run_state IN ('completed', 'failed') THEN now()
-            ELSE r.completed_at
-        END,
+    SET claimed_message_count = coalesce(
+            (p_run_updates->>'claimed_message_count')::integer,
+            r.claimed_message_count
+        ),
+        processed_message_count = coalesce(
+            (p_run_updates->>'processed_message_count')::integer,
+            r.processed_message_count
+        ),
+        deferred_message_count = coalesce(
+            (p_run_updates->>'deferred_message_count')::integer,
+            r.deferred_message_count
+        ),
+        retry_count = coalesce(
+            (p_run_updates->>'retry_count')::integer, r.retry_count
+        ),
+        failure_step = coalesce(p_run_updates->>'failure_step', r.failure_step),
+        failure_reason = coalesce(p_run_updates->>'failure_reason', r.failure_reason),
+        run_metadata = r.run_metadata || p_run_updates,
+        updated_at = now()
+    WHERE r.incremental_run_id = p_run_id
+    RETURNING r.* INTO v_run;
+
+    RETURN QUERY SELECT v_run.incremental_run_id, v_run.run_state,
+        v_runtime.runtime_state, v_runtime.state_revision;
+END
+$$;
+
+CREATE OR REPLACE FUNCTION rag_fail_incremental_run(
+    p_run_id TEXT,
+    p_failure_step TEXT,
+    p_failure_reason TEXT,
+    p_run_updates JSONB DEFAULT '{}'::jsonb
+) RETURNS TABLE (
+    incremental_run_id TEXT,
+    run_state TEXT,
+    runtime_state TEXT,
+    runtime_revision BIGINT
+)
+LANGUAGE plpgsql
+AS $$
+DECLARE
+    v_run rag_incremental_runs%ROWTYPE;
+    v_runtime rag_runtime_state%ROWTYPE;
+BEGIN
+    SELECT * INTO v_run
+    FROM rag_incremental_runs r
+    WHERE r.incremental_run_id = p_run_id
+    FOR UPDATE;
+    IF NOT FOUND OR v_run.run_state <> 'created' THEN
+        RAISE EXCEPTION 'only a created simulation run can fail while serving'
+            USING ERRCODE = '55000';
+    END IF;
+    SELECT * INTO v_runtime
+    FROM rag_runtime_state rs
+    WHERE rs.collection_name = v_run.collection_name
+    FOR UPDATE;
+    IF v_runtime.runtime_state <> 'serving'
+       OR v_runtime.active_incremental_run_id IS NOT NULL THEN
+        RAISE EXCEPTION 'collection is not in unowned serving state'
+            USING ERRCODE = '55000';
+    END IF;
+    UPDATE rag_incremental_runs r
+    SET run_state = 'failed',
+        failure_step = p_failure_step,
+        failure_reason = p_failure_reason,
+        run_metadata = r.run_metadata || p_run_updates,
+        completed_at = now(),
+        updated_at = now()
+    WHERE r.incremental_run_id = p_run_id
+    RETURNING r.* INTO v_run;
+    RETURN QUERY SELECT v_run.incremental_run_id, v_run.run_state,
+        v_runtime.runtime_state, v_runtime.state_revision;
+END
+$$;
+
+CREATE OR REPLACE FUNCTION rag_begin_incremental_drain(
+    p_run_id TEXT,
+    p_expected_runtime_revision BIGINT
+) RETURNS TABLE (
+    incremental_run_id TEXT,
+    run_state TEXT,
+    runtime_state TEXT,
+    runtime_revision BIGINT
+)
+LANGUAGE plpgsql
+AS $$
+DECLARE
+    v_run rag_incremental_runs%ROWTYPE;
+    v_runtime rag_runtime_state%ROWTYPE;
+    v_plan rag_chunk_replacement_plans%ROWTYPE;
+    v_corpus rag_corpus_versions%ROWTYPE;
+BEGIN
+    SELECT * INTO v_run
+    FROM rag_incremental_runs r
+    WHERE r.incremental_run_id = p_run_id
+    FOR UPDATE;
+    IF NOT FOUND THEN
+        RAISE EXCEPTION 'unknown incremental run %', p_run_id
+            USING ERRCODE = 'P0002';
+    END IF;
+    SELECT * INTO v_runtime
+    FROM rag_runtime_state rs
+    WHERE rs.collection_name = v_run.collection_name
+    FOR UPDATE;
+    IF v_run.run_state = 'draining'
+       AND v_runtime.runtime_state = 'draining'
+       AND v_runtime.active_incremental_run_id = p_run_id THEN
+        RETURN QUERY SELECT p_run_id, v_run.run_state,
+            v_runtime.runtime_state, v_runtime.state_revision;
+        RETURN;
+    END IF;
+    IF v_run.run_state <> 'created' THEN
+        RAISE EXCEPTION 'drain requires a created run'
+            USING ERRCODE = '55000';
+    END IF;
+    SELECT * INTO v_plan
+    FROM rag_chunk_replacement_plans p
+    WHERE p.plan_id = v_run.plan_id;
+    SELECT * INTO v_corpus
+    FROM rag_corpus_versions cv
+    WHERE cv.corpus_version_id = v_plan.source_corpus_version_id
+      AND cv.collection_name = v_run.collection_name
+      AND cv.status = 'healthy';
+    IF v_plan.status <> 'shadow_validated'
+       OR NOT FOUND
+       OR v_corpus.manifest_digest <> v_plan.source_manifest_digest THEN
+        RAISE EXCEPTION 'plan source is no longer the healthy corpus'
+            USING ERRCODE = '55000';
+    END IF;
+    IF v_runtime.runtime_state <> 'serving'
+       OR v_runtime.active_incremental_run_id IS NOT NULL
+       OR v_runtime.state_revision <> p_expected_runtime_revision THEN
+        RAISE EXCEPTION 'runtime is not available at expected revision'
+            USING ERRCODE = '40001';
+    END IF;
+
+    UPDATE rag_incremental_runs r
+    SET run_state = 'draining',
+        started_at = coalesce(r.started_at, now()),
         updated_at = now()
     WHERE r.incremental_run_id = p_run_id;
-
     UPDATE rag_runtime_state rs
-    SET runtime_state = p_new_runtime_state,
-        active_incremental_run_id = CASE
-            WHEN p_new_runtime_state = 'serving' THEN NULL
-            ELSE p_run_id
-        END,
-        state_revision = v_new_revision,
-        changed_at = CASE
-            WHEN p_new_runtime_state <> p_expected_runtime_state THEN now()
-            ELSE rs.changed_at
-        END
-    WHERE rs.collection_name = v_run.collection_name;
+    SET runtime_state = 'draining',
+        active_incremental_run_id = p_run_id,
+        state_revision = rs.state_revision + 1,
+        changed_at = now()
+    WHERE rs.collection_name = v_run.collection_name
+    RETURNING rs.* INTO v_runtime;
+    RETURN QUERY SELECT p_run_id, 'draining'::text,
+        v_runtime.runtime_state, v_runtime.state_revision;
+END
+$$;
 
-    INSERT INTO rag_incremental_run_events (
-        incremental_run_id, idempotency_key, event_name,
-        previous_run_state, new_run_state,
-        previous_runtime_state, new_runtime_state, runtime_revision,
-        n8n_execution_id, event_payload
-    ) VALUES (
-        p_run_id, p_event_idempotency_key, p_event_name,
-        p_expected_run_state, p_new_run_state,
-        p_expected_runtime_state, p_new_runtime_state, v_new_revision,
-        p_n8n_execution_id, p_event_payload
-    )
-    RETURNING * INTO v_event;
+CREATE OR REPLACE FUNCTION rag_enter_incremental_maintenance(
+    p_run_id TEXT,
+    p_expected_runtime_revision BIGINT
+) RETURNS TABLE (
+    incremental_run_id TEXT,
+    run_state TEXT,
+    runtime_state TEXT,
+    runtime_revision BIGINT
+)
+LANGUAGE plpgsql
+AS $$
+DECLARE
+    v_run rag_incremental_runs%ROWTYPE;
+    v_runtime rag_runtime_state%ROWTYPE;
+BEGIN
+    SELECT * INTO v_run
+    FROM rag_incremental_runs r
+    WHERE r.incremental_run_id = p_run_id
+    FOR UPDATE;
+    IF NOT FOUND THEN
+        RAISE EXCEPTION 'unknown incremental run %', p_run_id
+            USING ERRCODE = 'P0002';
+    END IF;
+    SELECT * INTO v_runtime
+    FROM rag_runtime_state rs
+    WHERE rs.collection_name = v_run.collection_name
+    FOR UPDATE;
+    IF v_run.run_state = 'maintenance'
+       AND v_runtime.runtime_state = 'maintenance'
+       AND v_runtime.active_incremental_run_id = p_run_id THEN
+        RETURN QUERY SELECT p_run_id, v_run.run_state,
+            v_runtime.runtime_state, v_runtime.state_revision;
+        RETURN;
+    END IF;
+    IF v_run.run_state <> 'draining' THEN
+        RAISE EXCEPTION 'maintenance requires a draining run'
+            USING ERRCODE = '55000';
+    END IF;
+    IF v_runtime.runtime_state <> 'draining'
+       OR v_runtime.active_incremental_run_id <> p_run_id
+       OR v_runtime.state_revision <> p_expected_runtime_revision THEN
+        RAISE EXCEPTION 'run does not own draining at expected revision'
+            USING ERRCODE = '40001';
+    END IF;
+    IF rag_count_live_execution_leases(v_run.collection_name) <> 0 THEN
+        RAISE EXCEPTION 'collection still has live execution leases'
+            USING ERRCODE = '55000';
+    END IF;
 
-    RETURN QUERY SELECT p_run_id, p_new_run_state, p_new_runtime_state,
-        v_new_revision, v_event.event_id, true;
+    UPDATE rag_incremental_runs r
+    SET run_state = 'maintenance',
+        started_at = coalesce(r.started_at, now()),
+        updated_at = now()
+    WHERE r.incremental_run_id = p_run_id;
+    UPDATE rag_runtime_state rs
+    SET runtime_state = 'maintenance',
+        active_incremental_run_id = p_run_id,
+        state_revision = rs.state_revision + 1,
+        changed_at = now()
+    WHERE rs.collection_name = v_run.collection_name
+    RETURNING rs.* INTO v_runtime;
+    RETURN QUERY SELECT p_run_id, 'maintenance'::text,
+        v_runtime.runtime_state, v_runtime.state_revision;
+END
+$$;
+
+CREATE OR REPLACE FUNCTION rag_exit_incremental_maintenance(
+    p_run_id TEXT,
+    p_outcome TEXT,
+    p_run_updates JSONB DEFAULT '{}'::jsonb
+) RETURNS TABLE (
+    incremental_run_id TEXT,
+    run_state TEXT,
+    runtime_state TEXT,
+    runtime_revision BIGINT
+)
+LANGUAGE plpgsql
+AS $$
+DECLARE
+    v_run rag_incremental_runs%ROWTYPE;
+    v_runtime rag_runtime_state%ROWTYPE;
+BEGIN
+    IF p_outcome NOT IN ('completed', 'failed')
+       OR jsonb_typeof(p_run_updates) <> 'object' THEN
+        RAISE EXCEPTION 'outcome must be completed or failed with object updates'
+            USING ERRCODE = '22023';
+    END IF;
+    SELECT * INTO v_run
+    FROM rag_incremental_runs r
+    WHERE r.incremental_run_id = p_run_id
+    FOR UPDATE;
+    IF NOT FOUND THEN
+        RAISE EXCEPTION 'unknown incremental run %', p_run_id
+            USING ERRCODE = 'P0002';
+    END IF;
+    SELECT * INTO v_runtime
+    FROM rag_runtime_state rs
+    WHERE rs.collection_name = v_run.collection_name
+    FOR UPDATE;
+    IF v_run.run_state = p_outcome
+       AND v_runtime.runtime_state = 'serving'
+       AND v_runtime.active_incremental_run_id IS NULL THEN
+        RETURN QUERY SELECT p_run_id, v_run.run_state,
+            v_runtime.runtime_state, v_runtime.state_revision;
+        RETURN;
+    END IF;
+    IF v_run.run_state <> 'maintenance'
+       OR v_runtime.runtime_state <> 'maintenance'
+       OR v_runtime.active_incremental_run_id <> p_run_id THEN
+        RAISE EXCEPTION 'run does not own maintenance'
+            USING ERRCODE = '55000';
+    END IF;
+
+    UPDATE rag_incremental_runs r
+    SET run_state = p_outcome,
+        failure_step = coalesce(p_run_updates->>'failure_step', r.failure_step),
+        failure_reason = coalesce(p_run_updates->>'failure_reason', r.failure_reason),
+        run_metadata = r.run_metadata || p_run_updates,
+        completed_at = now(),
+        updated_at = now()
+    WHERE r.incremental_run_id = p_run_id;
+    UPDATE rag_runtime_state rs
+    SET runtime_state = 'serving',
+        active_incremental_run_id = NULL,
+        state_revision = rs.state_revision + 1,
+        changed_at = now()
+    WHERE rs.collection_name = v_run.collection_name
+    RETURNING rs.* INTO v_runtime;
+    RETURN QUERY SELECT p_run_id, p_outcome, v_runtime.runtime_state,
+        v_runtime.state_revision;
 END
 $$;
 
@@ -637,52 +579,38 @@ DECLARE
     v_runtime rag_runtime_state%ROWTYPE;
     v_lease rag_active_execution_leases%ROWTYPE;
 BEGIN
-    IF coalesce(p_n8n_execution_id, '') = '' THEN
-        RAISE EXCEPTION 'n8n execution ID is required' USING ERRCODE = '22023';
-    END IF;
-    IF p_lease_ttl <= interval '0 seconds'
-       OR p_lease_ttl > interval '15 minutes' THEN
-        RAISE EXCEPTION 'lease TTL must be greater than zero and at most 15 minutes'
+    IF coalesce(p_n8n_execution_id, '') = ''
+       OR p_lease_ttl <= interval '0 seconds'
+       OR p_lease_ttl > interval '15 minutes'
+       OR jsonb_typeof(p_metadata) <> 'object' THEN
+        RAISE EXCEPTION 'invalid execution lease request'
             USING ERRCODE = '22023';
     END IF;
-    IF jsonb_typeof(p_metadata) <> 'object' THEN
-        RAISE EXCEPTION 'lease metadata must be a JSON object'
-            USING ERRCODE = '22023';
-    END IF;
-
     SELECT * INTO v_runtime
     FROM rag_runtime_state rs
     WHERE rs.collection_name = p_collection_name
     FOR UPDATE;
-    IF NOT FOUND THEN
-        RAISE EXCEPTION 'unknown collection runtime state %', p_collection_name
-            USING ERRCODE = 'P0002';
+    IF NOT FOUND OR v_runtime.runtime_state <> 'serving' THEN
+        RAISE EXCEPTION 'collection is not serving; lease denied'
+            USING ERRCODE = '55000';
     END IF;
-    IF v_runtime.runtime_state <> 'serving' THEN
-        RAISE EXCEPTION 'collection % is %, lease acquisition denied',
-            p_collection_name, v_runtime.runtime_state USING ERRCODE = '55000';
-    END IF;
-
     SELECT * INTO v_lease
     FROM rag_active_execution_leases l
     WHERE l.collection_name = p_collection_name
       AND l.n8n_execution_id = p_n8n_execution_id
     FOR UPDATE;
     IF FOUND THEN
-        IF v_lease.released_at IS NOT NULL OR v_lease.expires_at <= clock_timestamp() THEN
-            RAISE EXCEPTION 'execution % lease is already closed',
-                p_n8n_execution_id USING ERRCODE = '55000';
-        END IF;
-        IF v_lease.transaction_id IS DISTINCT FROM p_transaction_id
+        IF v_lease.released_at IS NOT NULL
+           OR v_lease.expires_at <= clock_timestamp()
+           OR v_lease.transaction_id IS DISTINCT FROM p_transaction_id
            OR v_lease.workflow_name IS DISTINCT FROM p_workflow_name THEN
-            RAISE EXCEPTION 'execution % lease identity does not match',
-                p_n8n_execution_id USING ERRCODE = '23505';
+            RAISE EXCEPTION 'execution lease is closed or has different identity'
+                USING ERRCODE = '55000';
         END IF;
         RETURN QUERY SELECT v_lease.lease_id, v_lease.acquired_at,
             v_lease.expires_at, v_runtime.state_revision, false;
         RETURN;
     END IF;
-
     INSERT INTO rag_active_execution_leases (
         collection_name, n8n_execution_id, transaction_id, workflow_name,
         expires_at, hard_expires_at, lease_metadata
@@ -692,7 +620,6 @@ BEGIN
         clock_timestamp() + interval '15 minutes', p_metadata
     )
     RETURNING * INTO v_lease;
-
     RETURN QUERY SELECT v_lease.lease_id, v_lease.acquired_at,
         v_lease.expires_at, v_runtime.state_revision, true;
 END
@@ -701,10 +628,7 @@ $$;
 CREATE OR REPLACE FUNCTION rag_heartbeat_execution_lease(
     p_lease_id UUID,
     p_lease_ttl INTERVAL DEFAULT interval '2 minutes'
-) RETURNS TABLE (
-    lease_id UUID,
-    expires_at TIMESTAMPTZ
-)
+) RETURNS TABLE (lease_id UUID, expires_at TIMESTAMPTZ)
 LANGUAGE plpgsql
 AS $$
 DECLARE
@@ -712,21 +636,17 @@ DECLARE
 BEGIN
     IF p_lease_ttl <= interval '0 seconds'
        OR p_lease_ttl > interval '15 minutes' THEN
-        RAISE EXCEPTION 'lease TTL must be greater than zero and at most 15 minutes'
-            USING ERRCODE = '22023';
+        RAISE EXCEPTION 'invalid lease TTL' USING ERRCODE = '22023';
     END IF;
     UPDATE rag_active_execution_leases l
     SET heartbeat_at = clock_timestamp(),
-        expires_at = least(
-            clock_timestamp() + p_lease_ttl,
-            l.hard_expires_at
-        )
+        expires_at = least(clock_timestamp() + p_lease_ttl, l.hard_expires_at)
     WHERE l.lease_id = p_lease_id
       AND l.released_at IS NULL
       AND l.expires_at > clock_timestamp()
     RETURNING l.* INTO v_lease;
     IF NOT FOUND THEN
-        RAISE EXCEPTION 'lease % is missing, released, or expired', p_lease_id
+        RAISE EXCEPTION 'lease is missing, released, or expired'
             USING ERRCODE = '55000';
     END IF;
     RETURN QUERY SELECT v_lease.lease_id, v_lease.expires_at;
@@ -735,10 +655,7 @@ $$;
 
 CREATE OR REPLACE FUNCTION rag_release_execution_lease(
     p_lease_id UUID
-) RETURNS TABLE (
-    lease_id UUID,
-    released_at TIMESTAMPTZ
-)
+) RETURNS TABLE (lease_id UUID, released_at TIMESTAMPTZ)
 LANGUAGE plpgsql
 AS $$
 DECLARE

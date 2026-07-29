@@ -64,14 +64,14 @@ assert.deepStrictEqual(
 );
 assert.deepStrictEqual(
   destinations(coordinator, 'Create Or Read Durable Run'),
-  ['Transition Requested?'],
+  ['Update Requested?'],
 );
 assert.deepStrictEqual(
-  destinations(coordinator, 'Transition Requested?', 0),
-  ['Transition Durable Run'],
+  destinations(coordinator, 'Update Requested?', 0),
+  ['Update Durable Run'],
 );
 assert.deepStrictEqual(
-  destinations(coordinator, 'Transition Requested?', 1),
+  destinations(coordinator, 'Update Requested?', 1),
   ['Build Authoritative Run State'],
 );
 assert.deepStrictEqual(
@@ -80,10 +80,10 @@ assert.deepStrictEqual(
 );
 
 const createSql = node(coordinator, 'Create Or Read Durable Run').parameters.query;
-const transitionSql = node(coordinator, 'Transition Durable Run').parameters.query;
+const updateSql = node(coordinator, 'Update Durable Run').parameters.query;
 assert.match(createSql, /\brag_create_incremental_run\s*\(/);
-assert.match(transitionSql, /\brag_transition_incremental_run\s*\(/);
-assert.match(transitionSql, /expected_runtime_revision/);
+assert.match(updateSql, /\brag_update_incremental_run\s*\(/);
+assert.doesNotMatch(coordinatorText, /rag_incremental_run_events|event_idempotency/);
 assert.strictEqual(
   node(coordinator, 'Send Correlated Phoenix Span').onError,
   'continueRegularOutput',
@@ -102,45 +102,26 @@ const normalized = runCodeNode(coordinator, 'Normalize Coordinator Command', {
   requested_by: "O'Brien",
 });
 assert.strictEqual(normalized.action, 'create');
-assert.strictEqual(normalized.expected_run_state, 'created');
-assert.strictEqual(normalized.new_run_state, 'created');
-assert.strictEqual(normalized.expected_runtime_state, 'serving');
-assert.strictEqual(normalized.new_runtime_state, 'serving');
-assert.strictEqual(normalized.event_name, 'incremental.run_created');
-assert.strictEqual(normalized.expected_runtime_revision, 0);
-assert.match(normalized.event_payload_sql, /O''Brien/);
-assert.match(normalized.event_payload_sql, /"simulation":true/);
-assert.match(normalized.event_payload_sql, /"qdrant_mutations":0/);
+assert.match(normalized.run_data_sql, /O''Brien/);
+assert.match(normalized.run_data_sql, /"simulation":true/);
+assert.match(normalized.run_data_sql, /"qdrant_mutations":0/);
 
 assert.throws(
   () =>
     runCodeNode(coordinator, 'Normalize Coordinator Command', {
       action: 'transition',
-      expected_runtime_state: 'serving',
-      new_runtime_state: 'draining',
     }),
-  /cannot leave serving state/,
-);
-assert.throws(
-  () =>
-    runCodeNode(coordinator, 'Normalize Coordinator Command', {
-      action: 'transition',
-      event_name: 'incremental.maintenance_entered',
-    }),
-  /permits only the incremental\.run_failed transition event/,
+  /action must be create or update/,
 );
 
 const authoritative = {
   incremental_run_id: 'run-123',
-  event_id: 42,
-  event_created: true,
   run_state: 'planned',
   runtime_state: 'serving',
   runtime_revision: 7,
   plan_id: 'plan-456',
   collection_name: 'tpm_unite_history',
-  event_name: 'incremental.run_created',
-  event_idempotency_key: 'run-123:incremental.run_created',
+  action: 'create',
   n8n_execution_id: 'execution-123',
   phoenix_collector_url: 'http://trace-emitter:8001/v1/traces',
   phoenix_project_name: 'discord-rag-bot-phase-9c35',
@@ -158,10 +139,9 @@ const attributes = Object.fromEntries(
     value.stringValue ?? value.intValue ?? value.boolValue,
   ]),
 );
-assert.strictEqual(span.name, authoritative.event_name);
+assert.strictEqual(span.name, 'incremental.lifecycle_coordinated');
 assert.strictEqual(attributes.incremental_run_id, 'run-123');
-assert.strictEqual(attributes.durable_event_id, '42');
-assert.strictEqual(trace.phoenix_span_event_id, 42);
+assert.strictEqual(attributes.action, 'create');
 assert.strictEqual(attributes.postgres_authoritative, true);
 assert.strictEqual(attributes.qdrant_mutations, '0');
 

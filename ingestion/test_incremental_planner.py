@@ -24,13 +24,6 @@ SOURCE_CORPUS = {
     "corpus_version_id": "corpus-fixture",
     "manifest_digest": "a" * 64,
 }
-FIXTURE_ATTESTATION = {
-    "passed": True,
-    "chunker_version": "v10",
-    "suite_digest": "b" * 64,
-}
-
-
 def complete_measurement(plan):
     return {
         "measurement_kind": "shadow_replacements",
@@ -175,18 +168,7 @@ class IncrementalPlannerTests(unittest.TestCase):
         )
         rendered = render_plan(
             plan,
-            deterministic_replan=create_shadow_plan(
-                [
-                    WorkItem("1", 1, "recent_window", "10", None, None),
-                    WorkItem("2", 2, "recent_window", "10", None, None),
-                ],
-                records,
-                [],
-                [],
-                source_corpus=SOURCE_CORPUS,
-            ),
             source_corpus_current=True,
-            fixture_attestation=FIXTURE_ATTESTATION,
         )
         self.assertEqual(rendered["validation"]["status"], "planned")
         self.assertIn(
@@ -206,15 +188,7 @@ class IncrementalPlannerTests(unittest.TestCase):
         rendered = render_plan(
             plan,
             complete_measurement(plan),
-            deterministic_replan=create_shadow_plan(
-                reversed(work),
-                reversed(records),
-                [],
-                [],
-                source_corpus=SOURCE_CORPUS,
-            ),
             source_corpus_current=True,
-            fixture_attestation=FIXTURE_ATTESTATION,
         )
         self.assertEqual(rendered["validation"]["status"], "shadow_validated")
         self.assertTrue(all(rendered["validation"]["checks"].values()))
@@ -233,12 +207,36 @@ class IncrementalPlannerTests(unittest.TestCase):
         rendered = render_plan(
             plan,
             measurement,
-            deterministic_replan=plan,
             source_corpus_current=True,
         )
         self.assertEqual(rendered["validation"]["status"], "failed")
         self.assertIn(
             "embedding dimensions are not exactly 768",
+            rendered["validation"]["contradictions"],
+        )
+
+    def test_embedding_count_must_cover_every_replacement(self):
+        records = [message(1, 0), message(2, 1)]
+        plan = create_shadow_plan(
+            [
+                WorkItem("1", 1, "recent_window", "10", None, None),
+                WorkItem("2", 2, "recent_window", "10", None, None),
+            ],
+            records,
+            [],
+            [],
+            source_corpus=SOURCE_CORPUS,
+        )
+        measurement = complete_measurement(plan)
+        measurement["embedded_chunk_count"] -= 1
+        rendered = render_plan(
+            plan,
+            measurement,
+            source_corpus_current=True,
+        )
+        self.assertEqual(rendered["validation"]["status"], "failed")
+        self.assertIn(
+            "embedded count does not equal replacement count",
             rendered["validation"]["contradictions"],
         )
 
@@ -256,7 +254,6 @@ class IncrementalPlannerTests(unittest.TestCase):
         rendered = render_plan(
             plan,
             measurement,
-            deterministic_replan=plan,
             source_corpus_current=True,
         )
         self.assertEqual(rendered["validation"]["status"], "failed")
@@ -277,7 +274,6 @@ class IncrementalPlannerTests(unittest.TestCase):
         rendered = render_plan(
             plan,
             complete_measurement(plan),
-            deterministic_replan=plan,
             source_corpus_current=False,
         )
         self.assertEqual(rendered["validation"]["status"], "failed")
@@ -296,42 +292,14 @@ class IncrementalPlannerTests(unittest.TestCase):
         )
         rendered = render_plan(
             plan,
-            deterministic_replan=plan,
             source_corpus_current=True,
         )
         self.assertEqual(rendered["validation"]["status"], "deferred")
 
-    def test_fixture_attestation_is_version_bound(self):
-        records = [message(1, 0), message(2, 1)]
-        work = [
-            WorkItem("1", 1, "recent_window", "10", None, None),
-            WorkItem("2", 2, "recent_window", "10", None, None),
-        ]
-        plan = create_shadow_plan(
-            work, records, [], [], source_corpus=SOURCE_CORPUS
-        )
-        rendered = render_plan(
-            plan,
-            complete_measurement(plan),
-            deterministic_replan=plan,
-            source_corpus_current=True,
-            fixture_attestation={
-                **FIXTURE_ATTESTATION,
-                "chunker_version": "v9",
-            },
-        )
-        self.assertEqual(rendered["validation"]["status"], "failed")
-        self.assertIn(
-            "fixture-suite attestation mismatch",
-            rendered["validation"]["contradictions"],
-        )
-
     def test_terminal_plan_status_cannot_be_downgraded(self):
-        for terminal in ("applied", "invalidated", "failed"):
-            with self.subTest(terminal=terminal):
-                with self.assertRaisesRegex(PlanningError, "invalid persisted"):
-                    _validate_status_transition(terminal, "planned")
-                _validate_status_transition(terminal, terminal)
+        with self.assertRaisesRegex(PlanningError, "invalid persisted"):
+            _validate_status_transition("failed", "planned")
+        _validate_status_transition("failed", "failed")
 
     def test_shadow_validated_plan_cannot_lose_evidence(self):
         with self.assertRaisesRegex(PlanningError, "invalid persisted"):
