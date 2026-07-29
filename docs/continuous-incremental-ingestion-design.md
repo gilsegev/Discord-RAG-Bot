@@ -44,6 +44,11 @@ window is the safer MVP tradeoff. During maintenance:
 - passive RAG processing is paused;
 - no retrieval queries read Qdrant while replacement is in progress.
 
+Draining is narrower than capture or intake shutdown: it waits only for
+in-flight online RAG executions that passed the serving gate before maintenance
+entry and may already be using Qdrant, the reranker, or Gemini. Maintenance
+entry gates every new RAG read, while durable Discord capture continues.
+
 This removes user-visible partial-index states. It does not make Postgres and
 Qdrant transactional, so the update job must remain idempotent and recoverable,
 but it substantially lowers consistency and implementation risk.
@@ -269,19 +274,22 @@ continuous ingestion begins.
 ## 8. Maintenance-Window Update Procedure
 
 Before this procedure, the plan must be `shadow_validated`. That requires
-deterministic replanning, exact old/replacement ownership and text digests,
 complete production-model embedding of every replacement chunk, embedded count
-equal to replacement count, only 768-dimension vectors, declared version
-agreement, fixture equivalence, and zero Qdrant mutations. A plan missing any
-evidence remains `planned` and cannot be applied.
+equal to replacement count, exactly 768 dimensions for every vector, observed
+model/version agreement, current source corpus version/digest binding, and zero
+Qdrant mutations. Deterministic replanning and fixture equivalence remain
+automated planner validation; they are not persisted production attestations.
+A plan missing required production evidence remains `planned` and is ineligible
+for maintenance.
 
-1. Create a durable incremental run and transition event in the `ragbot`
-   Postgres database.
+1. Create a durable incremental run in the `ragbot` Postgres database.
 2. Record a fixed batch cutoff. Messages captured after it remain pending.
-3. Revalidate the `shadow_validated` plan, then enable maintenance mode for
-   active and passive RAG execution.
-4. Allow already-running retrieval/generation executions to finish, with a
-   bounded drain timeout.
+3. Revalidate the plan's source corpus version/digest, then transactionally
+   enter maintenance: close the serving gate and associate runtime state with
+   this run.
+4. Allow only online RAG executions already past the serving gate to finish,
+   with a bounded lease timeout. Durable capture continues and new RAG reads
+   remain gated.
 5. Claim all eligible dirty work rows for the run.
 6. Resolve every affected old point through `rag_chunk_manifest`.
 7. Load the complete affected conversation/window, including required overlap.
@@ -293,8 +301,8 @@ evidence remains `planned` and cannot be applied.
 12. Update the manifest and mark work rows processed.
 13. Run structural verification.
 14. Run the complete Phase 8 regression suite in retrieval-only mode.
-15. If all gates pass, mark the corpus version `healthy`, complete the run, and
-    disable maintenance mode.
+15. If all gates pass, mark the corpus version `healthy`, then transactionally
+    record success and reopen serving.
 16. If any gate fails, keep the corpus unavailable, mark the run
     `review_needed`, preserve evidence, and alert an admin.
 
@@ -455,24 +463,28 @@ throughput.
 
 ### Phase 9C.3.5 — Incremental-run state and observability
 
-- Add durable run summaries, append-only transition events, runtime serving
-  state, and active-execution leases to the `ragbot` Postgres database.
-- Make n8n the single coordinator and lifecycle-state writer.
-- Emit correlated Phoenix spans using the durable incremental run ID.
-- Record cutoff, plan/corpus IDs, timestamps, message/group/point counts,
-  snapshot bytes/digest, phase durations, regression result, retries, failures,
-  and rollback outcome.
+- Add exactly three tables to `ragbot`: `rag_incremental_runs` for durable run
+  summaries, `rag_runtime_state` for serving/maintenance coordination, and
+  `rag_active_execution_leases` for online work already past the serving gate.
+- Store authoritative current state and outcome in each run summary, including
+  phase results/timestamps, reconciled counts, failures, regression, and
+  rollback.
+- Make n8n the single coordinator and owner of narrow transactional
+  maintenance-enter and maintenance-exit operations.
+- Emit correlated Phoenix spans as the detailed transition timeline rather than
+  duplicating every transition in a Postgres event table.
 
-**Gate:** transitions are transactional and idempotent, invalid transitions fail
-closed, counts reconcile to source tables, and Phoenix traces link to the
-durable Postgres run.
+**Gate:** maintenance enter/exit is transactional and idempotent, invalid
+requests fail closed, counts reconcile to source tables, and Phoenix traces
+link to the durable Postgres run.
 
 ### Phase 9C.4 — Maintenance mode and production replacement
 
 - Accept and revalidate only plans with complete `shadow_validated` evidence.
 - Add the maintenance-mode gate to shared intake.
 - Continue durable listener capture during maintenance.
-- Drain in-flight RAG executions.
+- Drain only in-flight online RAG executions already past the serving gate;
+  gate every new RAG read.
 - Snapshot affected old points for every run, retain them for 14 days, and take
   a full Qdrant snapshot before the first production canary.
 - Apply planned Qdrant replacement and manifest updates.

@@ -540,27 +540,29 @@ does not authorize production replacement.
 Phase 9C.3 turns pending capture rows into deterministic replacement plans
 without changing the production corpus.
 
-Plan lifecycle is separate from the runtime serving-state machine:
+Plan lifecycle is deliberately small:
 
 ```text
-planned -> shadow_validated -> applied
-   |              |
-   +-> deferred   +-> invalidated / failed
+planned -> shadow_validated
+   |
+   +-> deferred / failed
 ```
 
 `shadow_validated` is the only plan state eligible for Phase 9C.4. It requires:
 
-- deterministic replanning with the same plan ID and digest
-- exact old/replacement IDs, ownership, and replacement text digests
-- only affected channel/thread/conversation scopes
 - production-model embedding of every replacement chunk
 - embedded count equal to replacement count, with every vector 768 dimensions
-- declared chunker and embedding versions matching observed versions
-- fixture equivalence and zero Qdrant mutations
+- observed embedding model/version matching the declared version
+- current source corpus version/digest binding
+- zero Qdrant mutations
 
 A structurally complete plan without full embedding evidence remains `planned`.
-Deferred-only work remains `deferred`. Phase 9C.4 revalidates this contract
-immediately before maintenance and invalidates stale plans.
+Deferred-only work remains `deferred`. Deterministic replanning, exact ownership
+and text digests, affected-scope selection, and fixture equivalence remain
+automated planner validations rather than persisted production attestations.
+Phase 9C.4 rechecks the source corpus version/digest immediately before
+maintenance. A stale plan is rejected and the rejection is recorded on the run;
+the plan does not need another lifecycle status.
 
 Implementation:
 
@@ -589,7 +591,9 @@ Exit criteria:
 - repeated planning at the same cutoff produces the same plan ID and digest
 - selected old points belong only to affected channel/thread/conversation scopes
 - fixture shadow output matches full v10 chunker output for the affected scope
-- every shadow embedding is 768 dimensions
+- every shadow embedding is exactly 768 dimensions and reports the expected
+  production model/version
+- persisted plans bind to the current source corpus version/digest
 - output and static validation report zero Qdrant mutations
 - measured replacement throughput and duration are recorded for Phase 9C.4
 - the complete Phase 8 regression remains at the accepted baseline
@@ -618,48 +622,50 @@ This interim phase keeps production mutation focused. It adds these durable
 tables to the `ragbot` Postgres database:
 
 - `rag_incremental_runs`: one permanent summary per run
-- `rag_incremental_run_events`: timestamped append-only transitions
 - `rag_runtime_state`: singleton serving/maintenance coordination
 - `rag_active_execution_leases`: bounded leases for draining RAG work
 
 It also tightens the Phase 9C.3 persistence path so `shadow_validated` cannot be
-written unless complete replacement embedding/version evidence satisfies the
-contract above.
+written unless complete replacement embedding count, dimension, observed
+model/version, source binding/freshness, and zero-mutation evidence satisfies
+the contract above.
 
-The n8n maintenance coordinator owns these records. Each transition uses one
-Postgres transaction to verify the prior state, update run/runtime state, and
-append the audit event. Phoenix receives correlated spans using the same
-`incremental_run_id`; Postgres is the durable source of truth.
+Postgres is the durable source of truth for current state and outcome. The run
+row records phase results and timestamps, reconciled counts, failures,
+regression, retries, and rollback. Phoenix receives correlated spans using the
+same `incremental_run_id` and is the detailed transition timeline.
+
+The coordinator exposes only narrow transactional maintenance-enter and
+maintenance-exit operations. Enter verifies the eligible plan and source,
+closes the serving gate, and associates the runtime state with the run. Exit
+records the durable outcome and reopens serving. This is not a generalized pair
+of run/runtime state machines.
 
 Run evidence includes plan/corpus IDs, cutoff, timestamps, state,
 pending/claimed/processed/deferred message counts, affected groups,
 old/replacement/new/reused/deleted point counts, snapshot bytes/digest, phase
 durations, regression run/result, retries, failure step/reason, and rollback.
 
-**Gate:** valid and invalid transitions are tested; duplicate workflow delivery
-is idempotent; counts reconcile to source rows; and Phoenix spans correlate to
-the durable Postgres run.
+**Gate:** valid and invalid enter/exit requests are tested; duplicate workflow
+delivery is idempotent; counts reconcile to source rows; and Phoenix spans
+correlate to the durable Postgres run.
 
 ### Phase 9C.4: Maintenance mode and production replacement
 
 **Status:** Planned; manual and feature-flagged initially
 
-Runtime lifecycle:
+Phase 9C.4 accepts only `shadow_validated` plans and revalidates their source
+corpus version/digest at application time. A stale plan is rejected before
+maintenance and the run records the rejection reason.
 
-```text
-serving -> draining -> maintenance -> validating -> serving
-              |             |              |
-              +-> serving   +-> review_needed
-                               -> rolling_back -> serving
-```
-
-`shadow_validated` is absent from this chart because it is a prerequisite plan
-state checked before `serving -> draining`.
-
-Phase 9C.4 accepts and revalidates only `shadow_validated` plans, gates both
-shared intake and RAG core, drains execution leases, continues durable capture,
-snapshots affected old points, applies deterministic replacement, verifies the
-corpus, runs regression while gated, and restores `serving` only on success.
+The transactional enter operation gates both shared intake and RAG core before
+draining begins. Draining means waiting only for in-flight online RAG work that
+already passed the serving gate and may be using Qdrant, the reranker, or
+Gemini. Durable Discord capture continues and every new RAG read is gated.
+After the leases drain, the coordinator snapshots affected old points, executes
+deterministic replacement, verifies the corpus, and runs regression while
+gated. The transactional exit operation records the outcome and restores
+serving only after success or completed recovery.
 
 Rollback snapshots are created for every production run and retained for
 14 days. The first production canary also requires a full Qdrant snapshot.
@@ -671,7 +677,7 @@ Required validation:
 - active calls receive the maintenance response without reaching Qdrant,
   reranker, or Gemini
 - passive calls are captured as post-cutoff pending work without entering RAG
-- all runtime transitions behave correctly under races, retries, and failures
+- maintenance enter/exit behaves correctly under races, retries, and failures
 - full regression before replacement and before reopening matches baseline
 - injected failure after every mutation step is retryable or reversible
 - no normal query observes a partially updated corpus

@@ -100,13 +100,22 @@ configuration or another dispatch service.
 n8n is the single coordinator for offline incremental ingestion. It invokes
 deterministic Python planning/chunking helpers and the existing
 embedder/Qdrant services, but owns scheduling, maintenance gates, execution
-draining, lifecycle transitions, retries, validation, rollback, and reopening.
+draining, retries, validation, rollback, and reopening.
 
-Lifecycle state and append-only run transactions live in the `ragbot` Postgres
-database. Phoenix receives correlated spans for visual debugging; it is not the
-source of truth. A replacement plan must be fully `shadow_validated` before n8n
-may transition runtime state from `serving` to `draining`. Affected-point
-rollback snapshots are retained for 14 days.
+Postgres is the durable source of truth for each run's current state and final
+outcome, including phase results and timestamps, reconciled counts, failures,
+regression, and rollback. Phoenix provides the correlated, detailed transition
+timeline for debugging; it is not authoritative lifecycle storage.
+
+Maintenance uses narrow transactional enter and exit operations rather than a
+second general-purpose state machine. Entering maintenance atomically closes
+the serving gate and records the run/runtime state. Draining then means waiting
+only for online RAG executions that already passed that gate and may be using
+Qdrant, the reranker, or Gemini. Durable Discord capture continues, while new
+RAG reads are gated. The exit operation atomically reopens serving and records
+the run outcome. A replacement plan must be fully `shadow_validated` before
+maintenance can begin. Affected-point rollback snapshots are retained for
+14 days.
 
 ### Execution Tracking Stages
 1. **Universal Capture**  

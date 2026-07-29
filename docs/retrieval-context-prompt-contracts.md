@@ -194,8 +194,11 @@ During Phase 9C.4 maintenance, durable Discord capture occurs before the runtime
 gate. Active calls receive the approved maintenance response; passive calls are
 captured as post-cutoff pending work and do not enter retrieval. The shared RAG
 core repeats the gate immediately before Qdrant so no normal caller can observe
-a partially replaced corpus. Only the n8n coordinator's correlated validation
-run may use the internal maintenance-validation path.
+a partially replaced corpus. Draining means waiting only for online RAG
+executions that passed the serving gate before maintenance entry and may
+already be using Qdrant, the reranker, or Gemini; capture continues and every
+new RAG read is gated. Only the n8n coordinator's correlated validation run may
+use the internal maintenance-validation path.
 
 ### 2.3 Token budget
 
