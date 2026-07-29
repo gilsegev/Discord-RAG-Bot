@@ -4,6 +4,10 @@
     "n8n:pull": "node scripts/n8n-sync.js pull",
     "n8n:push": "node scripts/n8n-sync.js push",
     "test:phase9c1": "node scripts/test-phase9c1-capture.js",
+    "test:phase9c3": "python -m unittest ingestion.test_incremental_planner && node scripts/test-phase9c3-planner.js",
+    "test:phase9c35": "python -m unittest ingestion.test_incremental_planner && node scripts/test-phase9c3-planner.js && node scripts/test-phase9c35-workflows.js",
+    "test:phase9c35:postgres": "python scripts/test-phase9c35-postgres.py",
+    "test:phase9c35:e2e": "python scripts/test-phase9c35-e2e.py",
     "sync:regression-cases": "node scripts/sync-regression-cases.js",
     "test:regression-cases": "node scripts/sync-regression-cases.js --check"
   }

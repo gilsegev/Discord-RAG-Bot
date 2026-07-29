@@ -573,6 +573,112 @@
         -1600,
         0
       ]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT *\nFROM rag_acquire_execution_lease(\n  '{{ String($json.qdrant_collection || \"tpm_unite_history\").replace(/'/g, \"''\") }}',\n  '{{ String($execution.id).replace(/'/g, \"''\") }}',\n  NULLIF('{{ String($json.transaction_id || \"\").replace(/'/g, \"''\") }}', ''),\n  'RAG Core Execution - Phase 8',\n  interval '2 minutes',\n  jsonb_build_object(\n    'trigger_source', '{{ String($json.trigger_source || \"\").replace(/'/g, \"''\") }}',\n    'run_mode', '{{ String($json.run_mode || \"\").replace(/'/g, \"''\") }}',\n    'response_mode', '{{ String($json.response_mode || \"\").replace(/'/g, \"''\") }}'\n  )\n);"
+      },
+      "id": "phase9c35-acquire-execution-lease",
+      "name": "Acquire Execution Lease",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        -1820,
+        0
+      ],
+      "credentials": {
+        "postgres": {
+          "id": "JcwnINxG4CstrGKy",
+          "name": "Postgres account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const state = $items('Initialize Runtime State')[0].json;\nconst lease = $items('Acquire Execution Lease')[0].json;\nif (!lease.lease_id) throw new Error('Execution lease acquisition returned no lease_id');\nreturn [{ json: { ...state, execution_lease_id: lease.lease_id, execution_lease_expires_at: lease.expires_at, execution_lease_runtime_revision: lease.runtime_revision } }];"
+      },
+      "id": "phase9c35-restore-runtime-after-lease",
+      "name": "Restore Runtime After Lease",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -1600,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT *\nFROM rag_heartbeat_execution_lease(\n  '{{ $items(\"Acquire Execution Lease\")[0].json.lease_id }}'::uuid,\n  interval '2 minutes'\n);"
+      },
+      "id": "phase9c35-heartbeat-execution-lease",
+      "name": "Heartbeat Execution Lease",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        -520,
+        -40
+      ],
+      "credentials": {
+        "postgres": {
+          "id": "JcwnINxG4CstrGKy",
+          "name": "Postgres account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT *\nFROM rag_release_execution_lease(\n  '{{ $items(\"Acquire Execution Lease\")[0].json.lease_id }}'::uuid\n);"
+      },
+      "id": "phase9c35-release-execution-lease",
+      "name": "Release Execution Lease",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        3480,
+        60
+      ],
+      "credentials": {
+        "postgres": {
+          "id": "JcwnINxG4CstrGKy",
+          "name": "Postgres account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const result = $items('Return RAG Core Result')[0].json;\nconst release = $items('Release Execution Lease')[0].json;\nreturn [{ json: { ...result, execution_lease_id: $items('Acquire Execution Lease')[0].json.lease_id, execution_lease_released_at: release.released_at } }];"
+      },
+      "id": "phase9c35-return-released-result",
+      "name": "Return Released RAG Core Result",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        3720,
+        60
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT *\nFROM rag_heartbeat_execution_lease(\n  '{{ $items(\"Acquire Execution Lease\")[0].json.lease_id }}'::uuid,\n  interval '2 minutes'\n);"
+      },
+      "id": "phase9c35-heartbeat-before-gemini",
+      "name": "Heartbeat Lease Before Gemini",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        2040,
+        -140
+      ],
+      "credentials": {
+        "postgres": {
+          "id": "JcwnINxG4CstrGKy",
+          "name": "Postgres account"
+        }
+      }
     }
   ],
   "connections": {
@@ -591,7 +697,7 @@
       "main": [
         [
           {
-            "node": "Apply Stage 0 Safety Gate",
+            "node": "Acquire Execution Lease",
             "type": "main",
             "index": 0
           }
@@ -668,7 +774,7 @@
       "main": [
         [
           {
-            "node": "Prepare Qdrant Search",
+            "node": "Heartbeat Execution Lease",
             "type": "main",
             "index": 0
           }
@@ -807,7 +913,7 @@
       "main": [
         [
           {
-            "node": "Prepare Gemini Request",
+            "node": "Heartbeat Lease Before Gemini",
             "type": "main",
             "index": 0
           }
@@ -899,6 +1005,72 @@
         [
           {
             "node": "Return RAG Core Result",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Acquire Execution Lease": {
+      "main": [
+        [
+          {
+            "node": "Restore Runtime After Lease",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Restore Runtime After Lease": {
+      "main": [
+        [
+          {
+            "node": "Apply Stage 0 Safety Gate",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Heartbeat Execution Lease": {
+      "main": [
+        [
+          {
+            "node": "Prepare Qdrant Search",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Heartbeat Lease Before Gemini": {
+      "main": [
+        [
+          {
+            "node": "Prepare Gemini Request",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Return RAG Core Result": {
+      "main": [
+        [
+          {
+            "node": "Release Execution Lease",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Release Execution Lease": {
+      "main": [
+        [
+          {
+            "node": "Return Released RAG Core Result",
             "type": "main",
             "index": 0
           }

@@ -463,6 +463,7 @@ throughput.
 
 ### Phase 9C.3.5 — Incremental-run state and observability
 
+- **Status:** Implemented; manual and non-mutating until Phase 9C.4.
 - Add exactly three tables to `ragbot`: `rag_incremental_runs` for durable run
   summaries, `rag_runtime_state` for serving/maintenance coordination, and
   `rag_active_execution_leases` for online work already past the serving gate.
