@@ -95,6 +95,28 @@ Discord Bot API. It dynamically uses the transaction's `channel_id`, so one bot
 installation can respond in any permitted channel without per-channel webhook
 configuration or another dispatch service.
 
+### Incremental Ingestion Control Plane
+
+n8n is the single coordinator for offline incremental ingestion. It invokes
+deterministic Python planning/chunking helpers and the existing
+embedder/Qdrant services, but owns scheduling, maintenance gates, execution
+draining, retries, validation, rollback, and reopening.
+
+Postgres is the durable source of truth for each run's current state and final
+outcome, including phase results and timestamps, reconciled counts, failures,
+regression, and rollback. Phoenix provides the correlated, detailed transition
+timeline for debugging; it is not authoritative lifecycle storage.
+
+Maintenance uses narrow transactional enter and exit operations rather than a
+second general-purpose state machine. Entering maintenance atomically closes
+the serving gate and records the run/runtime state. Draining then means waiting
+only for online RAG executions that already passed that gate and may be using
+Qdrant, the reranker, or Gemini. Durable Discord capture continues, while new
+RAG reads are gated. The exit operation atomically reopens serving and records
+the run outcome. A replacement plan must be fully `shadow_validated` before
+maintenance can begin. Affected-point rollback snapshots are retained for
+14 days.
+
 ### Execution Tracking Stages
 1. **Universal Capture**  
    The moment a Discord event, regression case, or CI request reaches the n8n intake workflow, a unique transaction tracking ID is created. The raw request envelope and mode flags are logged to the Observability Layer, regardless of whether the request triggers a response.

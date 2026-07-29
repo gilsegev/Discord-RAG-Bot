@@ -6,6 +6,10 @@
 
 **Retains from the original incremental design:** bounded rechunking, durable state, verification, observability, regression gates, and full-rebuild recovery
 
+**Post-PR #24 revision:** Phase 9C.3.5 separates run-state/observability from
+production mutation; Phase 9C.4 accepts only fully `shadow_validated` plans and
+retains per-run rollback snapshots for 14 days.
+
 ## 1. Decision Summary
 
 Production incremental ingestion will use the existing Discord Gateway listener as
@@ -39,6 +43,11 @@ window is the safer MVP tradeoff. During maintenance:
 - active calls receive a clear temporary-maintenance response or are queued;
 - passive RAG processing is paused;
 - no retrieval queries read Qdrant while replacement is in progress.
+
+Draining is narrower than capture or intake shutdown: it waits only for
+in-flight online RAG executions that passed the serving gate before maintenance
+entry and may already be using Qdrant, the reranker, or Gemini. Maintenance
+entry gates every new RAG read, while durable Discord capture continues.
 
 This removes user-visible partial-index states. It does not make Postgres and
 Qdrant transactional, so the update job must remain idempotent and recoverable,
@@ -264,28 +273,45 @@ continuous ingestion begins.
 
 ## 8. Maintenance-Window Update Procedure
 
-1. Create an ingestion run with status `preparing`.
+Before this procedure, the plan must be `shadow_validated`. That requires
+complete production-model embedding of every replacement chunk, embedded count
+equal to replacement count, exactly 768 dimensions for every vector, observed
+model/version agreement, current source corpus version/digest binding, and zero
+Qdrant mutations. Deterministic replanning and fixture equivalence remain
+automated planner validation; they are not persisted production attestations.
+A plan missing required production evidence remains `planned` and is ineligible
+for maintenance.
+
+1. Create a durable incremental run in the `ragbot` Postgres database.
 2. Record a fixed batch cutoff. Messages captured after it remain pending.
-3. Enable maintenance mode for active and passive RAG execution.
-4. Allow already-running retrieval/generation executions to finish, with a
-   bounded drain timeout.
+3. Revalidate the plan's source corpus version/digest, then transactionally
+   enter maintenance: close the serving gate and associate runtime state with
+   this run.
+4. Allow only online RAG executions already past the serving gate to finish,
+   with a bounded lease timeout. Durable capture continues and new RAG reads
+   remain gated.
 5. Claim all eligible dirty work rows for the run.
 6. Resolve every affected old point through `rag_chunk_manifest`.
 7. Load the complete affected conversation/window, including required overlap.
 8. Run the existing chunker and embedding model.
-9. Record the planned old and replacement point sets.
+9. Confirm the old/replacement sets and persist rollback snapshots of affected
+   vectors, payloads, manifest rows, and digests.
 10. Upsert replacement Qdrant points.
 11. Delete superseded Qdrant points that are not part of the replacement set.
 12. Update the manifest and mark work rows processed.
 13. Run structural verification.
 14. Run the complete Phase 8 regression suite in retrieval-only mode.
-15. If all gates pass, mark the corpus version `healthy`, complete the run, and
-    disable maintenance mode.
+15. If all gates pass, mark the corpus version `healthy`, then transactionally
+    record success and reopen serving.
 16. If any gate fails, keep the corpus unavailable, mark the run
     `review_needed`, preserve evidence, and alert an admin.
 
 The procedure must be safe to retry using the same run plan. The replacement set
 must be deterministic for a fixed input, chunker version, and embedding version.
+Affected-point rollback snapshots are retained for 14 days for every production
+run. The first production canary also takes a full Qdrant snapshot. Snapshot
+deletion is forbidden while a related run is `review_needed` or before the
+replacement passes structural verification and regression.
 
 ## 9. Verification and Regression Gates
 
@@ -363,6 +389,8 @@ required for MVP.
 - The run stores old point IDs and replacement point IDs so an admin can diagnose
   or retry deterministically.
 - A full rebuild remains the final recovery option.
+- Affected-point rollback evidence is retained for 14 days after every
+  production replacement run.
 
 MVP favors a clearly unavailable service over serving a partially updated or
 unvalidated corpus.
@@ -433,11 +461,32 @@ fixtures, no unrelated point is selected for replacement, and normal daily
 traffic fits within the agreed maintenance budget at measured Railway
 throughput.
 
+### Phase 9C.3.5 — Incremental-run state and observability
+
+- Add exactly three tables to `ragbot`: `rag_incremental_runs` for durable run
+  summaries, `rag_runtime_state` for serving/maintenance coordination, and
+  `rag_active_execution_leases` for online work already past the serving gate.
+- Store authoritative current state and outcome in each run summary, including
+  phase results/timestamps, reconciled counts, failures, regression, and
+  rollback.
+- Make n8n the single coordinator and owner of narrow transactional
+  maintenance-enter and maintenance-exit operations.
+- Emit correlated Phoenix spans as the detailed transition timeline rather than
+  duplicating every transition in a Postgres event table.
+
+**Gate:** maintenance enter/exit is transactional and idempotent, invalid
+requests fail closed, counts reconcile to source tables, and Phoenix traces
+link to the durable Postgres run.
+
 ### Phase 9C.4 — Maintenance mode and production replacement
 
+- Accept and revalidate only plans with complete `shadow_validated` evidence.
 - Add the maintenance-mode gate to shared intake.
 - Continue durable listener capture during maintenance.
-- Drain in-flight RAG executions.
+- Drain only in-flight online RAG executions already past the serving gate;
+  gate every new RAG read.
+- Snapshot affected old points for every run, retain them for 14 days, and take
+  a full Qdrant snapshot before the first production canary.
 - Apply planned Qdrant replacement and manifest updates.
 - Add idempotent retry and failure-state handling.
 - Run structural verification.

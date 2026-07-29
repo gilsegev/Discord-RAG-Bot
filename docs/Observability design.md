@@ -437,6 +437,8 @@ These are logical observability events, not native events emitted directly by Di
 | Response | `discord.response_sent`, `discord.response_failed` |
 | Regression | `regression.run_started`, `regression.case_completed`, `regression.result_written`, `regression.run_completed` |
 | Feedback | `feedback.received`, `feedback.linked`, `feedback.unmatched` |
+| Incremental plan | `incremental.plan_started`, `incremental.plan_deferred`, `incremental.plan_shadow_validated`, `incremental.plan_rejected` |
+| Incremental runtime | `incremental.run_created`, `incremental.maintenance_entered`, `incremental.draining_started`, `incremental.replacement_started`, `incremental.replacement_completed`, `incremental.validation_started`, `incremental.validation_completed`, `incremental.rollback_started`, `incremental.rollback_completed`, `incremental.serving_restored`, `incremental.run_failed` |
 
 Required attributes:
 
@@ -451,6 +453,38 @@ Required attributes:
 - `latency_ms`
 - `error_type`, when applicable
 - `failure_reason`, when applicable
+
+Incremental events additionally require `incremental_run_id`, `plan_id`,
+`corpus_version_before`, `corpus_version_after` when known, `batch_cutoff`,
+old/replacement/new/reused/deleted point counts, processed/deferred message
+counts, rollback snapshot bytes/digest, and lifecycle state.
+
+Durable incremental records live in the `ragbot` Postgres database:
+
+- `rag_incremental_runs` stores one permanent current-state/outcome record per
+  run, including plan/corpus IDs, phase results and timestamps, reconciled
+  message/group/point counts, failure details, regression result, retry
+  summary, and rollback outcome.
+- `rag_runtime_state` records whether online RAG serving is open or maintenance
+  is active.
+- `rag_active_execution_leases` identifies online RAG executions that have
+  passed the serving gate and may still be using Qdrant, the reranker, or
+  Gemini.
+
+n8n owns the lifecycle. A narrow transactional maintenance-enter operation
+verifies the eligible plan, closes the serving gate, and records the active run.
+A corresponding maintenance-exit operation records the durable outcome and
+reopens serving. These paired operations are not a generalized run/runtime
+state-machine API.
+
+After entry, draining means waiting only for active leases acquired by online
+RAG work that had already passed the serving gate. Durable Discord capture
+continues and new RAG reads are gated. Each significant step updates the
+durable run summary and emits a correlated Phoenix span through the existing
+trace-emitter. Phoenix is the detailed transition timeline; Postgres remains
+the authoritative current state and outcome. Python helpers do not advance
+lifecycle state independently. Affected-point rollback artifacts are retained
+for 14 days; run summaries are permanent.
 
 ## 7. n8n Integration Points
 
