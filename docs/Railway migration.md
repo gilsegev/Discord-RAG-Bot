@@ -2,8 +2,15 @@
 
 ## Status
 
-This document is the deployment, cutover, restore, and rollback runbook for
-moving the production Discord RAG Bot from Oracle Cloud to Railway.
+**Cutover status:** Complete as of July 2026. Railway is the active production
+runtime. The Oracle listener and database writers must remain stopped and are
+not part of routine operation, development, regression, or review.
+
+This document preserves the deployment, cutover, restore, and rollback history
+for the move from Oracle Cloud to Railway. Any retained Oracle VM, boot volume,
+or migration backup is an owner-controlled recovery/archive asset only. It must
+not be started while Railway writers or the Railway Discord listener are
+active.
 
 The Railway project is `Discord-RAG-Bot` in `us-west2`. Production data
 services are private. The only public application endpoints are:

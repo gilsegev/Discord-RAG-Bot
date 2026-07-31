@@ -3,7 +3,7 @@
 ## Purpose
 
 `ragbot-discord-listener` is the dedicated Discord ingress service for Phase 9
-messages and Phase 10 reaction feedback.
+messages and Phase 11 reaction feedback.
 It maintains a Discord Gateway connection, receives `MESSAGE_CREATE` events from
 one explicitly configured server, excludes configured channels, and forwards
 normalized events to the Phase 9 n8n intake workflow.
