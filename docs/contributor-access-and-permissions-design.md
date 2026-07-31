@@ -36,6 +36,7 @@ SQL nodes that use production data and attached credentials.
 | Create, edit, and run development n8n workflows | Yes |
 | Run approved production n8n workflows | Yes |
 | View production execution results and Phoenix traces | Yes |
+| View candidate and selected message text for authorized regression review | Yes, read-only |
 | Retry an approved production workflow | Yes |
 | Edit or activate production workflow definitions directly | No |
 | Read approved production transactions and reports | Yes |
@@ -82,9 +83,27 @@ supplied in the request body.
 - Use n8n execution history when the contributor's n8n role permits it.
 - Open or update a GitHub issue when a result needs code or workflow work.
 
-Raw community message content and personally identifying fields are available
-only when the review task requires them. Default reports should use the minimum
-necessary fields.
+Default operational and management reports mask author identity and omit raw
+message bodies. Regression root-cause work is an approved exception: Haragonda
+and AltCtrlDeliver may inspect the candidate `text_preview`, selected chunk
+text, channel/thread context, scores, dedupe decisions, and source message IDs
+returned by an authorized regression run. This evidence is read-only and
+purpose-limited; it does not grant unrestricted corpus export, direct Qdrant
+mutation, or access to unrelated raw messages. Access to this evidence is
+audited and follows the community-data retention policy.
+
+### Current production host
+
+Production cut over from Oracle Cloud to the Railway `Discord-RAG-Bot` project
+in July 2026. Railway now runs Postgres, n8n, Qdrant, Phoenix, the embedder,
+reranker, trace emitter, and the single active Discord listener. Oracle is not
+part of the active request, ingestion, regression, or observability path.
+
+If the Oracle VM, boot volume, or migration backup is still retained, it is a
+stopped owner-controlled recovery/archive asset only. Contributors receive no
+routine Oracle access, and no service should be started there while the Railway
+listener or database writers are active. Delete or archive the recovery asset
+under the migration retention policy after recovery requirements are satisfied.
 
 ## Permission Model
 
@@ -212,6 +231,18 @@ Initial reporting views should cover:
 - failure summaries; and
 - pending human-review items.
 
+Use two read surfaces:
+
+1. Standard reporting views mask author identity and omit message bodies.
+2. A regression-evidence view or authenticated regression result exposes only
+   the candidate and selected text associated with an authorized run, together
+   with its retrieval and reranking evidence.
+
+The regression-evidence surface is required for false-refusal, missed-refusal,
+reranker, dedupe, and context-selection root-cause analysis. It must remain
+read-only, scope rows by regression run or transaction, and log the reviewing
+identity. It must not become a bulk raw-corpus endpoint.
+
 Do not grant access to n8n internal tables, secret/configuration tables, raw
 credential storage, or unrestricted application schemas. Mask author and
 message fields unless the review purpose requires them.
@@ -250,11 +281,13 @@ read-only and authenticated.
 - Access removal includes credential rotation when a shared or broadly readable
   secret may have been exposed.
 
-The current Oracle admin access documented for Haragonda and AltCtrlDeliver is a
-transition risk because the shared `ubuntu` account can inspect containers,
-volumes, environment variables, and databases. Remove those public keys after
-Railway development, production operator, and reporting access are verified.
-Keep tunnel-only evaluator accounts only until their replacement path works.
+The production migration to Railway is complete. Oracle is not an active
+runtime dependency and contributors do not need routine access to it. Any
+remaining public keys on the shared `ubuntu` account and obsolete tunnel-only
+evaluator accounts should be removed after the Railway contributor paths are
+verified. If an Oracle recovery asset remains, only the owner-controlled
+break-glass process may start it, and only after Railway writers and the Railway
+Discord listener are stopped.
 
 ## Audit And Review
 
@@ -298,6 +331,11 @@ checklist.
 - Production runs identify the authenticated caller and persist audit evidence.
 - Contributors can read the reports needed for transaction and issue review but
   cannot write production application data directly.
+- Authorized regression reviewers can inspect candidate and selected message
+  text for a specific run, while standard reports remain masked and bulk corpus
+  access remains unavailable.
+- Railway is the only active production runtime; Oracle access is unnecessary
+  for normal development, operation, regression, and review.
 - A feature branch or development n8n edit cannot deploy to production without
   the required review.
 - Removing one contributor's accounts and database role revokes that person
