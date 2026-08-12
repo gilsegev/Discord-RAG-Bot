@@ -113,10 +113,12 @@ exceptional baseline migration, but is not a steady-state production dependency.
 - complete Phase 8 regression run
 - update audit records and Phoenix spans
 
-### Deferred scope
+### Explicit non-goals
 
-- `MESSAGE_UPDATE`
-- `MESSAGE_DELETE` and bulk delete events
+- `MESSAGE_UPDATE`, `MESSAGE_DELETE`, and bulk delete events are deliberately
+  unsupported. Incremental ingestion treats captured `MESSAGE_CREATE` records
+  as immutable; an operator may use the full rebuild path for material corpus
+  corrections.
 - automatic REST history catch-up
 - automated ingestion of messages missed during an unresumable listener outage
 - zero-downtime Qdrant updates
@@ -519,13 +521,11 @@ after the message boundary represented by the current healthy Qdrant corpus and
 at or before a fixed catch-up cutoff. Messages captured after that cutoff remain
 pending for the normal scheduled path.
 
-Before planning, prove capture coverage by comparing the current corpus's last
-represented Discord message boundary with the earliest continuously captured
-message in `rag_discord_messages`. Reconcile counts and IDs against
-`rag_pending_chunk_work`. If the interval contains a gap, stop: recover the
-missing messages through an export/backfill, capture them idempotently, and
-repeat the coverage check. Do not treat an incomplete capture table as a
-successful catch-up.
+The owner accepted the unrecorded July 23-26 interval as a permanent historical
+exclusion on August 12, 2026. Record that decision durably and do not describe
+the interval as recovered. Before planning, prove that every message actually
+present in `rag_discord_messages` through the fixed cutoff has consistent,
+non-orphaned work in `rag_pending_chunk_work`.
 
 The catch-up must reuse the Phase 9C.4 planner, maintenance gate, snapshot,
 replacement, manifest update, rollback, structural verification, and pre/post
@@ -542,24 +542,16 @@ recovery checklist of 20 real, not-yet-manifested Discord IDs in the gap; see
 [the Phase 9C.6 known-gap checklist](phase9c6-known-gap-message-ids.csv). Twelve
 additional gap records have synthetic `replay-*` IDs and are evidence only.
 
-Reconcile every checklist ID against the recovery export, but do not use the
-checklist as proof that the interval is complete. The export/history scan must
-cover all corpus-eligible channels and can discover messages that never entered
-the bot transaction path. Import every recovered eligible message through the
-idempotent capture contract; give every known but excluded or unrecoverable ID
-an explicit durable reason. Never import synthetic replay IDs as Discord IDs.
+The 20 checklist IDs are marked as accepted exclusions and are not imported.
+Never import synthetic replay IDs as Discord IDs. This choice knowingly leaves
+the historical interval incomplete while allowing the durable-capture catch-up
+to proceed.
 
 **Gate:** every eligible, proven-captured message through the cutoff is either
 completed or explicitly deferred with a reason; no pre-cutoff work remains
 silently pending; the new corpus is healthy; and the full regression matches
 the accepted baseline before serving reopens. Only then may the Phase 9C.5
 schedule be enabled.
-
-### Future Phase 9C.7 — Edits and deletions
-
-- Capture update/delete events.
-- Rebuild or remove affected chunks.
-- Add historical mutation validation cases.
 
 ### Future Phase 9C.8 — Downtime gap workflow
 

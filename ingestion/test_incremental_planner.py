@@ -3,11 +3,13 @@ import json
 import subprocess
 import sys
 import tempfile
+from unittest import mock
 from pathlib import Path
 
 from ingestion.incremental_planner import (
     PlanningError, WorkItem, _validate_existing_groups,
-    _validate_status_transition, coalesce_work, create_shadow_plan, render_plan,
+    _validate_status_transition, coalesce_work, create_shadow_plan, embed_shadow,
+    render_plan,
 )
 
 
@@ -35,6 +37,26 @@ def complete_measurement(plan):
 
 
 class IncrementalPlannerTests(unittest.TestCase):
+    def test_current_plan_version_records_unique_embedding_semantics(self):
+        plan = create_shadow_plan([], [], [], [])
+        self.assertEqual(plan["plan_version"], 2)
+
+    def test_shadow_embedding_deduplicates_points_shared_by_overlapping_groups(self):
+        shared = {"point_id": "100", "text": "same replacement"}
+        plan = {
+            "_replacement_details": {
+                "window:a": [shared],
+                "window:b": [dict(shared)],
+            }
+        }
+        with mock.patch(
+            "ingestion.incremental_planner._measure_embeddings",
+            return_value={"embedded_chunk_count": 1},
+        ) as measure:
+            result = embed_shadow(plan, "http://embedder")
+        self.assertEqual(result["embedded_chunk_count"], 1)
+        self.assertEqual(measure.call_args.args[0], ["same replacement"])
+
     def test_reply_work_coalesces_by_root(self):
         records = [message(1, 0), message(2, 1, 1), message(3, 2, 2)]
         work = [

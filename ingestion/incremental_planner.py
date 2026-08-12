@@ -3,6 +3,11 @@
 The planner reads captured messages, the ownership manifest, and Qdrant payloads.
 It never calls a Qdrant mutation API. Plan persistence is opt-in and writes only
 the Phase 9C.3 Postgres plan tables for later Phase 9C.4 execution.
+
+Captured Discord messages are treated as immutable MESSAGE_CREATE records.
+Discord message edits and deletions are deliberately outside the incremental
+ingestion contract; an operator may use the full rebuild path when historical
+corpus correction is important enough to warrant it.
 """
 
 from __future__ import annotations
@@ -23,7 +28,7 @@ from ingestion.chunker import OVERLAP_MSGS, WINDOW_MINS, chunk_records
 from ingestion.parser import parse_all_exports
 from ingestion.run import _stable_id
 
-PLAN_VERSION = 1
+PLAN_VERSION = 2
 DEFAULT_COLLECTION = "tpm_unite_history"
 
 
@@ -415,11 +420,15 @@ def _measure_embeddings(texts: Iterable[str], embedder_url: str, kind: str) -> d
 
 def embed_shadow(plan: dict[str, Any], embedder_url: str) -> dict[str, Any]:
     """Embed replacement text for timing/dimension proof; never writes Qdrant."""
-    texts = [
-        row["text"]
-        for rows in plan["_replacement_details"].values()
-        for row in rows
-    ]
+    unique: dict[str, dict[str, Any]] = {}
+    for rows in plan["_replacement_details"].values():
+        for row in rows:
+            point_id = str(row["point_id"])
+            existing = unique.get(point_id)
+            if existing is not None and existing != row:
+                raise PlanningError(f"conflicting replacement point {point_id}")
+            unique[point_id] = row
+    texts = [unique[point_id]["text"] for point_id in sorted(unique, key=int)]
     return _measure_embeddings(texts, embedder_url, "shadow_replacements")
 
 
