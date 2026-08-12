@@ -9,6 +9,7 @@
     "test:phase9c35:postgres": "python scripts/test-phase9c35-postgres.py",
     "test:phase9c35:e2e": "python scripts/test-phase9c35-e2e.py",
     "test:phase9c4": "python -m unittest ingestion.test_incremental_planner && node scripts/test-phase9c3-planner.js && node scripts/test-phase9c35-workflows.js && node scripts/test-phase9c4-workflows.js",
+    "test:phase9c5": "npm run test:phase9c4 && node scripts/test-phase9c5-workflows.js",
     "test:phase9c4:postgres": "python scripts/test-phase9c4-postgres.py",
     "test:phase9c4:e2e": "python scripts/test-phase9c4-e2e.py",
     "sync:regression-cases": "node scripts/sync-regression-cases.js",

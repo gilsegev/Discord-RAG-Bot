@@ -1,0 +1,1041 @@
+{
+  "name": "RAG Incremental Scheduled Run - Phase 9C.5",
+  "active": false,
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "rag-incremental-scheduled-run-phase-9c5",
+        "responseMode": "lastNode",
+        "options": {}
+      },
+      "id": "p9c5-run-webhook",
+      "name": "Scheduled Run Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        -1200,
+        0
+      ],
+      "webhookId": "rag-incremental-scheduled-run-phase-9c5"
+    },
+    {
+      "parameters": {
+        "jsCode": "const envelope=$json||{},raw=envelope.body||envelope,headers=envelope.headers||{}; const secret=String($env.N8N_WEBHOOK_SHARED_SECRET||''); if(secret&&String(headers['x-rag-webhook-secret']||'')!==secret) throw new Error('Unauthorized scheduled run'); const clean=v=>String(v||'').replace(/[^A-Za-z0-9._:-]/g,''); const attempt=clean(raw.attempt_id),plan=clean(raw.plan_id),collection=clean(raw.collection_name||'tpm_unite_history'); if(!attempt||!plan) throw new Error('attempt_id and plan_id required'); return [{json:{attempt_id:attempt,plan_id:plan,collection_name:collection,incremental_run_id:'scheduled-'+attempt+'-'+$execution.id}}];"
+      },
+      "id": "p9c5-normalize-run-request",
+      "name": "Normalize Run Request",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        3420,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT a.*,rs.runtime_state,rs.state_revision FROM rag_incremental_schedule_attempts a JOIN rag_runtime_state rs ON rs.collection_name=a.collection_name WHERE a.attempt_id='{{ $json.attempt_id }}' AND a.decision='dispatched' AND (a.schedule_enabled OR a.trigger_source='manual_execute') AND a.catchup_completed AND rs.runtime_state='serving' AND a.plan_id='{{ $json.plan_id }}';"
+      },
+      "id": "p9c5-verify-ready-attempt",
+      "name": "Verify Ready Attempt",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        3640,
+        0
+      ],
+      "credentials": {
+        "postgres": {
+          "id": "JcwnINxG4CstrGKy",
+          "name": "Postgres account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://127.0.0.1:5678/webhook/rag-incremental-phase-9c4",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "X-RAG-Webhook-Secret",
+              "value": "={{ $env.N8N_WEBHOOK_SHARED_SECRET }}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ { action:'create', incremental_run_id:$items('Normalize Run Request')[0].json.incremental_run_id, plan_id:$items('Normalize Run Request')[0].json.plan_id, collection_name:$items('Normalize Run Request')[0].json.collection_name, requested_by:'phase9c5_schedule' } }}",
+        "options": {
+          "response": {
+            "response": {
+              "fullResponse": true,
+              "neverError": true,
+              "responseFormat": "json"
+            }
+          }
+        }
+      },
+      "id": "p9c5-create-incremental-run",
+      "name": "Create Incremental Run",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        3860,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://127.0.0.1:5678/webhook/rag-regression-batch",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "X-RAG-Webhook-Secret",
+              "value": "={{ $env.N8N_WEBHOOK_SHARED_SECRET }}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ { cases:'all',mode:'retrieval_only',allow_gemini:false,allow_discord_post:false,write_eval_labels:false,requested_by:'phase9c5_schedule_baseline' } }}",
+        "options": {
+          "response": {
+            "response": {
+              "fullResponse": true,
+              "neverError": true,
+              "responseFormat": "json"
+            }
+          }
+        }
+      },
+      "id": "p9c5-run-baseline-regression",
+      "name": "Run Baseline Regression",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        4080,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const r=$json.body||$json; if(Number(r.case_count||r.total_cases)!==48||Number(r.pass_count)!==43||Number(r.fail_count)!==1||Number(r.review_count)!==4) throw new Error('baseline regression differs from accepted 43/1/4'); return [{json:r}];"
+      },
+      "id": "p9c5-require-accepted-baseline",
+      "name": "Require Accepted Baseline",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        4300,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://127.0.0.1:5678/webhook/rag-incremental-phase-9c4",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "X-RAG-Webhook-Secret",
+              "value": "={{ $env.N8N_WEBHOOK_SHARED_SECRET }}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ { action:'record_baseline', incremental_run_id:$items('Normalize Run Request')[0].json.incremental_run_id, regression_run_id:$json.run_id, regression_result:'passed' } }}",
+        "options": {
+          "response": {
+            "response": {
+              "fullResponse": true,
+              "neverError": true,
+              "responseFormat": "json"
+            }
+          }
+        }
+      },
+      "id": "p9c5-record-baseline-regression",
+      "name": "Record Baseline Regression",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        4520,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://127.0.0.1:5678/webhook/rag-incremental-phase-9c4",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "X-RAG-Webhook-Secret",
+              "value": "={{ $env.N8N_WEBHOOK_SHARED_SECRET }}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ { action:'preflight', incremental_run_id:$items('Normalize Run Request')[0].json.incremental_run_id } }}",
+        "options": {
+          "response": {
+            "response": {
+              "fullResponse": true,
+              "neverError": true,
+              "responseFormat": "json"
+            }
+          }
+        }
+      },
+      "id": "p9c5-run-replacement-preflight",
+      "name": "Run Replacement Preflight",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        4740,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT rs.state_revision FROM rag_runtime_state rs WHERE rs.collection_name='{{ $items(\"Normalize Run Request\")[0].json.collection_name }}' AND rs.runtime_state='serving';"
+      },
+      "id": "p9c5-read-runtime-revision",
+      "name": "Read Runtime Revision",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        4960,
+        0
+      ],
+      "credentials": {
+        "postgres": {
+          "id": "JcwnINxG4CstrGKy",
+          "name": "Postgres account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://127.0.0.1:5678/webhook/rag-incremental-phase-9c4",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "X-RAG-Webhook-Secret",
+              "value": "={{ $env.N8N_WEBHOOK_SHARED_SECRET }}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ { action:'begin_drain', incremental_run_id:$items('Normalize Run Request')[0].json.incremental_run_id, runtime_revision:Number($json.state_revision) } }}",
+        "options": {
+          "response": {
+            "response": {
+              "fullResponse": true,
+              "neverError": true,
+              "responseFormat": "json"
+            }
+          }
+        }
+      },
+      "id": "p9c5-begin-drain",
+      "name": "Begin Drain",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        5180,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "amount": 5,
+        "unit": "seconds"
+      },
+      "id": "p9c5-wait-drain",
+      "name": "Wait For Active Retrievals",
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [
+        5400,
+        0
+      ],
+      "webhookId": "p9c5-wait-drain"
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT rag_count_live_execution_leases('{{ $items(\"Normalize Run Request\")[0].json.collection_name }}')=0 AS drained,\n  now() > a.started_at + make_interval(secs=>c.max_maintenance_seconds) AS timed_out\n  FROM rag_incremental_schedule_attempts a JOIN rag_incremental_schedule_config c USING(collection_name)\n  WHERE a.attempt_id='{{ $items(\"Normalize Run Request\")[0].json.attempt_id }}';"
+      },
+      "id": "p9c5-check-drain",
+      "name": "Check Drain",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        5620,
+        0
+      ],
+      "credentials": {
+        "postgres": {
+          "id": "JcwnINxG4CstrGKy",
+          "name": "Postgres account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "Drain Complete?-condition",
+              "leftValue": "={{ $json.drained }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "p9c5-drain-complete-",
+      "name": "Drain Complete?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        5840,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "Drain Timed Out?-condition",
+              "leftValue": "={{ $json.timed_out }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "p9c5-drain-timed-out-",
+      "name": "Drain Timed Out?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        6060,
+        160
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT * FROM rag_cancel_incremental_drain('{{ $items(\"Normalize Run Request\")[0].json.incremental_run_id }}','scheduled_drain_timeout');"
+      },
+      "id": "p9c5-cancel-timed-out-drain",
+      "name": "Cancel Timed Out Drain",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        6280,
+        160
+      ],
+      "credentials": {
+        "postgres": {
+          "id": "JcwnINxG4CstrGKy",
+          "name": "Postgres account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "return [{json:{status:'failed',incremental_run_id:$json.incremental_run_id,qdrant_mutations:false,failure_reason:'scheduled_drain_timeout'}}];"
+      },
+      "id": "p9c5-return-drain-failure",
+      "name": "Return Drain Failure",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        6500,
+        160
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://127.0.0.1:5678/webhook/rag-incremental-phase-9c4",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "X-RAG-Webhook-Secret",
+              "value": "={{ $env.N8N_WEBHOOK_SHARED_SECRET }}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ { action:'enter_maintenance', incremental_run_id:$items('Normalize Run Request')[0].json.incremental_run_id, runtime_revision:Number(($items('Begin Drain')[0].json.body||$items('Begin Drain')[0].json).runtime_revision) } }}",
+        "options": {
+          "response": {
+            "response": {
+              "fullResponse": true,
+              "neverError": true,
+              "responseFormat": "json"
+            }
+          }
+        }
+      },
+      "id": "p9c5-enter-maintenance",
+      "name": "Enter Maintenance",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        6720,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://127.0.0.1:5678/webhook/rag-incremental-phase-9c4",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "X-RAG-Webhook-Secret",
+              "value": "={{ $env.N8N_WEBHOOK_SHARED_SECRET }}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ { action:'apply', incremental_run_id:$items('Normalize Run Request')[0].json.incremental_run_id, runtime_revision:Number(($json.body||$json).runtime_revision), confirm_apply:'PHASE9C4_APPLY', take_full_snapshot:false } }}",
+        "options": {
+          "response": {
+            "response": {
+              "fullResponse": true,
+              "neverError": true,
+              "responseFormat": "json"
+            }
+          }
+        }
+      },
+      "id": "p9c5-apply-replacement",
+      "name": "Apply Replacement",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        6940,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "Apply Verified?-condition",
+              "leftValue": "={{ Number($json.statusCode) >= 200 && Number($json.statusCode) < 300 && Number($json.body?.worker_result?.statusCode) >= 200 && Number($json.body?.worker_result?.statusCode) < 300 && $json.body?.structural_verification_result === 'passed' }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "p9c5-apply-verified-",
+      "name": "Apply Verified?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        7160,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://127.0.0.1:5678/webhook/rag-regression-batch",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "X-RAG-Webhook-Secret",
+              "value": "={{ $env.N8N_WEBHOOK_SHARED_SECRET }}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ { cases:'all',mode:'retrieval_only',allow_gemini:false,allow_discord_post:false,write_eval_labels:false,requested_by:'phase9c5_schedule_post',maintenance_validation_run_id:$items('Normalize Run Request')[0].json.incremental_run_id } }}",
+        "options": {
+          "response": {
+            "response": {
+              "fullResponse": true,
+              "neverError": true,
+              "responseFormat": "json"
+            }
+          }
+        }
+      },
+      "id": "p9c5-run-post-regression",
+      "name": "Run Post Regression",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        7380,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "Post Regression Matches?-condition",
+              "leftValue": "={{ Number($json.body?.case_count || $json.body?.total_cases) === 48 && Number($json.body?.pass_count) === 43 && Number($json.body?.fail_count) === 1 && Number($json.body?.review_count) === 4 }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "p9c5-post-regression-matches-",
+      "name": "Post Regression Matches?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        7600,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://127.0.0.1:5678/webhook/rag-incremental-phase-9c4",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "X-RAG-Webhook-Secret",
+              "value": "={{ $env.N8N_WEBHOOK_SHARED_SECRET }}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ { action:'record_regression', incremental_run_id:$items('Normalize Run Request')[0].json.incremental_run_id, regression_run_id:$json.body.run_id, regression_result:'passed' } }}",
+        "options": {
+          "response": {
+            "response": {
+              "fullResponse": true,
+              "neverError": true,
+              "responseFormat": "json"
+            }
+          }
+        }
+      },
+      "id": "p9c5-record-post-regression",
+      "name": "Record Post Regression",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        7820,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://127.0.0.1:5678/webhook/rag-incremental-phase-9c4",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "X-RAG-Webhook-Secret",
+              "value": "={{ $env.N8N_WEBHOOK_SHARED_SECRET }}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ { action:'exit_completed', incremental_run_id:$items('Normalize Run Request')[0].json.incremental_run_id } }}",
+        "options": {
+          "response": {
+            "response": {
+              "fullResponse": true,
+              "neverError": true,
+              "responseFormat": "json"
+            }
+          }
+        }
+      },
+      "id": "p9c5-reopen-serving",
+      "name": "Reopen Serving",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        8040,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const r=$json.body||$json; return [{json:{status:'completed',incremental_run_id:$items('Normalize Run Request')[0].json.incremental_run_id,qdrant_mutations:true,run_state:r.run_state,runtime_state:r.runtime_state,runtime_revision:r.runtime_revision}}];"
+      },
+      "id": "p9c5-return-completed-run",
+      "name": "Return Completed Run",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        8260,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://127.0.0.1:5678/webhook/rag-incremental-phase-9c4",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "X-RAG-Webhook-Secret",
+              "value": "={{ $env.N8N_WEBHOOK_SHARED_SECRET }}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ { action:'rollback', incremental_run_id:$items('Normalize Run Request')[0].json.incremental_run_id } }}",
+        "options": {
+          "response": {
+            "response": {
+              "fullResponse": true,
+              "neverError": true,
+              "responseFormat": "json"
+            }
+          }
+        }
+      },
+      "id": "p9c5-rollback-failed-validation",
+      "name": "Rollback Failed Validation",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        8480,
+        180
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://127.0.0.1:5678/webhook/rag-incremental-phase-9c4",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "X-RAG-Webhook-Secret",
+              "value": "={{ $env.N8N_WEBHOOK_SHARED_SECRET }}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ { action:'exit_failed', incremental_run_id:$items('Normalize Run Request')[0].json.incremental_run_id } }}",
+        "options": {
+          "response": {
+            "response": {
+              "fullResponse": true,
+              "neverError": true,
+              "responseFormat": "json"
+            }
+          }
+        }
+      },
+      "id": "p9c5-exit-failed-run",
+      "name": "Exit Failed Run",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        8700,
+        180
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const r=$json.body||$json; return [{json:{status:'failed',incremental_run_id:$items('Normalize Run Request')[0].json.incremental_run_id,qdrant_mutations:true,rollback_status:'completed',run_state:r.run_state,runtime_state:r.runtime_state}}];"
+      },
+      "id": "p9c5-return-rolled-back-run",
+      "name": "Return Rolled Back Run",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        8920,
+        180
+      ]
+    }
+  ],
+  "connections": {
+    "Scheduled Run Webhook": {
+      "main": [
+        [
+          {
+            "node": "Normalize Run Request",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Normalize Run Request": {
+      "main": [
+        [
+          {
+            "node": "Verify Ready Attempt",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Verify Ready Attempt": {
+      "main": [
+        [
+          {
+            "node": "Create Incremental Run",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create Incremental Run": {
+      "main": [
+        [
+          {
+            "node": "Run Baseline Regression",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Run Baseline Regression": {
+      "main": [
+        [
+          {
+            "node": "Require Accepted Baseline",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Require Accepted Baseline": {
+      "main": [
+        [
+          {
+            "node": "Record Baseline Regression",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Record Baseline Regression": {
+      "main": [
+        [
+          {
+            "node": "Run Replacement Preflight",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Run Replacement Preflight": {
+      "main": [
+        [
+          {
+            "node": "Read Runtime Revision",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Read Runtime Revision": {
+      "main": [
+        [
+          {
+            "node": "Begin Drain",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Begin Drain": {
+      "main": [
+        [
+          {
+            "node": "Wait For Active Retrievals",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Wait For Active Retrievals": {
+      "main": [
+        [
+          {
+            "node": "Check Drain",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check Drain": {
+      "main": [
+        [
+          {
+            "node": "Drain Complete?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Drain Complete?": {
+      "main": [
+        [
+          {
+            "node": "Enter Maintenance",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Drain Timed Out?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Drain Timed Out?": {
+      "main": [
+        [
+          {
+            "node": "Cancel Timed Out Drain",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Wait For Active Retrievals",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Cancel Timed Out Drain": {
+      "main": [
+        [
+          {
+            "node": "Return Drain Failure",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Enter Maintenance": {
+      "main": [
+        [
+          {
+            "node": "Apply Replacement",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Apply Replacement": {
+      "main": [
+        [
+          {
+            "node": "Apply Verified?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Apply Verified?": {
+      "main": [
+        [
+          {
+            "node": "Run Post Regression",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Rollback Failed Validation",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Run Post Regression": {
+      "main": [
+        [
+          {
+            "node": "Post Regression Matches?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Post Regression Matches?": {
+      "main": [
+        [
+          {
+            "node": "Record Post Regression",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Rollback Failed Validation",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Record Post Regression": {
+      "main": [
+        [
+          {
+            "node": "Reopen Serving",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Reopen Serving": {
+      "main": [
+        [
+          {
+            "node": "Return Completed Run",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Rollback Failed Validation": {
+      "main": [
+        [
+          {
+            "node": "Exit Failed Run",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Exit Failed Run": {
+      "main": [
+        [
+          {
+            "node": "Return Rolled Back Run",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "meta": {
+    "templateCredsSetupCompleted": false
+  },
+  "pinData": {}
+}

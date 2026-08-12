@@ -738,10 +738,62 @@ tests now cover the latter, and the full regression proves the corrected path.
 
 ### Phase 9C.5: Scheduled-operation readiness
 
+**Status:** Implemented and deployed inactive on August 12, 2026; schedule must
+remain disabled until Phase 9C.6 completes
+
 After Phase 9C.4 is proven manually, add the configurable low-traffic schedule,
 run reporting, alerting, and operator runbook around the same coordinator. Keep
 the schedule disabled until the one-time Phase 9C.6 catch-up succeeds. Do not
 create a second replacement path for scheduled work.
+
+Execution plan:
+
+1. Add a small scheduled-controller workflow that calls the proven Phase 9C.4
+   coordinator; it must not contain its own replacement logic.
+2. Add configuration for enabled/disabled state, low-traffic cron time, batch
+   limits, and maintenance/time budgets. Defaults are disabled and fail closed.
+3. Refuse overlapping runs, stale/unvalidated plans, unhealthy capture, or a
+   runtime that is not `serving` before the scheduled controller can drain it.
+4. Store one durable run report with plan, cutoff, counts, durations, snapshot,
+   regression, rollback, and final runtime/corpus state.
+5. Send deduplicated operator alerts for preflight rejection, failed recovery,
+   `review_needed`, or a runtime left outside `serving`; send a short success
+   summary for completed runs.
+6. Add the operator runbook for enabling/disabling the schedule, inspecting a
+   run, retrying safely, rolling back, and escalating a stuck maintenance state.
+7. Test the controller locally and deploy it inactive. Prove its manual dry-run
+   and alert/report paths without changing Qdrant. Phase 9C.6 remains the next
+   production mutation, and only its success may enable the schedule.
+
+Exit criteria:
+
+- the existing Phase 9C.4 coordinator remains the only apply/rollback path
+- schedule configuration is visible, validated, and disabled in production
+- dry-run, overlap, stale-plan, unhealthy-capture, failure, and success paths
+  have automated tests and durable evidence
+- an operator can understand and recover any run from the report and runbook
+- normal serving and Discord capture remain unchanged
+
+Production readiness evidence:
+
+- the controller, scheduled runner, and alert-outbox workflows are deployed
+  inactive in n8n
+- Postgres has independent `schedule_enabled=false` and
+  `catchup_completed=false` locks, with a 03:00 UTC default low-traffic cron
+- production dry-run `phase9c5-prod-dryrun-final-20260812` stopped with
+  `phase9c6_catchup_required`, reported 176 bounded pending messages, recorded
+  one durable attempt and one deduplicated warning, and reported zero Qdrant
+  mutations
+- runtime remained `serving` at revision 3 and Qdrant remained at 32,759
+  points before and after the proof
+- local Postgres tests prove disabled/catch-up/overlap/plan-budget guards,
+  idempotent alerting, durable reports, and drain-timeout recovery; workflow
+  tests prove dry-run cannot dispatch, mutations remain delegated to the Phase
+  9C.4 coordinator, regression runs before and after replacement, and failure
+  branches use rollback
+- alert delivery remains queued until a private operations destination is
+  configured with `INCREMENTAL_ALERT_WEBHOOK_URL`; no destination or secret is
+  stored in workflow JSON
 
 ### Phase 9C.6: One-time captured-message catch-up
 
