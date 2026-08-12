@@ -797,7 +797,12 @@ Production readiness evidence:
 
 ### Phase 9C.6: One-time captured-message catch-up
 
-**Status:** Planned after Phase 9C.4 production replacement is proven
+**Status:** Execution planning in progress; production mutation is not part of
+the planning PR
+
+The operator-ready sequence, evidence requirements, stop rules, and manual
+dependency are maintained in
+[the Phase 9C.6 execution plan](Phase%209C.6%20execution%20plan.md).
 
 Run one migration-style incremental batch covering all eligible Discord
 messages after the last message represented by the current healthy Qdrant
