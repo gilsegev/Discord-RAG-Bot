@@ -39,7 +39,7 @@ def main() -> None:
             db.execute(migration.read_text(encoding="utf-8"))
         db.execute(
             """CREATE TABLE rag_regression_runs (
-                run_id TEXT PRIMARY KEY,status TEXT,case_count INTEGER,
+                run_id UUID PRIMARY KEY,status TEXT,case_count INTEGER,
                 pass_count INTEGER,fail_count INTEGER,review_count INTEGER
             )"""
         )
@@ -81,14 +81,14 @@ def main() -> None:
                    ('plan-b','window:c:-:x','recent_window','c',ARRAY['1001','1002'],
                     ARRAY[]::text[],ARRAY['2002'],'ready','{}');
             INSERT INTO rag_regression_runs VALUES
-                ('reg-before','completed',48,43,1,4),
-                ('reg-after','completed',48,43,1,4);
+                ('00000000-0000-4000-8000-000000000001','completed',48,43,1,4),
+                ('00000000-0000-4000-8000-000000000002','completed',48,43,1,4);
             """
         )
         assert db.execute(
             "SELECT * FROM rag_create_incremental_run('run-a','plan-a','test_collection','{}')"
         ).fetchone() == ("run-a", "created", "serving", 0)
-        db.execute("SELECT * FROM rag_record_incremental_regression('run-a','reg-before','passed',true)")
+        db.execute("SELECT * FROM rag_record_incremental_regression('run-a','00000000-0000-4000-8000-000000000001','passed',true)")
 
         lease = db.execute(
             "SELECT * FROM rag_acquire_execution_lease('test_collection','query-1')"
@@ -103,6 +103,10 @@ def main() -> None:
         assert denied[5:] == (False, "maintenance_in_progress", False)
         db.execute("SELECT * FROM rag_release_execution_lease(%s)", (lease[0],))
         db.execute("SELECT * FROM rag_enter_incremental_maintenance('run-a',1)")
+        maintenance_denied = db.execute(
+            "SELECT * FROM rag_acquire_execution_lease('test_collection','maintenance-query-denied')"
+        ).fetchone()
+        assert maintenance_denied[5:] == (False, "maintenance_in_progress", False)
         validation = db.execute(
             "SELECT * FROM rag_acquire_execution_lease('test_collection','validation',NULL,NULL,interval '2 minutes','{}','run-a')"
         ).fetchone()
@@ -113,7 +117,7 @@ def main() -> None:
         db.execute(
             "UPDATE rag_incremental_runs SET run_state='validating',structural_verification_result='passed' WHERE incremental_run_id='run-a'"
         )
-        db.execute("SELECT * FROM rag_record_incremental_regression('run-a','reg-after','passed',false)")
+        db.execute("SELECT * FROM rag_record_incremental_regression('run-a','00000000-0000-4000-8000-000000000002','passed',false)")
         exited = db.execute("SELECT * FROM rag_exit_incremental_maintenance('run-a','completed','{}')").fetchone()
         assert exited == ("run-a", "completed", "serving", 3)
 

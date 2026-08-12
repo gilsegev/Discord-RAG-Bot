@@ -667,7 +667,8 @@ Implementation artifacts:
 
 ### Phase 9C.4: Maintenance mode and production replacement
 
-**Status:** Planned; manual and feature-flagged initially
+**Status:** Completed manually in production on August 12, 2026; remains
+feature-flagged
 
 Phase 9C.4 accepts only `shadow_validated` plans and revalidates their source
 corpus version/digest at application time. A stale plan is rejected before
@@ -711,6 +712,29 @@ The July 2026 138.4-minute full rebuild ran on Gil's higher-performance 8-core
 workstation. Incremental production execution now runs on Railway, so later
 batch and maintenance budgets must use measured Railway throughput rather than
 the retired Oracle host or workstation result.
+
+Production acceptance evidence:
+
+- run `phase9c35-live-simulation-20260729T045609Z` resumed the approved
+  `shadow-1e95ba4d2fc1a7e74338` plan and completed successfully
+- the accepted 48-case result was `43 pass / 1 fail / 4 review` both before
+  replacement (`ddc41f28-4ced-4109-9943-1ab3c4e9a038`) and while gated after
+  replacement (`76a598a2-f776-4b3d-b899-e77747e7eeb4`)
+- Qdrant and the active manifest moved together from 32,756 to 32,759 points;
+  six messages completed and three intentionally remained deferred/pending
+- the run retained per-point rollback state for 14 days and created full
+  Qdrant snapshot
+  `tpm_unite_history-599516084158867-2026-08-12-17-30-38.snapshot`
+- an ordinary active request was refused before retrieval during maintenance;
+  a duplicate passive capture traversed the durable capture path and stopped
+  before RAG; a post-reopen retrieval canary passed
+- runtime returned to `serving` at revision 3 with corpus version
+  `incremental-89dc2637cb6b4b3259a7` healthy
+
+The production canary also caught and fixed two fail-closed wiring defects
+before reopening: SQL `NULL` handling in maintenance admission and propagation
+of `maintenance_validation_run_id` from intake into the shared core. Focused
+tests now cover the latter, and the full regression proves the corrected path.
 
 ### Phase 9C.5: Scheduled-operation readiness
 

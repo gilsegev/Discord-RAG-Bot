@@ -68,5 +68,9 @@ assert.strictEqual(passive.discord_response_text, '');
 assert.strictEqual(passive.allow_discord_post, false);
 
 assert.match(node(intake, 'Build RAG Core Request').parameters.jsCode, /maintenance_validation_run_id/);
+assert.match(
+  node(intake, 'Execute RAG Core').parameters.workflowInputs.value.maintenance_validation_run_id,
+  /maintenance_validation_run_id/,
+);
 assert.match(node(regression, 'Load Regression Cases').parameters.jsCode, /maintenance_validation_run_id/);
 console.log('phase9c4 workflow checks passed');

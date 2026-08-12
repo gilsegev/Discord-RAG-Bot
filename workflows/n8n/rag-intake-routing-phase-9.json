@@ -256,7 +256,8 @@
             "dedupe_overlap_threshold": "={{ $('Build RAG Core Request').item.json.dedupe_overlap_threshold }}",
             "workflow_started_ms": "={{ $('Build RAG Core Request').item.json.workflow_started_ms }}",
             "channel_scope": "={{ $('Build RAG Core Request').item.json.channel_scope }}",
-            "discord_guild_id": "={{ $('Build RAG Core Request').item.json.discord_guild_id }}"
+            "discord_guild_id": "={{ $('Build RAG Core Request').item.json.discord_guild_id }}",
+            "maintenance_validation_run_id": "={{ $('Build RAG Core Request').item.json.maintenance_validation_run_id }}"
           },
           "matchingColumns": [],
           "schema": [

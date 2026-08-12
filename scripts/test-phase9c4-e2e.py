@@ -71,7 +71,7 @@ def main() -> None:
         db.execute(psycopg.sql.SQL("SET search_path TO {}, public").format(psycopg.sql.Identifier(schema)))
         for migration in MIGRATIONS[:-1]:
             db.execute(migration.read_text(encoding="utf-8"))
-        db.execute("CREATE TABLE rag_regression_runs (run_id TEXT PRIMARY KEY,status TEXT,case_count INTEGER,pass_count INTEGER,fail_count INTEGER,review_count INTEGER)")
+        db.execute("CREATE TABLE rag_regression_runs (run_id UUID PRIMARY KEY,status TEXT,case_count INTEGER,pass_count INTEGER,fail_count INTEGER,review_count INTEGER)")
         db.execute(MIGRATIONS[-1].read_text(encoding="utf-8"))
         baseline_digest = hashlib.sha256(b"empty").hexdigest()
         db.execute(

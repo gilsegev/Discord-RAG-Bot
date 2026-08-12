@@ -124,7 +124,7 @@ BEGIN
     SELECT * INTO v_runtime FROM rag_runtime_state
     WHERE collection_name=v_run.collection_name FOR UPDATE;
     SELECT * INTO v_regression FROM rag_regression_runs
-    WHERE run_id=p_regression_run_id;
+    WHERE run_id::text=p_regression_run_id;
     IF NOT FOUND OR v_regression.status <> 'completed' OR v_regression.case_count <> 48 THEN
         RAISE EXCEPTION 'regression run is missing or incomplete'
             USING ERRCODE='55000';
@@ -211,7 +211,10 @@ BEGIN
     END IF;
     v_validation := v_runtime.runtime_state='maintenance'
         AND v_runtime.active_incremental_run_id IS NOT NULL
-        AND v_runtime.active_incremental_run_id=p_maintenance_validation_run_id;
+        AND coalesce(
+            v_runtime.active_incremental_run_id=p_maintenance_validation_run_id,
+            false
+        );
     IF v_runtime.runtime_state <> 'serving' AND NOT v_validation THEN
         RETURN QUERY SELECT NULL::uuid, NULL::timestamptz, NULL::timestamptz,
             v_runtime.state_revision, false, false,

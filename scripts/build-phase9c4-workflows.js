@@ -71,6 +71,8 @@ requestCode = requestCode.replace(
   "  regression_run_id: input.regression_run_id || '',\n  maintenance_validation_run_id: input.maintenance_validation_run_id || '',",
 );
 node(intake, 'Build RAG Core Request').parameters.jsCode = requestCode;
+node(intake, 'Execute RAG Core').parameters.workflowInputs.value.maintenance_validation_run_id =
+  "={{ $('Build RAG Core Request').item.json.maintenance_validation_run_id }}";
 write(intakePath, intake);
 
 const regression = read(regressionPath);
