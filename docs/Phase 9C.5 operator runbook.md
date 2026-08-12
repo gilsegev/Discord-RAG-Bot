@@ -29,9 +29,10 @@ The expected pre-9C.6 state is `schedule_enabled=false`,
 ## Dry run
 
 Call the `rag-incremental-schedule-phase-9c5` webhook with `mode=dry_run`.
-The current expected result is `blocked` with
-`phase9c6_catchup_required`, zero Qdrant mutations, and one durable attempt
-report. Repeating the same attempt ID is idempotent.
+Before Phase 9C.6 it returns `blocked` with `phase9c6_catchup_required`. After
+catch-up it returns `ready` when chunks can be built or `no_work` when all
+pending messages are legitimately deferred. Every dry run reports zero Qdrant
+mutations. Repeating the same attempt ID is idempotent.
 
 ## Enabling after Phase 9C.6
 
@@ -69,3 +70,13 @@ runner directly.
 Alerts are durably queued in Postgres. When
 `INCREMENTAL_ALERT_WEBHOOK_URL` is configured, the alert workflow delivers
 them to the private operations destination and records delivery status.
+
+## Production activation record
+
+Production scheduling was enabled on August 12, 2026 with cron `0 3 * * *` and
+workflow/database timezone `UTC`. Supervised run
+`scheduled-phase9c5-prod-supervised-20260812-utc-r2-11215` passed baseline and
+post-update regression plus structural verification, processed four messages
+into two new Qdrant points, and returned runtime to `serving`. The final enabled
+dry run `phase9c5-prod-final-enabled-validation-20260812` returned normal
+`no_work` for 21 deferred messages with zero mutations.
