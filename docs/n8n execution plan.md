@@ -738,8 +738,8 @@ tests now cover the latter, and the full regression proves the corrected path.
 
 ### Phase 9C.5: Scheduled-operation readiness
 
-**Status:** Implemented and deployed inactive on August 12, 2026; schedule must
-remain disabled until Phase 9C.6 completes
+**Status:** Enabled in production on August 12, 2026 at 03:00 UTC daily after
+Phase 9C.6 completion and a successful supervised update
 
 After Phase 9C.4 is proven manually, add the configurable low-traffic schedule,
 run reporting, alerting, and operator runbook around the same coordinator. Keep
@@ -768,7 +768,8 @@ Execution plan:
 Exit criteria:
 
 - the existing Phase 9C.4 coordinator remains the only apply/rollback path
-- schedule configuration is visible, validated, and disabled in production
+- schedule configuration is visible and validated; production activation occurs
+  only after the Phase 9C.6 and supervised-run gates pass
 - dry-run, overlap, stale-plan, unhealthy-capture, failure, and success paths
   have automated tests and durable evidence
 - an operator can understand and recover any run from the report and runbook
@@ -794,6 +795,24 @@ Production readiness evidence:
 - alert delivery remains queued until a private operations destination is
   configured with `INCREMENTAL_ALERT_WEBHOOK_URL`; no destination or secret is
   stored in workflow JSON
+
+Production activation evidence:
+
+- the scheduled controller and secret-protected runner are active; the
+  controller workflow timezone and Postgres schedule timezone are both `UTC`
+  with cron `0 3 * * *`
+- dry run `phase9c5-prod-dryrun-20260812-utc` produced shadow-validated plan
+  `shadow-1a026e7f645105f01159` with two ready replacement points and zero
+  mutations
+- supervised run `scheduled-phase9c5-prod-supervised-20260812-utc-r2-11215`
+  processed four messages into two new points; baseline regression, structural
+  verification, and post-update regression all passed; runtime returned to
+  `serving` and Qdrant reached 32,834 points
+- PR #56 corrected deferred-only plans to return normal `no_work` without
+  dispatching the runner; enabled-state validation
+  `phase9c5-prod-final-enabled-validation-20260812` proved that behavior with
+  21 deferred messages and zero mutations
+- production now has `catchup_completed=true` and `schedule_enabled=true`
 
 ### Phase 9C.6: One-time captured-message catch-up
 
