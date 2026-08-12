@@ -667,7 +667,8 @@ Implementation artifacts:
 
 ### Phase 9C.4: Maintenance mode and production replacement
 
-**Status:** Planned; manual and feature-flagged initially
+**Status:** Completed manually in production on August 12, 2026; remains
+feature-flagged
 
 Phase 9C.4 accepts only `shadow_validated` plans and revalidates their source
 corpus version/digest at application time. A stale plan is rejected before
@@ -701,10 +702,103 @@ The coordinator is an n8n workflow. Python provides deterministic
 planning/chunking and narrow Qdrant operations invoked by n8n; no separate
 always-on orchestration service is introduced.
 
+The complete Phase 8 regression suite is part of the Phase 9C.4 safety gate,
+not deferred to scheduled operation. Run it before replacement to confirm the
+starting baseline and after structural verification. Serving reopens only when
+the post-replacement result matches the accepted baseline or recovery has
+completed.
+
 The July 2026 138.4-minute full rebuild ran on Gil's higher-performance 8-core
 workstation. Incremental production execution now runs on Railway, so later
 batch and maintenance budgets must use measured Railway throughput rather than
 the retired Oracle host or workstation result.
+
+Production acceptance evidence:
+
+- run `phase9c35-live-simulation-20260729T045609Z` resumed the approved
+  `shadow-1e95ba4d2fc1a7e74338` plan and completed successfully
+- the accepted 48-case result was `43 pass / 1 fail / 4 review` both before
+  replacement (`ddc41f28-4ced-4109-9943-1ab3c4e9a038`) and while gated after
+  replacement (`76a598a2-f776-4b3d-b899-e77747e7eeb4`)
+- Qdrant and the active manifest moved together from 32,756 to 32,759 points;
+  six messages completed and three intentionally remained deferred/pending
+- the run retained per-point rollback state for 14 days and created full
+  Qdrant snapshot
+  `tpm_unite_history-599516084158867-2026-08-12-17-30-38.snapshot`
+- an ordinary active request was refused before retrieval during maintenance;
+  a duplicate passive capture traversed the durable capture path and stopped
+  before RAG; a post-reopen retrieval canary passed
+- runtime returned to `serving` at revision 3 with corpus version
+  `incremental-89dc2637cb6b4b3259a7` healthy
+
+The production canary also caught and fixed two fail-closed wiring defects
+before reopening: SQL `NULL` handling in maintenance admission and propagation
+of `maintenance_validation_run_id` from intake into the shared core. Focused
+tests now cover the latter, and the full regression proves the corrected path.
+
+### Phase 9C.5: Scheduled-operation readiness
+
+After Phase 9C.4 is proven manually, add the configurable low-traffic schedule,
+run reporting, alerting, and operator runbook around the same coordinator. Keep
+the schedule disabled until the one-time Phase 9C.6 catch-up succeeds. Do not
+create a second replacement path for scheduled work.
+
+### Phase 9C.6: One-time captured-message catch-up
+
+**Status:** Planned after Phase 9C.4 production replacement is proven
+
+Run one migration-style incremental batch covering all eligible Discord
+messages after the last message represented by the current healthy Qdrant
+corpus and at or before a fixed catch-up cutoff. New messages captured after
+the cutoff remain pending for the normal scheduled path.
+
+This run must fail closed unless capture coverage is proven. Compare the
+current corpus's final represented Discord message boundary with the earliest
+continuously captured row in `rag_discord_messages`, and reconcile the interval
+with `rag_pending_chunk_work`. If any part of the interval is missing, recover
+it with the existing export/backfill path, insert it idempotently, and repeat
+the coverage check before planning.
+
+The catch-up reuses the Phase 9C.4 shadow-validated plan, maintenance gate,
+lease drain, snapshots, deterministic replacement, manifest update, rollback,
+structural verification, and pre/post full regression. Take a full Qdrant
+snapshot before this first production run. Preserve the cutoff and before/after
+message, work-row, point, manifest, corpus-version, and regression counts as
+permanent migration evidence.
+
+Production preflight evidence recorded on August 12, 2026:
+
+- the healthy manifest's last represented Discord message is
+  `1529684708294787083`, at approximately `2026-07-23 03:00:54 UTC`
+- durable capture begins at `2026-07-26 18:35:40 UTC`
+- the resulting unproven interval is approximately 3 days and 15 hours
+- 182 captured messages are pending from July 26 through August 12, and none
+  are represented by the current active manifest
+- transaction history found 33 non-test records in the unproven interval:
+  one is the already-manifested boundary message, 20 are real Discord IDs not
+  in the manifest, and 12 use synthetic `replay-*` IDs
+
+Use [the Phase 9C.6 known-gap checklist](phase9c6-known-gap-message-ids.csv) when
+reconciling the recovery export. Each of its 20 real Discord IDs must be found
+and imported, or assigned an explicit durable reason such as not corpus
+eligible or no longer recoverable. The checklist is a minimum known set, not
+proof of completeness: transaction history observed only bot-handled events.
+The recovery export/history scan must cover every corpus-eligible channel for
+the full interval and may discover additional messages. Synthetic replay IDs
+are supporting evidence only and must never be inserted as Discord message IDs.
+
+Exit criteria:
+
+- capture is proven continuous from the current corpus boundary through the
+  fixed cutoff, or a missing interval has been recovered first
+- every ID in the known-gap checklist is reconciled, while completeness is
+  independently established from the full-channel recovery export/history
+- every eligible pre-cutoff work row is completed or explicitly deferred with
+  a durable reason
+- no pre-cutoff work remains silently pending or claimed
+- Qdrant and the active manifest agree and the new corpus version is healthy
+- the full regression matches the accepted baseline before serving reopens
+- the Phase 9C.5 schedule remains disabled until this catch-up succeeds
 
 ## Phase 10: Feedback Correlation
 Add shared Discord reaction monitoring after bot responses store

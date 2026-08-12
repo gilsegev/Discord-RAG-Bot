@@ -196,6 +196,25 @@ def _chunk_row(chunk: dict[str, Any]) -> dict[str, Any]:
         "thread_name": chunk.get("thread_name"),
         "text_digest": hashlib.sha256(chunk["text"].encode("utf-8")).hexdigest(),
         "text": chunk["text"],
+        # Private apply material. It is deliberately excluded from the
+        # persisted plan identity below so existing Phase 9C.3 plans remain
+        # byte-for-byte deterministic. Phase 9C.4 reconstructs it from source
+        # records and verifies the persisted identity before any mutation.
+        "_payload": {
+            "text": chunk["text"],
+            "start_ts": chunk["start_ts"],
+            "end_ts": chunk["end_ts"],
+            "channel": chunk["channel"],
+            "channel_id": chunk.get("channel_id"),
+            "thread_name": chunk.get("thread_name"),
+            "authors": chunk["authors"],
+            "message_count": chunk["message_count"],
+            "message_ids": [str(value) for value in chunk.get("message_ids", [])],
+            "first_message_id": str(chunk.get("first_message_id", "")),
+            "token_count": chunk.get("token_count", 0),
+            "span_days": chunk.get("span_days", 0),
+            "split_index": int(chunk.get("split_index", 0)),
+        },
     }
 
 
@@ -324,7 +343,11 @@ def create_shadow_plan(
         # Text stays out of the persisted plan, but its digest and all ownership
         # metadata participate in the immutable plan identity.
         group["replacement_points"] = [
-            {key: item for key, item in row.items() if key != "text"}
+            {
+                key: item
+                for key, item in row.items()
+                if key != "text" and not key.startswith("_")
+            }
             for row in replacement_rows
         ]
         public_groups.append(group)
@@ -666,6 +689,7 @@ def load_postgres(
     connection: Any,
     cutoff: int | None = None,
     collection: str = DEFAULT_COLLECTION,
+    work_statuses: tuple[str, ...] = ("pending",),
 ) -> tuple[
     list[WorkItem],
     list[dict[str, Any]],
@@ -679,10 +703,10 @@ def load_postgres(
             SELECT w.source_message_id, w.capture_sequence, w.work_kind,
                    w.parent_channel_id, w.thread_id, w.parent_message_id
             FROM rag_pending_chunk_work w
-            WHERE w.status='pending' AND w.capture_sequence <= %s
+            WHERE w.status=ANY(%s) AND w.capture_sequence <= %s
             ORDER BY w.capture_sequence
             """,
-            (cutoff_sql,),
+            (list(work_statuses), cutoff_sql),
         )
         work = [WorkItem(*row) for row in cursor.fetchall()]
         cursor.execute(

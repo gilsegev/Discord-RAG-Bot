@@ -2,9 +2,11 @@
 
 ## Status
 
-Implementation is in progress. The Phase 9 intake workflow is deployed, and the
-dedicated Discord Gateway listener is documented in
-`docs/Phase 9 Discord listener.md`.
+The Phase 9 intake workflow and dedicated Discord Gateway listener are deployed.
+Durable capture and the Phase 9C.4 incremental production replacement path are
+now proven in production (August 12, 2026). This document remains the passive
+listener design reference; `docs/n8n execution plan.md` is authoritative for
+the current Phase 9C execution status and the planned 9C.5/9C.6 work.
 
 ## Goal
 

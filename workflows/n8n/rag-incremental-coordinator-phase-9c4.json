@@ -1,0 +1,349 @@
+{
+  "name": "RAG Incremental Coordinator - Phase 9C.4",
+  "active": false,
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "rag-incremental-phase-9c4",
+        "responseMode": "lastNode",
+        "options": {}
+      },
+      "id": "p9c4-webhook",
+      "name": "Coordinator Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        -900,
+        0
+      ],
+      "webhookId": "rag-incremental-phase-9c4"
+    },
+    {
+      "parameters": {},
+      "id": "p9c4-manual",
+      "name": "Manual Trigger",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        -900,
+        -180
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const raw = ($json && $json.body) ? $json.body : ($json || {});\nconst secret = String($env.N8N_WEBHOOK_SHARED_SECRET || '');\nconst headers = ($json && $json.headers) || {};\nif (secret && String(headers['x-rag-webhook-secret'] || headers['X-RAG-Webhook-Secret'] || '') !== secret) throw new Error('Unauthorized webhook request');\nconst clean = (value, fallback, label) => { const text=String(value ?? fallback ?? '').trim(); if(!text || !/^[A-Za-z0-9._:-]+$/.test(text)) throw new Error(label+' contains unsupported characters'); return text; };\nconst action=String(raw.action || 'status').toLowerCase();\nconst allowed=['create','record_baseline','begin_drain','enter_maintenance','preflight','apply','record_regression','rollback','exit_completed','exit_failed','status'];\nif(!allowed.includes(action)) throw new Error('unsupported Phase 9C.4 action');\nconst runId=clean(raw.incremental_run_id,'phase9c4-'+String($execution.id),'incremental_run_id');\nconst planId=clean(raw.plan_id,'manual-shadow-plan','plan_id');\nconst collection=clean(raw.collection_name,'tpm_unite_history','collection_name');\nconst revision=Number(raw.runtime_revision ?? 0); if(!Number.isInteger(revision)||revision<0) throw new Error('runtime_revision must be a non-negative integer');\nconst mutating=['begin_drain','enter_maintenance','apply','rollback','exit_completed','exit_failed'];\nif(mutating.includes(action) && String($env.PHASE9C4_ENABLED || '').toLowerCase()!=='true') throw new Error('PHASE9C4_ENABLED is not true');\nif(action==='apply' && raw.confirm_apply!=='PHASE9C4_APPLY') throw new Error('apply confirmation phrase is required');\nconst regressionId=raw.regression_run_id ? clean(raw.regression_run_id,'','regression_run_id') : '';\nconst regressionResult=String(raw.regression_result || 'passed').toLowerCase();\nif(!['passed','failed'].includes(regressionResult)) throw new Error('regression_result must be passed or failed');\nconst esc=(value)=>String(value).replace(/'/g,\"''\");\nconst metadata=JSON.stringify({phase:'9C.4',requested_by:String(raw.requested_by||'developer').slice(0,200),n8n_execution_id:String($execution.id)}).replace(/'/g,\"''\");\nlet sql;\nif(action==='create') sql=`SELECT * FROM rag_create_incremental_run('${esc(runId)}','${esc(planId)}','${esc(collection)}','${metadata}'::jsonb);`;\nelse if(action==='record_baseline') sql=`SELECT * FROM rag_record_incremental_regression('${esc(runId)}','${esc(regressionId)}','${esc(regressionResult)}',true);`;\nelse if(action==='begin_drain') sql=`SELECT * FROM rag_begin_incremental_drain('${esc(runId)}',${revision});`;\nelse if(action==='enter_maintenance') sql=`SELECT * FROM rag_enter_incremental_maintenance('${esc(runId)}',${revision});`;\nelse if(action==='apply') sql=`SELECT * FROM rag_mark_incremental_replacing('${esc(runId)}',${revision});`;\nelse if(action==='record_regression') sql=`SELECT * FROM rag_record_incremental_regression('${esc(runId)}','${esc(regressionId)}','${esc(regressionResult)}',false);`;\nelse if(action==='exit_completed') sql=`SELECT * FROM rag_exit_incremental_maintenance('${esc(runId)}','completed','{}'::jsonb);`;\nelse if(action==='exit_failed') sql=`SELECT * FROM rag_exit_incremental_maintenance('${esc(runId)}','failed','{\"failure_step\":\"operator_exit\",\"failure_reason\":\"phase9c4_failed\"}'::jsonb);`;\nelse sql=`SELECT r.incremental_run_id,r.run_state,rs.runtime_state,rs.state_revision AS runtime_revision FROM rag_incremental_runs r JOIN rag_runtime_state rs ON rs.collection_name=r.collection_name WHERE r.incremental_run_id='${esc(runId)}';`;\nreturn [{json:{action,incremental_run_id:runId,plan_id:planId,collection_name:collection,runtime_revision:revision,lifecycle_sql:sql,worker_needed:['preflight','apply','rollback'].includes(action),worker_path:action==='rollback'?'rollback':action,take_full_snapshot:raw.take_full_snapshot===true,fail_after_step:raw.fail_after_step||null,phoenix_collector_url:$env.TRACE_EMITTER_URL||'http://trace-emitter:8001/v1/traces'}}];"
+      },
+      "id": "p9c4-normalize",
+      "name": "Normalize Coordinator Command",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -660,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "={{ $json.lifecycle_sql }}"
+      },
+      "id": "p9c4-lifecycle",
+      "name": "Apply Lifecycle Operation",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        -420,
+        0
+      ],
+      "credentials": {
+        "postgres": {
+          "id": "JcwnINxG4CstrGKy",
+          "name": "Postgres account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "p9c4-worker-condition",
+              "leftValue": "={{ $items('Normalize Coordinator Command')[0].json.worker_needed }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "p9c4-worker-needed",
+      "name": "Worker Needed?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        -180,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ ($env.INCREMENTAL_WORKER_URL || 'http://incremental-worker:8003') + '/' + $items('Normalize Coordinator Command')[0].json.worker_path }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "X-Incremental-Worker-Token",
+              "value": "={{ $env.INCREMENTAL_WORKER_TOKEN }}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ { incremental_run_id: $items('Normalize Coordinator Command')[0].json.incremental_run_id, take_full_snapshot: $items('Normalize Coordinator Command')[0].json.take_full_snapshot, fail_after_step: $items('Normalize Coordinator Command')[0].json.fail_after_step } }}",
+        "options": {
+          "response": {
+            "response": {
+              "fullResponse": true,
+              "neverError": true,
+              "responseFormat": "json"
+            }
+          }
+        }
+      },
+      "id": "p9c4-worker",
+      "name": "Call Incremental Worker",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        60,
+        -100
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT r.*,rs.runtime_state,rs.state_revision AS runtime_revision\nFROM rag_incremental_runs r JOIN rag_runtime_state rs ON rs.collection_name=r.collection_name\nWHERE r.incremental_run_id='{{ $items(\"Normalize Coordinator Command\")[0].json.incremental_run_id }}';"
+      },
+      "id": "p9c4-read",
+      "name": "Read Authoritative Run",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        300,
+        -100
+      ],
+      "credentials": {
+        "postgres": {
+          "id": "JcwnINxG4CstrGKy",
+          "name": "Postgres account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const command=$items('Normalize Coordinator Command')[0].json; let db; try{db=$items('Read Authoritative Run')[0]?.json;}catch(e){db=$json||{};} let worker=null; try{worker=$items('Call Incremental Worker')[0]?.json||null;}catch(e){} return [{json:{...db,action:command.action,worker_result:worker,postgres_authoritative:true,qdrant_mutations:command.action==='apply',coordinator_workflow:'RAG Incremental Coordinator - Phase 9C.4',phoenix_collector_url:command.phoenix_collector_url}}];"
+      },
+      "id": "p9c4-result",
+      "name": "Build Coordinator Result",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        540,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const state=$json; const text=JSON.stringify(state); let hash=2166136261>>>0; for(let i=0;i<text.length;i++) hash=Math.imul(hash^text.charCodeAt(i),16777619)>>>0; const hex=(hash.toString(16).padStart(8,'0')).repeat(4); const bytes=(value)=>{let binary='';for(let i=0;i<value.length;i+=2)binary+=String.fromCharCode(parseInt(value.slice(i,i+2),16));return btoa(binary);}; const now=String(Date.now()*1000000); const attrs=(object)=>Object.entries(object).map(([key,value])=>({key,value:typeof value==='boolean'?{boolValue:value}:{stringValue:String(value??'')}})); const span={traceId:bytes(hex),spanId:bytes(hex.slice(0,16)),name:'incremental.phase9c4.'+state.action,kind:1,startTimeUnixNano:now,endTimeUnixNano:now,attributes:attrs({incremental_run_id:state.incremental_run_id,action:state.action,run_state:state.run_state,runtime_state:state.runtime_state,postgres_authoritative:true,qdrant_mutations:state.qdrant_mutations}),status:{code:1}}; return [{json:{...state,phoenix_trace_payload:{resourceSpans:[{resource:{attributes:attrs({'service.name':'discord-rag-bot','phoenix.project.name':'discord-rag-bot-phase-9c4'})},scopeSpans:[{scope:{name:'n8n.phase9c4.coordinator',version:'1.0.0'},spans:[span]}]}]}}}];"
+      },
+      "id": "p9c4-trace",
+      "name": "Build Correlated Phoenix Span",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        760,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $json.phoenix_collector_url }}",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ $json.phoenix_trace_payload }}",
+        "options": {
+          "response": {
+            "response": {
+              "fullResponse": true,
+              "neverError": true,
+              "responseFormat": "json"
+            }
+          }
+        }
+      },
+      "id": "p9c4-send-trace",
+      "name": "Send Correlated Phoenix Span",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        980,
+        0
+      ],
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "jsCode": "const state=$items('Build Correlated Phoenix Span')[0].json; const {phoenix_trace_payload,...result}=state; return [{json:result}];"
+      },
+      "id": "p9c4-return",
+      "name": "Return Coordinator Result",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1200,
+        0
+      ]
+    }
+  ],
+  "connections": {
+    "Coordinator Webhook": {
+      "main": [
+        [
+          {
+            "node": "Normalize Coordinator Command",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Manual Trigger": {
+      "main": [
+        [
+          {
+            "node": "Normalize Coordinator Command",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Normalize Coordinator Command": {
+      "main": [
+        [
+          {
+            "node": "Apply Lifecycle Operation",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Apply Lifecycle Operation": {
+      "main": [
+        [
+          {
+            "node": "Worker Needed?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Worker Needed?": {
+      "main": [
+        [
+          {
+            "node": "Call Incremental Worker",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Build Coordinator Result",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Call Incremental Worker": {
+      "main": [
+        [
+          {
+            "node": "Read Authoritative Run",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Read Authoritative Run": {
+      "main": [
+        [
+          {
+            "node": "Build Coordinator Result",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Coordinator Result": {
+      "main": [
+        [
+          {
+            "node": "Build Correlated Phoenix Span",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Correlated Phoenix Span": {
+      "main": [
+        [
+          {
+            "node": "Send Correlated Phoenix Span",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send Correlated Phoenix Span": {
+      "main": [
+        [
+          {
+            "node": "Return Coordinator Result",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "meta": {
+    "templateCredsSetupCompleted": false
+  },
+  "pinData": {}
+}
