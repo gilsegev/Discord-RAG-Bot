@@ -12,6 +12,7 @@ const node = (workflow, name) => {
 const destinations = (workflow, name, branch = 0) => (workflow.connections[name]?.main?.[branch] || []).map(value => value.node);
 
 assert.strictEqual(controller.active, false);
+assert.strictEqual(controller.settings.timezone, 'UTC');
 assert.strictEqual(runner.active, false);
 assert(node(controller, 'Low Traffic Schedule'));
 assert.match(node(controller, 'Low Traffic Schedule').parameters.rule.interval[0].expression, /PHASE9C5_CRON/);
