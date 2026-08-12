@@ -797,7 +797,8 @@ Production readiness evidence:
 
 ### Phase 9C.6: One-time captured-message catch-up
 
-**Status:** Execution in progress on the Phase 9C.6 PR
+**Status:** Completed in production on August 12, 2026; schedule remains
+disabled pending separate operator enablement
 
 The operator-ready sequence, evidence requirements, stop rules, and manual
 dependency are maintained in
@@ -850,6 +851,21 @@ Exit criteria:
 - Qdrant and the active manifest agree and the new corpus version is healthy
 - the full regression matches the accepted baseline before serving reopens
 - the Phase 9C.5 schedule remains disabled until this catch-up succeeds
+
+Production completion evidence:
+
+- fixed cutoff `182` processed 153 messages and explicitly deferred 23 until
+  future neighboring context is captured
+- Qdrant moved from 32,759 to 32,832 points through the Phase 9C.4 coordinator;
+  the healthy corpus is `incremental-b884b05dd7955b3b50cf`
+- full Qdrant snapshot
+  `tpm_unite_history-599516084158867-2026-08-12-18-46-22.snapshot` was recorded
+- both 48-case full regressions matched the accepted 43/1/4 baseline
+- full-pipeline transaction `9b487d50-08ed-4e57-aa5c-cf6cfee22013`
+  retrieved newly indexed message `1536237936927047741` at Stage 1 rank 1 and
+  rerank position 1, then produced a grounded Gemini answer
+- runtime finished `serving` at revision 6 with `catchup_completed=true` and
+  `schedule_enabled=false`
 
 ## Phase 10: Feedback Correlation
 Add shared Discord reaction monitoring after bot responses store

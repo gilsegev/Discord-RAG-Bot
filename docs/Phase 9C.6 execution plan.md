@@ -1,5 +1,8 @@
 # Phase 9C.6 Execution Plan
 
+**Status:** Completed in production on August 12, 2026. The recurring schedule
+remains disabled pending a separate operator decision.
+
 ## Outcome
 
 Perform one controlled catch-up that adds every eligible message held in durable
@@ -122,3 +125,25 @@ through the existing private service access.
   reviewed baseline change explains the result.
 - Missing/inconsistent durable capture work or a stale cutoff: do not start the
   mutation.
+
+## Production evidence
+
+- fixed cutoff: capture sequence `182`
+- accepted exclusion: the unrecorded July 23-26 interval and its 20 known IDs
+- run: `scheduled-phase9c6-catchup-20260812-r3-10850`
+- messages: 153 completed; 23 explicitly deferred with
+  `phase9c6_deferred_until_future_context`
+- Qdrant: 32,759 points before; 32,832 after
+- replacement: 4 old points replaced by 77 new points
+- new healthy corpus: `incremental-b884b05dd7955b3b50cf`
+- full snapshot:
+  `tpm_unite_history-599516084158867-2026-08-12-18-46-22.snapshot`
+- baseline and post-change full regressions: both matched 43 pass, 1 fail,
+  4 review across 48 cases
+- targeted full-pipeline transaction:
+  `9b487d50-08ed-4e57-aa5c-cf6cfee22013`
+- newly indexed message `1536237936927047741` was Stage 1 rank 1 and final
+  rerank position 1, with retrieval score `0.8640909` and reranker score
+  `6.971874237060547`; Gemini generated a grounded answer
+- final safety state: runtime `serving` at revision 6,
+  `catchup_completed=true`, `schedule_enabled=false`
