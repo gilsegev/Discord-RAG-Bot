@@ -27,7 +27,8 @@ The MVP will:
 8. reopen the RAG service only after the update and validation pass.
 
 Message edits, message deletions, and recovery of messages missed during an
-unresumable listener outage are explicitly deferred beyond MVP.
+unresumable listener outage are explicitly outside the planned incremental
+ingestion phases.
 
 ## 2. Why a Maintenance Window
 
@@ -119,8 +120,9 @@ exceptional baseline migration, but is not a steady-state production dependency.
   unsupported. Incremental ingestion treats captured `MESSAGE_CREATE` records
   as immutable; an operator may use the full rebuild path for material corpus
   corrections.
-- automatic REST history catch-up
-- automated ingestion of messages missed during an unresumable listener outage
+- automatic REST history catch-up and automated recovery of messages missed
+  during an unresumable listener outage. These remain deferred with no planned
+  Phase 9C.8 implementation.
 - zero-downtime Qdrant updates
 - real-time per-message embedding
 
@@ -365,9 +367,10 @@ The listener must record:
 - queue overflow or durable-write failures;
 - suspected gap start and end.
 
-### Future phase: manual gap review and bulk recovery
+### Deferred manual gap recovery
 
-When the listener cannot resume or a gap is suspected:
+There is no planned Phase 9C.8 implementation. If a future gap becomes valuable
+enough to recover, an operator may run a one-off recovery using this outline:
 
 1. create a corpus-gap issue for admin review;
 2. mark the incident `review_needed`, consistent with the regression review
@@ -378,8 +381,8 @@ When the listener cannot resume or a gap is suspected:
 5. ingest the recovery export through a controlled bulk-import path;
 6. run structural verification and the complete regression suite.
 
-This phase is intentionally outside MVP. No automatic history pulling is
-required for MVP.
+This is an optional manual response, not a committed phase. Automatic history
+pulling, issue creation, and bulk-recovery tooling remain deferred.
 
 ## 11. Failure and Recovery Policy
 
@@ -552,13 +555,6 @@ completed or explicitly deferred with a reason; no pre-cutoff work remains
 silently pending; the new corpus is healthy; and the full regression matches
 the accepted baseline before serving reopens. Only then may the Phase 9C.5
 schedule be enabled.
-
-### Future Phase 9C.8 — Downtime gap workflow
-
-- Detect unresumable gaps.
-- Automatically create a review issue with recovery evidence.
-- Add admin-provided missing-message bulk import.
-- Run structural and full regression gates after recovery.
 
 ## 13. PR sequencing
 
