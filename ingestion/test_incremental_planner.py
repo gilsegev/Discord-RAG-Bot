@@ -37,6 +37,10 @@ def complete_measurement(plan):
 
 
 class IncrementalPlannerTests(unittest.TestCase):
+    def test_current_plan_version_records_unique_embedding_semantics(self):
+        plan = create_shadow_plan([], [], [], [])
+        self.assertEqual(plan["plan_version"], 2)
+
     def test_shadow_embedding_deduplicates_points_shared_by_overlapping_groups(self):
         shared = {"point_id": "100", "text": "same replacement"}
         plan = {

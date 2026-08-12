@@ -23,7 +23,7 @@ from ingestion.chunker import OVERLAP_MSGS, WINDOW_MINS, chunk_records
 from ingestion.parser import parse_all_exports
 from ingestion.run import _stable_id
 
-PLAN_VERSION = 1
+PLAN_VERSION = 2
 DEFAULT_COLLECTION = "tpm_unite_history"
 
 
