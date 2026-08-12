@@ -154,6 +154,94 @@
     },
     {
       "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "Plan Has Ready Work?-condition",
+              "leftValue": "={{ $json.body?.status === 'shadow_validated' }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "p9c5-plan-has-ready-work-",
+      "name": "Plan Has Ready Work?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        -100,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "Plan Is Deferred Only?-condition",
+              "leftValue": "={{ $json.body?.status === 'deferred' }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "p9c5-plan-is-deferred-only-",
+      "name": "Plan Is Deferred Only?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        120,
+        60
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT (rag_finish_incremental_schedule_attempt(\n  '{{ $items(\"Normalize Schedule Request\")[0].json.attempt_id }}','no_work',NULL,false,\n  jsonb_build_object('deferred_only',true,'plan_id','{{ $items(\"Build Shadow Validated Plan\")[0].json.body.plan_id }}')\n)).*;"
+      },
+      "id": "p9c5-finish-deferred-plan-attempt",
+      "name": "Finish Deferred Plan Attempt",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        340,
+        120
+      ],
+      "credentials": {
+        "postgres": {
+          "id": "JcwnINxG4CstrGKy",
+          "name": "Postgres account"
+        }
+      }
+    },
+    {
+      "parameters": {
         "operation": "executeQuery",
         "query": "SELECT * FROM rag_attach_incremental_schedule_plan(\n  '{{ $items(\"Normalize Schedule Request\")[0].json.attempt_id }}',\n  '{{ $items(\"Build Shadow Validated Plan\")[0].json.body.plan_id }}');"
       },
@@ -162,7 +250,7 @@
       "type": "n8n-nodes-base.postgres",
       "typeVersion": 2.6,
       "position": [
-        -100,
+        560,
         0
       ],
       "credentials": {
@@ -202,7 +290,7 @@
       "type": "n8n-nodes-base.if",
       "typeVersion": 2.2,
       "position": [
-        120,
+        780,
         0
       ]
     },
@@ -236,7 +324,7 @@
       "type": "n8n-nodes-base.if",
       "typeVersion": 2.2,
       "position": [
-        340,
+        1000,
         0
       ]
     },
@@ -250,7 +338,7 @@
       "type": "n8n-nodes-base.postgres",
       "typeVersion": 2.6,
       "position": [
-        560,
+        1220,
         120
       ],
       "credentials": {
@@ -269,7 +357,7 @@
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        780,
+        1440,
         120
       ]
     },
@@ -283,7 +371,7 @@
       "type": "n8n-nodes-base.postgres",
       "typeVersion": 2.6,
       "position": [
-        1000,
+        1660,
         0
       ],
       "credentials": {
@@ -324,7 +412,7 @@
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [
-        1220,
+        1880,
         0
       ]
     },
@@ -338,7 +426,7 @@
       "type": "n8n-nodes-base.postgres",
       "typeVersion": 2.6,
       "position": [
-        1440,
+        2100,
         0
       ],
       "credentials": {
@@ -358,7 +446,7 @@
       "type": "n8n-nodes-base.postgres",
       "typeVersion": 2.6,
       "position": [
-        1660,
+        2320,
         0
       ],
       "credentials": {
@@ -377,7 +465,7 @@
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        1880,
+        2540,
         0
       ]
     },
@@ -391,7 +479,7 @@
       "type": "n8n-nodes-base.postgres",
       "typeVersion": 2.6,
       "position": [
-        2100,
+        2760,
         180
       ],
       "credentials": {
@@ -411,7 +499,7 @@
       "type": "n8n-nodes-base.postgres",
       "typeVersion": 2.6,
       "position": [
-        2320,
+        2980,
         180
       ],
       "credentials": {
@@ -423,14 +511,14 @@
     },
     {
       "parameters": {
-        "jsCode": "const attempt=$items('Finish Skipped Attempt')[0].json; const alert=$json; return [{json:{attempt_id:attempt.attempt_id,decision:attempt.decision,schedule_enabled:attempt.schedule_enabled,catchup_completed:attempt.catchup_completed,batch_cutoff_sequence:attempt.batch_cutoff_sequence,pending_message_count:attempt.pending_message_count,qdrant_mutations:false,decision_reasons:attempt.decision_reasons,alert_status:alert.delivery_status}}];"
+        "jsCode": "let attempt={}; try{attempt=$items('Finish Skipped Attempt')[0]?.json||{};}catch(e){} if(!attempt.attempt_id){attempt=$items('Finish Deferred Plan Attempt')[0]?.json||{};} const alert=$json; return [{json:{attempt_id:attempt.attempt_id,decision:attempt.decision,schedule_enabled:attempt.schedule_enabled,catchup_completed:attempt.catchup_completed,batch_cutoff_sequence:attempt.batch_cutoff_sequence,pending_message_count:attempt.pending_message_count,qdrant_mutations:false,decision_reasons:attempt.decision_reasons,report:attempt.report,alert_status:alert.delivery_status}}];"
       },
       "id": "p9c5-return-skipped-summary",
       "name": "Return Skipped Summary",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        2540,
+        3200,
         180
       ]
     },
@@ -444,7 +532,7 @@
       "type": "n8n-nodes-base.postgres",
       "typeVersion": 2.6,
       "position": [
-        2760,
+        3420,
         60
       ],
       "credentials": {
@@ -464,7 +552,7 @@
       "type": "n8n-nodes-base.postgres",
       "typeVersion": 2.6,
       "position": [
-        2980,
+        3640,
         60
       ],
       "credentials": {
@@ -483,7 +571,7 @@
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        3200,
+        3860,
         60
       ]
     }
@@ -566,7 +654,54 @@
       "main": [
         [
           {
+            "node": "Plan Has Ready Work?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Plan Has Ready Work?": {
+      "main": [
+        [
+          {
             "node": "Attach Plan Safety Gates",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Plan Is Deferred Only?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Plan Is Deferred Only?": {
+      "main": [
+        [
+          {
+            "node": "Finish Deferred Plan Attempt",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Finish Unsafe Plan Attempt",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Finish Deferred Plan Attempt": {
+      "main": [
+        [
+          {
+            "node": "Queue Skipped Alert",
             "type": "main",
             "index": 0
           }

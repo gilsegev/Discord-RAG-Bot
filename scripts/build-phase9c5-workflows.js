@@ -1,7 +1,8 @@
 const fs = require('fs');
 
 const credential = { postgres: { id: 'JcwnINxG4CstrGKy', name: 'Postgres account' } };
-const pos = (() => { let x = -1200; return (y = 0) => [x += 220, y]; })();
+let positionX = -1200;
+const pos = (y = 0) => [positionX += 220, y];
 const code = (name, jsCode, y = 0) => ({ parameters: { jsCode }, id: `p9c5-${name.toLowerCase().replace(/[^a-z0-9]+/g, '-')}`, name, type: 'n8n-nodes-base.code', typeVersion: 2, position: pos(y) });
 const pg = (name, query, y = 0) => ({ parameters: { operation: 'executeQuery', query }, id: `p9c5-${name.toLowerCase().replace(/[^a-z0-9]+/g, '-')}`, name, type: 'n8n-nodes-base.postgres', typeVersion: 2.6, position: pos(y), credentials: credential });
 const http = (name, url, jsonBody, y = 0) => ({ parameters: { method: 'POST', url, sendHeaders: true, headerParameters: { parameters: [{ name: 'X-RAG-Webhook-Secret', value: '={{ $env.N8N_WEBHOOK_SHARED_SECRET }}' }] }, sendBody: true, specifyBody: 'json', jsonBody, options: { response: { response: { fullResponse: true, neverError: true, responseFormat: 'json' } } } }, id: `p9c5-${name.toLowerCase().replace(/[^a-z0-9]+/g, '-')}`, name, type: 'n8n-nodes-base.httpRequest', typeVersion: 4.2, position: pos(y) });
@@ -29,6 +30,12 @@ return [{json:{attempt_id:attemptId,collection_name:String(raw.collection_name||
   '{{ $json.attempt_id }}','{{ $json.collection_name }}','{{ $json.trigger_source }}');`),
   iff('Should Build Plan?', "={{ $json.decision === 'planning' }}"),
   { parameters: { method: 'POST', url: "={{ ($env.INCREMENTAL_WORKER_URL || 'http://incremental-worker:8003') + '/plan' }}", sendHeaders: true, headerParameters: { parameters: [{ name: 'X-Incremental-Worker-Token', value: '={{ $env.INCREMENTAL_WORKER_TOKEN }}' }] }, sendBody: true, specifyBody: 'json', jsonBody: "={{ { collection_name: $items('Normalize Schedule Request')[0].json.collection_name, batch_cutoff_sequence: Number($items('Prepare Scheduled Attempt')[0].json.batch_cutoff_sequence), persist: true } }}", options: { response: { response: { fullResponse: true, neverError: true, responseFormat: 'json' } } } }, id: 'p9c5-plan-worker', name: 'Build Shadow Validated Plan', type: 'n8n-nodes-base.httpRequest', typeVersion: 4.2, position: pos(-120) },
+  iff('Plan Has Ready Work?', "={{ $json.body?.status === 'shadow_validated' }}"),
+  iff('Plan Is Deferred Only?', "={{ $json.body?.status === 'deferred' }}", 60),
+  pg('Finish Deferred Plan Attempt', `SELECT (rag_finish_incremental_schedule_attempt(
+  '{{ $items("Normalize Schedule Request")[0].json.attempt_id }}','no_work',NULL,false,
+  jsonb_build_object('deferred_only',true,'plan_id','{{ $items("Build Shadow Validated Plan")[0].json.body.plan_id }}')
+)).*;`, 120),
   pg('Attach Plan Safety Gates', `SELECT * FROM rag_attach_incremental_schedule_plan(
   '{{ $items("Normalize Schedule Request")[0].json.attempt_id }}',
   '{{ $items("Build Shadow Validated Plan")[0].json.body.plan_id }}');`),
@@ -68,7 +75,7 @@ return [{json:{attempt_id:attemptId,collection_name:String(raw.collection_name||
   '{{ $json.attempt_id }}:{{ $json.decision }}',
   jsonb_build_object('decision','{{ $json.decision }}','reasons','{{ JSON.stringify($json.decision_reasons).replace(/'/g,"''") }}'::jsonb)
 )).*;`, 180),
-  code('Return Skipped Summary', `const attempt=$items('Finish Skipped Attempt')[0].json; const alert=$json; return [{json:{attempt_id:attempt.attempt_id,decision:attempt.decision,schedule_enabled:attempt.schedule_enabled,catchup_completed:attempt.catchup_completed,batch_cutoff_sequence:attempt.batch_cutoff_sequence,pending_message_count:attempt.pending_message_count,qdrant_mutations:false,decision_reasons:attempt.decision_reasons,alert_status:alert.delivery_status}}];`, 180),
+  code('Return Skipped Summary', `let attempt={}; try{attempt=$items('Finish Skipped Attempt')[0]?.json||{};}catch(e){} if(!attempt.attempt_id){attempt=$items('Finish Deferred Plan Attempt')[0]?.json||{};} const alert=$json; return [{json:{attempt_id:attempt.attempt_id,decision:attempt.decision,schedule_enabled:attempt.schedule_enabled,catchup_completed:attempt.catchup_completed,batch_cutoff_sequence:attempt.batch_cutoff_sequence,pending_message_count:attempt.pending_message_count,qdrant_mutations:false,decision_reasons:attempt.decision_reasons,report:attempt.report,alert_status:alert.delivery_status}}];`, 180),
   pg('Finish Unsafe Plan Attempt', `SELECT (rag_finish_incremental_schedule_attempt(
   '{{ $items("Normalize Schedule Request")[0].json.attempt_id }}','blocked',NULL,false,
   jsonb_build_object('plan_id','{{ $items("Build Shadow Validated Plan")[0].json.body.plan_id }}')
@@ -82,13 +89,14 @@ return [{json:{attempt_id:attemptId,collection_name:String(raw.collection_name||
 connect(controller,'Low Traffic Schedule','Normalize Schedule Request'); connect(controller,'Schedule Control Webhook','Normalize Schedule Request'); connect(controller,'Manual Dry Run','Normalize Schedule Request');
 connect(controller,'Normalize Schedule Request','Prepare Scheduled Attempt'); connect(controller,'Prepare Scheduled Attempt','Should Build Plan?');
 connect(controller,'Should Build Plan?','Build Shadow Validated Plan',0); connect(controller,'Should Build Plan?','Finish Skipped Attempt',1);
-connect(controller,'Build Shadow Validated Plan','Attach Plan Safety Gates'); connect(controller,'Attach Plan Safety Gates','Plan Is Safe?');
+connect(controller,'Build Shadow Validated Plan','Plan Has Ready Work?'); connect(controller,'Plan Has Ready Work?','Attach Plan Safety Gates',0); connect(controller,'Plan Has Ready Work?','Plan Is Deferred Only?',1); connect(controller,'Plan Is Deferred Only?','Finish Deferred Plan Attempt',0); connect(controller,'Plan Is Deferred Only?','Finish Unsafe Plan Attempt',1); connect(controller,'Finish Deferred Plan Attempt','Queue Skipped Alert'); connect(controller,'Attach Plan Safety Gates','Plan Is Safe?');
 connect(controller,'Plan Is Safe?','Execution Requested?',0); connect(controller,'Plan Is Safe?','Finish Unsafe Plan Attempt',1); connect(controller,'Execution Requested?','Mark Attempt Dispatched',0); connect(controller,'Execution Requested?','Finish Dry Plan Attempt',1); connect(controller,'Finish Dry Plan Attempt','Return Dry Plan Summary');
 connect(controller,'Mark Attempt Dispatched','Call Proven Scheduled Runner'); connect(controller,'Call Proven Scheduled Runner','Finish Scheduled Attempt'); connect(controller,'Finish Scheduled Attempt','Queue Attempt Outcome Alert'); connect(controller,'Queue Attempt Outcome Alert','Build Attempt Summary');
 connect(controller,'Finish Skipped Attempt','Queue Skipped Alert'); connect(controller,'Queue Skipped Alert','Return Skipped Summary'); connect(controller,'Finish Unsafe Plan Attempt','Queue Unsafe Plan Alert'); connect(controller,'Queue Unsafe Plan Alert','Return Unsafe Plan Summary');
 
 // The runner is a thin, inspectable sequence of calls to the existing Phase 9C.4
 // coordinator and Phase 8 regression runner. It contains no Qdrant mutation code.
+positionX = 3200; // Keep runner layout independent from controller node additions.
 const runner = { name: 'RAG Incremental Scheduled Run - Phase 9C.5', active: false, nodes: [], connections: {}, settings: { executionOrder: 'v1' }, staticData: null, meta: { templateCredsSetupCompleted: false }, pinData: {} };
 runner.nodes.push(
   { parameters: { httpMethod: 'POST', path: 'rag-incremental-scheduled-run-phase-9c5', responseMode: 'lastNode', options: {} }, id: 'p9c5-run-webhook', name: 'Scheduled Run Webhook', type: 'n8n-nodes-base.webhook', typeVersion: 2, position: [-1200,0], webhookId: 'rag-incremental-scheduled-run-phase-9c5' },
@@ -127,6 +135,7 @@ connect(runner,'Scheduled Run Webhook','Normalize Run Request'); connect(runner,
 fs.writeFileSync('workflows/n8n/rag-incremental-scheduled-controller-phase-9c5.json', JSON.stringify(controller,null,2)+'\n');
 fs.writeFileSync('workflows/n8n/rag-incremental-scheduled-run-phase-9c5.json', JSON.stringify(runner,null,2)+'\n');
 
+positionX = 8920; // Keep alert layout independent from earlier workflow node additions.
 const alerts = { name: 'RAG Incremental Operator Alerts - Phase 9C.5', active: false, nodes: [], connections: {}, settings: { executionOrder: 'v1' }, staticData: null, meta: { templateCredsSetupCompleted: false }, pinData: {} };
 alerts.nodes.push(
   { parameters: { rule: { interval: [{ field: 'minutes', minutesInterval: 5 }] } }, id: 'p9c5-alert-schedule', name: 'Alert Outbox Schedule', type: 'n8n-nodes-base.scheduleTrigger', typeVersion: 1.2, position: [-800,-100] },

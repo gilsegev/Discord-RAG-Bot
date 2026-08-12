@@ -43,9 +43,13 @@ Only after the 9C.6 acceptance evidence is recorded:
    default for both is `0 3 * * *` (03:00 UTC). The scheduled controller sets
    its workflow timezone explicitly to `UTC`; do not rely on the n8n instance
    timezone.
-3. Run one manual dry run and inspect its plan/report.
-4. Run one operator-approved manual execution through the scheduled controller.
-5. If it completes with matching structural and regression results, set
+3. Activate the secret-protected scheduled-run workflow. It has no cron trigger,
+   but its production webhook must be registered before the controller can
+   dispatch manual or scheduled execution.
+4. Run one manual dry run and inspect its plan/report. A deferred-only plan is a
+   normal `no_work` result, not a blocked or failed attempt.
+5. Run one operator-approved manual execution through the scheduled controller.
+6. If it completes with matching structural and regression results, set
    `schedule_enabled=true` and activate the scheduled controller.
 
 Never bypass the `rag_incremental_schedule_config` locks or call the scheduled
