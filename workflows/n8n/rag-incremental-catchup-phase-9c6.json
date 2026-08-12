@@ -1,0 +1,555 @@
+{
+  "name": "RAG One-Time Catch-up - Phase 9C.6",
+  "active": false,
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "rag-incremental-catchup-phase-9c6",
+        "responseMode": "lastNode",
+        "options": {}
+      },
+      "id": "p9c6-webhook",
+      "name": "Catch-up Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        -1200,
+        0
+      ],
+      "webhookId": "rag-incremental-catchup-phase-9c6"
+    },
+    {
+      "parameters": {
+        "jsCode": "const envelope=$json||{},raw=envelope.body||envelope,headers=envelope.headers||{};\nconst secret=String($env.N8N_WEBHOOK_SHARED_SECRET||'');\nif(secret&&String(headers['x-rag-webhook-secret']||'')!==secret) throw new Error('Unauthorized catch-up request');\nconst clean=v=>String(v||'').replace(/[^A-Za-z0-9._:-]/g,'');\nconst attempt=clean(raw.attempt_id),collection=clean(raw.collection_name||'tpm_unite_history');\nconst cutoff=Number(raw.batch_cutoff_sequence);\nconst reason=String(raw.history_gap_reason||'').trim();\nif(!attempt||!Number.isSafeInteger(cutoff)||cutoff<=0) throw new Error('attempt_id and positive integer cutoff required');\nif(raw.confirm_catchup!=='PHASE9C6_CATCHUP') throw new Error('catch-up confirmation phrase required');\nif(raw.accept_history_gap!==true||!reason) throw new Error('accepted history-gap reason required');\nreturn [{json:{attempt_id:attempt,collection_name:collection,batch_cutoff_sequence:cutoff,history_gap_reason:reason}}];"
+      },
+      "id": "p9c6-normalize-catch-up-request",
+      "name": "Normalize Catch-up Request",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -980,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT * FROM rag_prepare_phase9c6_catchup_attempt(\n  '{{ $json.attempt_id }}','{{ $json.collection_name }}',{{ $json.batch_cutoff_sequence }},true,\n  '{{ String($json.history_gap_reason).replace(/'/g,\"''\") }}');"
+      },
+      "id": "p9c6-admit-fixed-catch-up",
+      "name": "Admit Fixed Catch-up",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        -760,
+        0
+      ],
+      "credentials": {
+        "postgres": {
+          "id": "JcwnINxG4CstrGKy",
+          "name": "Postgres account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "Catch-up Admitted?-condition",
+              "leftValue": "={{ $json.decision === 'planning' }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "p9c6-catch-up-admitted-",
+      "name": "Catch-up Admitted?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        -540,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ ($env.INCREMENTAL_WORKER_URL || 'http://incremental-worker:8003') + '/plan' }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "X-Incremental-Worker-Token",
+              "value": "={{ $env.INCREMENTAL_WORKER_TOKEN }}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ { collection_name: $items('Normalize Catch-up Request')[0].json.collection_name, batch_cutoff_sequence: Number($items('Normalize Catch-up Request')[0].json.batch_cutoff_sequence), persist: true } }}",
+        "options": {
+          "response": {
+            "response": {
+              "fullResponse": true,
+              "neverError": true,
+              "responseFormat": "json"
+            }
+          }
+        }
+      },
+      "id": "p9c6-plan",
+      "name": "Build Shadow Validated Plan",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -320,
+        -120
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT * FROM rag_attach_incremental_schedule_plan(\n  '{{ $items(\"Normalize Catch-up Request\")[0].json.attempt_id }}',\n  '{{ $items(\"Build Shadow Validated Plan\")[0].json.body.plan_id }}');"
+      },
+      "id": "p9c6-attach-plan-safety-gates",
+      "name": "Attach Plan Safety Gates",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        -100,
+        0
+      ],
+      "credentials": {
+        "postgres": {
+          "id": "JcwnINxG4CstrGKy",
+          "name": "Postgres account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "Plan Is Safe?-condition",
+              "leftValue": "={{ $json.decision === 'ready' }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "p9c6-plan-is-safe-",
+      "name": "Plan Is Safe?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        120,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT (rag_finish_incremental_schedule_attempt(\n  '{{ $items(\"Normalize Catch-up Request\")[0].json.attempt_id }}','dispatched',NULL,false,\n  jsonb_build_object('controller_execution_id','{{ $execution.id }}')\n)).*;"
+      },
+      "id": "p9c6-mark-catch-up-dispatched",
+      "name": "Mark Catch-up Dispatched",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        340,
+        0
+      ],
+      "credentials": {
+        "postgres": {
+          "id": "JcwnINxG4CstrGKy",
+          "name": "Postgres account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://127.0.0.1:5678/webhook/rag-incremental-scheduled-run-phase-9c5",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "X-RAG-Webhook-Secret",
+              "value": "={{ $env.N8N_WEBHOOK_SHARED_SECRET }}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ { attempt_id: $items('Normalize Catch-up Request')[0].json.attempt_id, plan_id: $items('Build Shadow Validated Plan')[0].json.body.plan_id, collection_name: $items('Normalize Catch-up Request')[0].json.collection_name } }}",
+        "options": {
+          "timeout": 3600000,
+          "response": {
+            "response": {
+              "fullResponse": true,
+              "neverError": true,
+              "responseFormat": "json"
+            }
+          }
+        }
+      },
+      "id": "p9c6-runner",
+      "name": "Call Proven Scheduled Runner",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        560,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "Catch-up Completed?-condition",
+              "leftValue": "={{ Number($json.statusCode) >= 200 && Number($json.statusCode) < 300 && $json.body?.status === 'completed' }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "p9c6-catch-up-completed-",
+      "name": "Catch-up Completed?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        780,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT * FROM rag_complete_phase9c6_catchup(\n  '{{ $items(\"Normalize Catch-up Request\")[0].json.attempt_id }}',\n  '{{ String($items(\"Call Proven Scheduled Runner\")[0].json.body.incremental_run_id).replace(/'/g,\"''\") }}',\n  jsonb_build_object('controller_execution_id','{{ $execution.id }}','targeted_retrieval_pending',true));"
+      },
+      "id": "p9c6-complete-catch-up-lock",
+      "name": "Complete Catch-up Lock",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        1000,
+        0
+      ],
+      "credentials": {
+        "postgres": {
+          "id": "JcwnINxG4CstrGKy",
+          "name": "Postgres account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "return [{json:{...$json,status:'completed',qdrant_mutations:true,accepted_history_gap:true}}];"
+      },
+      "id": "p9c6-return-catch-up-success",
+      "name": "Return Catch-up Success",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1220,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT (rag_finish_incremental_schedule_attempt(\n  '{{ $items(\"Normalize Catch-up Request\")[0].json.attempt_id }}','failed',\n  NULLIF('{{ String($items(\"Call Proven Scheduled Runner\")[0].json.body?.incremental_run_id||\"\").replace(/'/g,\"''\") }}',''),\n  {{ $items(\"Call Proven Scheduled Runner\")[0].json.body?.qdrant_mutations === true ? 'true' : 'false' }},\n  '{{ JSON.stringify($items(\"Call Proven Scheduled Runner\")[0].json.body||{}).replace(/'/g,\"''\") }}'::jsonb\n)).*;"
+      },
+      "id": "p9c6-finish-failed-catch-up",
+      "name": "Finish Failed Catch-up",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        1440,
+        160
+      ],
+      "credentials": {
+        "postgres": {
+          "id": "JcwnINxG4CstrGKy",
+          "name": "Postgres account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "return [{json:{...$json,status:'failed'}}];"
+      },
+      "id": "p9c6-return-catch-up-failure",
+      "name": "Return Catch-up Failure",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1660,
+        160
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT (rag_finish_incremental_schedule_attempt(\n  '{{ $items(\"Normalize Catch-up Request\")[0].json.attempt_id }}','blocked',NULL,false,\n  jsonb_build_object('plan_id','{{ $items(\"Build Shadow Validated Plan\")[0].json.body.plan_id }}')\n)).*;"
+      },
+      "id": "p9c6-finish-unsafe-catch-up",
+      "name": "Finish Unsafe Catch-up",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        1880,
+        100
+      ],
+      "credentials": {
+        "postgres": {
+          "id": "JcwnINxG4CstrGKy",
+          "name": "Postgres account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "return [{json:{...$json,status:'blocked',qdrant_mutations:false}}];"
+      },
+      "id": "p9c6-return-unsafe-catch-up",
+      "name": "Return Unsafe Catch-up",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2100,
+        100
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "return [{json:{...$json,status:'blocked',qdrant_mutations:false}}];"
+      },
+      "id": "p9c6-return-admission-block",
+      "name": "Return Admission Block",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2320,
+        180
+      ]
+    }
+  ],
+  "connections": {
+    "Catch-up Webhook": {
+      "main": [
+        [
+          {
+            "node": "Normalize Catch-up Request",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Normalize Catch-up Request": {
+      "main": [
+        [
+          {
+            "node": "Admit Fixed Catch-up",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Admit Fixed Catch-up": {
+      "main": [
+        [
+          {
+            "node": "Catch-up Admitted?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Catch-up Admitted?": {
+      "main": [
+        [
+          {
+            "node": "Build Shadow Validated Plan",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Return Admission Block",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Shadow Validated Plan": {
+      "main": [
+        [
+          {
+            "node": "Attach Plan Safety Gates",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Attach Plan Safety Gates": {
+      "main": [
+        [
+          {
+            "node": "Plan Is Safe?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Plan Is Safe?": {
+      "main": [
+        [
+          {
+            "node": "Mark Catch-up Dispatched",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Finish Unsafe Catch-up",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Finish Unsafe Catch-up": {
+      "main": [
+        [
+          {
+            "node": "Return Unsafe Catch-up",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Mark Catch-up Dispatched": {
+      "main": [
+        [
+          {
+            "node": "Call Proven Scheduled Runner",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Call Proven Scheduled Runner": {
+      "main": [
+        [
+          {
+            "node": "Catch-up Completed?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Catch-up Completed?": {
+      "main": [
+        [
+          {
+            "node": "Complete Catch-up Lock",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Finish Failed Catch-up",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Complete Catch-up Lock": {
+      "main": [
+        [
+          {
+            "node": "Return Catch-up Success",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Finish Failed Catch-up": {
+      "main": [
+        [
+          {
+            "node": "Return Catch-up Failure",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "meta": {
+    "templateCredsSetupCompleted": false
+  },
+  "pinData": {}
+}

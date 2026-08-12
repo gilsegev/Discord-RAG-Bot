@@ -35,7 +35,7 @@
     {
       "parameters": {
         "operation": "executeQuery",
-        "query": "SELECT a.*,rs.runtime_state,rs.state_revision FROM rag_incremental_schedule_attempts a JOIN rag_runtime_state rs ON rs.collection_name=a.collection_name WHERE a.attempt_id='{{ $json.attempt_id }}' AND a.decision='dispatched' AND (a.schedule_enabled OR a.trigger_source='manual_execute') AND a.catchup_completed AND rs.runtime_state='serving' AND a.plan_id='{{ $json.plan_id }}';"
+        "query": "SELECT a.*,rs.runtime_state,rs.state_revision FROM rag_incremental_schedule_attempts a JOIN rag_runtime_state rs ON rs.collection_name=a.collection_name WHERE a.attempt_id='{{ $json.attempt_id }}' AND a.decision='dispatched' AND (a.schedule_enabled OR a.trigger_source='manual_execute') AND (a.catchup_completed OR (a.report->>'phase'='9C.6' AND coalesce((a.report->>'accepted_history_gap')::boolean,false))) AND rs.runtime_state='serving' AND a.plan_id='{{ $json.plan_id }}';"
       },
       "id": "p9c5-verify-ready-attempt",
       "name": "Verify Ready Attempt",
@@ -446,7 +446,7 @@
         },
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={{ { action:'apply', incremental_run_id:$items('Normalize Run Request')[0].json.incremental_run_id, runtime_revision:Number(($json.body||$json).runtime_revision), confirm_apply:'PHASE9C4_APPLY', take_full_snapshot:false } }}",
+        "jsonBody": "={{ { action:'apply', incremental_run_id:$items('Normalize Run Request')[0].json.incremental_run_id, runtime_revision:Number(($json.body||$json).runtime_revision), confirm_apply:'PHASE9C4_APPLY', take_full_snapshot:$items('Verify Ready Attempt')[0].json.report?.phase === '9C.6' } }}",
         "options": {
           "response": {
             "response": {

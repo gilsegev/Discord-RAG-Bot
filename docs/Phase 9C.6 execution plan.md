@@ -2,10 +2,11 @@
 
 ## Outcome
 
-Perform one controlled catch-up that adds every corpus-eligible Discord message
-after the current healthy corpus boundary and through a fixed cutoff. Prove that
-the source history is complete before changing Qdrant, and leave messages after
-the cutoff for the Phase 9C.5 scheduled path.
+Perform one controlled catch-up that adds every eligible message held in durable
+capture through a fixed cutoff. The owner explicitly accepts the unrecorded
+July 23-26 interval and its 20 known transaction IDs as a permanent historical
+exclusion. We do not describe that interval as recovered or complete. Messages
+captured after the cutoff remain for the Phase 9C.5 scheduled path.
 
 This phase is a one-time migration. It must reuse the Phase 9C.4 planner,
 maintenance coordinator, rollback, structural checks, and regression path. It
@@ -20,7 +21,7 @@ Production evidence captured on August 12, 2026 shows:
 - first continuously captured message: `2026-07-26 18:35:40 UTC`
 - known unproven interval: approximately 3 days and 15 hours
 - latest Phase 9C.5 dry run: 176 bounded pending messages
-- minimum gap checklist: 20 real Discord message IDs in
+- accepted historical exclusion: 20 real Discord message IDs in
   [phase9c6-known-gap-message-ids.csv](phase9c6-known-gap-message-ids.csv)
 - recurring schedule and catch-up locks: `schedule_enabled=false` and
   `catchup_completed=false`
@@ -41,25 +42,17 @@ before execution.
 
 **Gate:** the boundary and cutoff are immutable for the remainder of the run.
 
-### 2. Prove or recover source coverage
+### 2. Record the accepted historical exclusion
 
-1. Produce DiscordChatExporter exports for every corpus-eligible channel,
-   covering the corpus boundary through the fixed cutoff. A partial set of
-   channels is not sufficient.
-2. Add a deterministic reconciliation command that compares the exports with:
-   - the active chunk manifest
-   - `rag_discord_messages`
-   - `rag_pending_chunk_work`
-   - the 20-ID known-gap checklist
-3. Write a machine-readable report listing every exported message as already
-   represented, captured/pending, excluded with a reason, or missing.
-4. Never import the synthetic `replay-*` transaction IDs.
-5. If eligible messages are missing, import them idempotently through the
-   durable capture contract, then rerun reconciliation.
+1. Persist the owner's decision not to recover the July 23-26 interval in the
+   catch-up attempt and final schedule metadata.
+2. Mark all 20 real checklist IDs as accepted historical exclusions. Never
+   import them or the synthetic `replay-*` transaction IDs.
+3. Verify that every row actually present in `rag_discord_messages` through the
+   cutoff has exactly one durable work row and that none is orphaned or claimed.
 
-**Gate:** every eligible exported message through the cutoff is represented or
-captured, all 20 checklist IDs have a durable outcome, and no unexplained gap
-remains. If this cannot be proved, stop without changing Qdrant.
+**Gate:** the gap decision is explicit, the schedule remains disabled, and all
+durably captured rows through the cutoff have consistent work records.
 
 ### 3. Build and validate the catch-up plan
 
@@ -106,9 +99,8 @@ corpus.
 
 ## Deliverables
 
-- complete, private Discord channel exports for the boundary-to-cutoff window
-- deterministic coverage/reconciliation and idempotent recovery-import tooling
-- completed known-gap checklist with durable reasons
+- durable evidence of the owner's accepted July 23-26 historical exclusion
+- completed known-gap checklist marked as intentionally excluded
 - fixed-cutoff shadow plan and preflight report
 - verified full Qdrant snapshot
 - pre/post full regression comparison and targeted retrieval proof
@@ -117,11 +109,9 @@ corpus.
 
 ## Operator assistance
 
-The only expected manual dependency is access to create the complete
-DiscordChatExporter channel set if the existing bot credentials cannot do it.
-No Discord token or export containing private message content may be committed.
-All Railway, Postgres, n8n, Qdrant, planner, snapshot, and validation work can be
-performed through the existing private service access.
+No Discord export is required for the accepted historical interval. Railway,
+Postgres, n8n, Qdrant, planner, snapshot, and validation work is performed
+through the existing private service access.
 
 ## Rollback and stop rules
 
@@ -130,5 +120,5 @@ performed through the existing private service access.
   manifest/corpus pair, then reopen serving.
 - Regression mismatch: keep serving closed and roll back unless an explicit,
   reviewed baseline change explains the result.
-- Coverage uncertainty, missing export channels, unresolved checklist IDs, or
-  a stale cutoff: do not start the mutation.
+- Missing/inconsistent durable capture work or a stale cutoff: do not start the
+  mutation.

@@ -797,8 +797,7 @@ Production readiness evidence:
 
 ### Phase 9C.6: One-time captured-message catch-up
 
-**Status:** Execution planning in progress; production mutation is not part of
-the planning PR
+**Status:** Execution in progress on the Phase 9C.6 PR
 
 The operator-ready sequence, evidence requirements, stop rules, and manual
 dependency are maintained in
@@ -809,12 +808,11 @@ messages after the last message represented by the current healthy Qdrant
 corpus and at or before a fixed catch-up cutoff. New messages captured after
 the cutoff remain pending for the normal scheduled path.
 
-This run must fail closed unless capture coverage is proven. Compare the
-current corpus's final represented Discord message boundary with the earliest
-continuously captured row in `rag_discord_messages`, and reconcile the interval
-with `rag_pending_chunk_work`. If any part of the interval is missing, recover
-it with the existing export/backfill path, insert it idempotently, and repeat
-the coverage check before planning.
+The owner accepted the unrecorded July 23-26 interval as a permanent historical
+exclusion on August 12, 2026. The catch-up therefore starts at the first durable
+capture row and must not claim that the excluded interval was recovered. It
+still fails closed unless every captured row through the fixed cutoff has a
+consistent work row and no work is orphaned or already claimed.
 
 The catch-up reuses the Phase 9C.4 shadow-validated plan, maintenance gate,
 lease drain, snapshots, deterministic replacement, manifest update, rollback,
@@ -835,21 +833,17 @@ Production preflight evidence recorded on August 12, 2026:
   one is the already-manifested boundary message, 20 are real Discord IDs not
   in the manifest, and 12 use synthetic `replay-*` IDs
 
-Use [the Phase 9C.6 known-gap checklist](phase9c6-known-gap-message-ids.csv) when
-reconciling the recovery export. Each of its 20 real Discord IDs must be found
-and imported, or assigned an explicit durable reason such as not corpus
-eligible or no longer recoverable. The checklist is a minimum known set, not
-proof of completeness: transaction history observed only bot-handled events.
-The recovery export/history scan must cover every corpus-eligible channel for
-the full interval and may discover additional messages. Synthetic replay IDs
-are supporting evidence only and must never be inserted as Discord message IDs.
+The 20 real IDs in
+[the Phase 9C.6 known-gap checklist](phase9c6-known-gap-message-ids.csv) are
+marked `accepted_exclusion` and are not imported. Synthetic replay IDs are also
+excluded. This is an explicit availability tradeoff, not proof that the
+historical interval is complete.
 
 Exit criteria:
 
-- capture is proven continuous from the current corpus boundary through the
-  fixed cutoff, or a missing interval has been recovered first
-- every ID in the known-gap checklist is reconciled, while completeness is
-  independently established from the full-channel recovery export/history
+- the accepted July 23-26 exclusion is recorded durably and never represented
+  as recovered coverage
+- every captured row through the fixed cutoff has a consistent work row
 - every eligible pre-cutoff work row is completed or explicitly deferred with
   a durable reason
 - no pre-cutoff work remains silently pending or claimed
