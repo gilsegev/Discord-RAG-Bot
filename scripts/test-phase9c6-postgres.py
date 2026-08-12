@@ -55,8 +55,10 @@ def main() -> None:
             raise AssertionError("unaccepted gap should fail")
         except psycopg.Error:
             pass
-        stale = db.execute("SELECT * FROM rag_prepare_phase9c6_catchup_attempt('stale','test_collection',2,true,'accepted by owner')").fetchone()
-        assert stale[1] == "blocked" and "cutoff_is_not_latest_capture" in stale[6]
+        bounded = db.execute("SELECT * FROM rag_prepare_phase9c6_catchup_attempt('bounded','test_collection',2,true,'accepted by owner')").fetchone()
+        assert bounded[1:4] == ("planning", 2, 2) and bounded[6] == []
+        future = db.execute("SELECT * FROM rag_prepare_phase9c6_catchup_attempt('future','test_collection',4,true,'accepted by owner')").fetchone()
+        assert future[1] == "blocked" and "cutoff_exceeds_latest_capture" in future[6]
         admitted = db.execute("SELECT * FROM rag_prepare_phase9c6_catchup_attempt('catchup','test_collection',3,true,'accepted by owner')").fetchone()
         assert admitted[1:4] == ("planning", 3, 3) and admitted[6] == []
         db.execute("""

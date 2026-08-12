@@ -103,8 +103,8 @@ BEGIN
     IF v_failed_count > 0 THEN
         v_reasons := v_reasons || jsonb_build_array('failed_work_present');
     END IF;
-    IF v_latest_capture IS DISTINCT FROM p_cutoff_sequence THEN
-        v_reasons := v_reasons || jsonb_build_array('cutoff_is_not_latest_capture');
+    IF v_latest_capture IS NULL OR p_cutoff_sequence > v_latest_capture THEN
+        v_reasons := v_reasons || jsonb_build_array('cutoff_exceeds_latest_capture');
     END IF;
     IF v_pending = 0 THEN
         v_reasons := v_reasons || jsonb_build_array('no_pending_work');
