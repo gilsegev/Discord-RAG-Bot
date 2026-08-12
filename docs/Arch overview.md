@@ -117,6 +117,14 @@ the run outcome. A replacement plan must be fully `shadow_validated` before
 maintenance can begin. Affected-point rollback snapshots are retained for
 14 days.
 
+Scheduled incremental operation is a thin n8n control layer around that same
+coordinator. Postgres decides whether an attempt is disabled, blocked, ready,
+or complete and stores its report plus a deduplicated alert outbox. The
+schedule and the Phase 9C.6 catch-up lock must both be enabled before recurring
+execution can reach planning. The scheduled layer contains no Qdrant mutation
+logic; it delegates planning to the private deterministic worker and all
+apply/rollback transitions to the Phase 9C.4 coordinator.
+
 ### Execution Tracking Stages
 1. **Universal Capture**  
    The moment a Discord event, regression case, or CI request reaches the n8n intake workflow, a unique transaction tracking ID is created. The raw request envelope and mode flags are logged to the Observability Layer, regardless of whether the request triggers a response.

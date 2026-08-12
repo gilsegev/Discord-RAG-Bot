@@ -738,7 +738,7 @@ tests now cover the latter, and the full regression proves the corrected path.
 
 ### Phase 9C.5: Scheduled-operation readiness
 
-**Status:** Execution planned on `agent/phase-9c5-execution`; schedule must
+**Status:** Implemented and deployed inactive on August 12, 2026; schedule must
 remain disabled until Phase 9C.6 completes
 
 After Phase 9C.4 is proven manually, add the configurable low-traffic schedule,
@@ -773,6 +773,27 @@ Exit criteria:
   have automated tests and durable evidence
 - an operator can understand and recover any run from the report and runbook
 - normal serving and Discord capture remain unchanged
+
+Production readiness evidence:
+
+- the controller, scheduled runner, and alert-outbox workflows are deployed
+  inactive in n8n
+- Postgres has independent `schedule_enabled=false` and
+  `catchup_completed=false` locks, with a 03:00 UTC default low-traffic cron
+- production dry-run `phase9c5-prod-dryrun-final-20260812` stopped with
+  `phase9c6_catchup_required`, reported 176 bounded pending messages, recorded
+  one durable attempt and one deduplicated warning, and reported zero Qdrant
+  mutations
+- runtime remained `serving` at revision 3 and Qdrant remained at 32,759
+  points before and after the proof
+- local Postgres tests prove disabled/catch-up/overlap/plan-budget guards,
+  idempotent alerting, durable reports, and drain-timeout recovery; workflow
+  tests prove dry-run cannot dispatch, mutations remain delegated to the Phase
+  9C.4 coordinator, regression runs before and after replacement, and failure
+  branches use rollback
+- alert delivery remains queued until a private operations destination is
+  configured with `INCREMENTAL_ALERT_WEBHOOK_URL`; no destination or secret is
+  stored in workflow JSON
 
 ### Phase 9C.6: One-time captured-message catch-up
 

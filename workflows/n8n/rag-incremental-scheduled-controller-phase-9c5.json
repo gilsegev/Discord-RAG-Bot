@@ -208,6 +208,73 @@
     },
     {
       "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "Execution Requested?-condition",
+              "leftValue": "={{ $items('Normalize Schedule Request')[0].json.trigger_source !== 'manual_dry_run' }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "p9c5-execution-requested-",
+      "name": "Execution Requested?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        340,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT (rag_finish_incremental_schedule_attempt(\n  '{{ $items(\"Normalize Schedule Request\")[0].json.attempt_id }}','ready',NULL,false,\n  jsonb_build_object('dry_run',true,'plan_id','{{ $items(\"Build Shadow Validated Plan\")[0].json.body.plan_id }}')\n)).*;"
+      },
+      "id": "p9c5-finish-dry-plan-attempt",
+      "name": "Finish Dry Plan Attempt",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        560,
+        120
+      ],
+      "credentials": {
+        "postgres": {
+          "id": "JcwnINxG4CstrGKy",
+          "name": "Postgres account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "return [{json:{...$json,qdrant_mutations:false,dry_run:true}}];"
+      },
+      "id": "p9c5-return-dry-plan-summary",
+      "name": "Return Dry Plan Summary",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        780,
+        120
+      ]
+    },
+    {
+      "parameters": {
         "operation": "executeQuery",
         "query": "SELECT (rag_finish_incremental_schedule_attempt(\n  '{{ $items(\"Normalize Schedule Request\")[0].json.attempt_id }}','dispatched',NULL,false,\n  jsonb_build_object('controller_execution_id','{{ $execution.id }}')\n)).*;"
       },
@@ -216,7 +283,7 @@
       "type": "n8n-nodes-base.postgres",
       "typeVersion": 2.6,
       "position": [
-        340,
+        1000,
         0
       ],
       "credentials": {
@@ -257,7 +324,7 @@
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [
-        560,
+        1220,
         0
       ]
     },
@@ -271,7 +338,7 @@
       "type": "n8n-nodes-base.postgres",
       "typeVersion": 2.6,
       "position": [
-        780,
+        1440,
         0
       ],
       "credentials": {
@@ -291,7 +358,7 @@
       "type": "n8n-nodes-base.postgres",
       "typeVersion": 2.6,
       "position": [
-        1000,
+        1660,
         0
       ],
       "credentials": {
@@ -310,7 +377,7 @@
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        1220,
+        1880,
         0
       ]
     },
@@ -324,7 +391,7 @@
       "type": "n8n-nodes-base.postgres",
       "typeVersion": 2.6,
       "position": [
-        1440,
+        2100,
         180
       ],
       "credentials": {
@@ -344,7 +411,7 @@
       "type": "n8n-nodes-base.postgres",
       "typeVersion": 2.6,
       "position": [
-        1660,
+        2320,
         180
       ],
       "credentials": {
@@ -363,7 +430,7 @@
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        1880,
+        2540,
         180
       ]
     },
@@ -377,7 +444,7 @@
       "type": "n8n-nodes-base.postgres",
       "typeVersion": 2.6,
       "position": [
-        2100,
+        2760,
         60
       ],
       "credentials": {
@@ -397,7 +464,7 @@
       "type": "n8n-nodes-base.postgres",
       "typeVersion": 2.6,
       "position": [
-        2320,
+        2980,
         60
       ],
       "credentials": {
@@ -416,7 +483,7 @@
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        2540,
+        3200,
         60
       ]
     }
@@ -521,7 +588,7 @@
       "main": [
         [
           {
-            "node": "Mark Attempt Dispatched",
+            "node": "Execution Requested?",
             "type": "main",
             "index": 0
           }
@@ -529,6 +596,35 @@
         [
           {
             "node": "Finish Unsafe Plan Attempt",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Execution Requested?": {
+      "main": [
+        [
+          {
+            "node": "Mark Attempt Dispatched",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Finish Dry Plan Attempt",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Finish Dry Plan Attempt": {
+      "main": [
+        [
+          {
+            "node": "Return Dry Plan Summary",
             "type": "main",
             "index": 0
           }

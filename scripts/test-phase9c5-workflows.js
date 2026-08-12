@@ -19,8 +19,11 @@ assert.match(node(controller, 'Prepare Scheduled Attempt').parameters.query, /ra
 assert.match(node(controller, 'Build Shadow Validated Plan').parameters.url, /INCREMENTAL_WORKER_URL/);
 assert.match(node(controller, 'Attach Plan Safety Gates').parameters.query, /rag_attach_incremental_schedule_plan/);
 assert.deepStrictEqual(destinations(controller, 'Should Build Plan?', 1), ['Finish Skipped Attempt']);
-assert.deepStrictEqual(destinations(controller, 'Plan Is Safe?', 0), ['Mark Attempt Dispatched']);
+assert.deepStrictEqual(destinations(controller, 'Plan Is Safe?', 0), ['Execution Requested?']);
 assert.deepStrictEqual(destinations(controller, 'Plan Is Safe?', 1), ['Finish Unsafe Plan Attempt']);
+assert.deepStrictEqual(destinations(controller, 'Execution Requested?', 0), ['Mark Attempt Dispatched']);
+assert.deepStrictEqual(destinations(controller, 'Execution Requested?', 1), ['Finish Dry Plan Attempt']);
+assert.match(node(runner, 'Verify Ready Attempt').parameters.query, /manual_execute/);
 assert.match(node(controller, 'Call Proven Scheduled Runner').parameters.url, /scheduled-run-phase-9c5/);
 assert.match(node(controller, 'Queue Attempt Outcome Alert').parameters.query, /incremental_run_/);
 assert.deepStrictEqual(destinations(controller, 'Finish Unsafe Plan Attempt'), ['Queue Unsafe Plan Alert']);

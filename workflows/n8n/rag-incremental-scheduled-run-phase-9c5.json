@@ -28,21 +28,21 @@
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        2760,
+        3420,
         0
       ]
     },
     {
       "parameters": {
         "operation": "executeQuery",
-        "query": "SELECT a.*,rs.runtime_state,rs.state_revision FROM rag_incremental_schedule_attempts a JOIN rag_runtime_state rs ON rs.collection_name=a.collection_name WHERE a.attempt_id='{{ $json.attempt_id }}' AND a.decision='dispatched' AND a.schedule_enabled AND a.catchup_completed AND rs.runtime_state='serving' AND a.plan_id='{{ $json.plan_id }}';"
+        "query": "SELECT a.*,rs.runtime_state,rs.state_revision FROM rag_incremental_schedule_attempts a JOIN rag_runtime_state rs ON rs.collection_name=a.collection_name WHERE a.attempt_id='{{ $json.attempt_id }}' AND a.decision='dispatched' AND (a.schedule_enabled OR a.trigger_source='manual_execute') AND a.catchup_completed AND rs.runtime_state='serving' AND a.plan_id='{{ $json.plan_id }}';"
       },
       "id": "p9c5-verify-ready-attempt",
       "name": "Verify Ready Attempt",
       "type": "n8n-nodes-base.postgres",
       "typeVersion": 2.6,
       "position": [
-        2980,
+        3640,
         0
       ],
       "credentials": {
@@ -83,7 +83,7 @@
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [
-        3200,
+        3860,
         0
       ]
     },
@@ -118,7 +118,7 @@
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [
-        3420,
+        4080,
         0
       ]
     },
@@ -131,7 +131,7 @@
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        3640,
+        4300,
         0
       ]
     },
@@ -166,7 +166,7 @@
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [
-        3860,
+        4520,
         0
       ]
     },
@@ -201,7 +201,7 @@
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [
-        4080,
+        4740,
         0
       ]
     },
@@ -215,7 +215,7 @@
       "type": "n8n-nodes-base.postgres",
       "typeVersion": 2.6,
       "position": [
-        4300,
+        4960,
         0
       ],
       "credentials": {
@@ -256,7 +256,7 @@
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [
-        4520,
+        5180,
         0
       ]
     },
@@ -270,7 +270,7 @@
       "type": "n8n-nodes-base.wait",
       "typeVersion": 1.1,
       "position": [
-        4740,
+        5400,
         0
       ],
       "webhookId": "p9c5-wait-drain"
@@ -285,7 +285,7 @@
       "type": "n8n-nodes-base.postgres",
       "typeVersion": 2.6,
       "position": [
-        4960,
+        5620,
         0
       ],
       "credentials": {
@@ -325,7 +325,7 @@
       "type": "n8n-nodes-base.if",
       "typeVersion": 2.2,
       "position": [
-        5180,
+        5840,
         0
       ]
     },
@@ -359,7 +359,7 @@
       "type": "n8n-nodes-base.if",
       "typeVersion": 2.2,
       "position": [
-        5400,
+        6060,
         160
       ]
     },
@@ -373,7 +373,7 @@
       "type": "n8n-nodes-base.postgres",
       "typeVersion": 2.6,
       "position": [
-        5620,
+        6280,
         160
       ],
       "credentials": {
@@ -392,7 +392,7 @@
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        5840,
+        6500,
         160
       ]
     },
@@ -427,7 +427,7 @@
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [
-        6060,
+        6720,
         0
       ]
     },
@@ -462,7 +462,7 @@
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [
-        6280,
+        6940,
         0
       ]
     },
@@ -496,7 +496,7 @@
       "type": "n8n-nodes-base.if",
       "typeVersion": 2.2,
       "position": [
-        6500,
+        7160,
         0
       ]
     },
@@ -531,7 +531,7 @@
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [
-        6720,
+        7380,
         0
       ]
     },
@@ -565,7 +565,7 @@
       "type": "n8n-nodes-base.if",
       "typeVersion": 2.2,
       "position": [
-        6940,
+        7600,
         0
       ]
     },
@@ -600,7 +600,7 @@
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [
-        7160,
+        7820,
         0
       ]
     },
@@ -635,7 +635,7 @@
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [
-        7380,
+        8040,
         0
       ]
     },
@@ -648,7 +648,7 @@
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        7600,
+        8260,
         0
       ]
     },
@@ -683,7 +683,7 @@
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [
-        7820,
+        8480,
         180
       ]
     },
@@ -718,7 +718,7 @@
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [
-        8040,
+        8700,
         180
       ]
     },
@@ -731,7 +731,7 @@
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        8260,
+        8920,
         180
       ]
     }

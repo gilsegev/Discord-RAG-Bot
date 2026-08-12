@@ -33,6 +33,12 @@ return [{json:{attempt_id:attemptId,collection_name:String(raw.collection_name||
   '{{ $items("Normalize Schedule Request")[0].json.attempt_id }}',
   '{{ $items("Build Shadow Validated Plan")[0].json.body.plan_id }}');`),
   iff('Plan Is Safe?', "={{ $json.decision === 'ready' }}"),
+  iff('Execution Requested?', "={{ $items('Normalize Schedule Request')[0].json.trigger_source !== 'manual_dry_run' }}"),
+  pg('Finish Dry Plan Attempt', `SELECT (rag_finish_incremental_schedule_attempt(
+  '{{ $items("Normalize Schedule Request")[0].json.attempt_id }}','ready',NULL,false,
+  jsonb_build_object('dry_run',true,'plan_id','{{ $items("Build Shadow Validated Plan")[0].json.body.plan_id }}')
+)).*;`,120),
+  code('Return Dry Plan Summary', `return [{json:{...$json,qdrant_mutations:false,dry_run:true}}];`,120),
   pg('Mark Attempt Dispatched', `SELECT (rag_finish_incremental_schedule_attempt(
   '{{ $items("Normalize Schedule Request")[0].json.attempt_id }}','dispatched',NULL,false,
   jsonb_build_object('controller_execution_id','{{ $execution.id }}')
@@ -77,7 +83,7 @@ connect(controller,'Low Traffic Schedule','Normalize Schedule Request'); connect
 connect(controller,'Normalize Schedule Request','Prepare Scheduled Attempt'); connect(controller,'Prepare Scheduled Attempt','Should Build Plan?');
 connect(controller,'Should Build Plan?','Build Shadow Validated Plan',0); connect(controller,'Should Build Plan?','Finish Skipped Attempt',1);
 connect(controller,'Build Shadow Validated Plan','Attach Plan Safety Gates'); connect(controller,'Attach Plan Safety Gates','Plan Is Safe?');
-connect(controller,'Plan Is Safe?','Mark Attempt Dispatched',0); connect(controller,'Plan Is Safe?','Finish Unsafe Plan Attempt',1);
+connect(controller,'Plan Is Safe?','Execution Requested?',0); connect(controller,'Plan Is Safe?','Finish Unsafe Plan Attempt',1); connect(controller,'Execution Requested?','Mark Attempt Dispatched',0); connect(controller,'Execution Requested?','Finish Dry Plan Attempt',1); connect(controller,'Finish Dry Plan Attempt','Return Dry Plan Summary');
 connect(controller,'Mark Attempt Dispatched','Call Proven Scheduled Runner'); connect(controller,'Call Proven Scheduled Runner','Finish Scheduled Attempt'); connect(controller,'Finish Scheduled Attempt','Queue Attempt Outcome Alert'); connect(controller,'Queue Attempt Outcome Alert','Build Attempt Summary');
 connect(controller,'Finish Skipped Attempt','Queue Skipped Alert'); connect(controller,'Queue Skipped Alert','Return Skipped Summary'); connect(controller,'Finish Unsafe Plan Attempt','Queue Unsafe Plan Alert'); connect(controller,'Queue Unsafe Plan Alert','Return Unsafe Plan Summary');
 
@@ -87,7 +93,7 @@ const runner = { name: 'RAG Incremental Scheduled Run - Phase 9C.5', active: fal
 runner.nodes.push(
   { parameters: { httpMethod: 'POST', path: 'rag-incremental-scheduled-run-phase-9c5', responseMode: 'lastNode', options: {} }, id: 'p9c5-run-webhook', name: 'Scheduled Run Webhook', type: 'n8n-nodes-base.webhook', typeVersion: 2, position: [-1200,0], webhookId: 'rag-incremental-scheduled-run-phase-9c5' },
   code('Normalize Run Request', `const envelope=$json||{},raw=envelope.body||envelope,headers=envelope.headers||{}; const secret=String($env.N8N_WEBHOOK_SHARED_SECRET||''); if(secret&&String(headers['x-rag-webhook-secret']||'')!==secret) throw new Error('Unauthorized scheduled run'); const clean=v=>String(v||'').replace(/[^A-Za-z0-9._:-]/g,''); const attempt=clean(raw.attempt_id),plan=clean(raw.plan_id),collection=clean(raw.collection_name||'tpm_unite_history'); if(!attempt||!plan) throw new Error('attempt_id and plan_id required'); return [{json:{attempt_id:attempt,plan_id:plan,collection_name:collection,incremental_run_id:'scheduled-'+attempt+'-'+$execution.id}}];`),
-  pg('Verify Ready Attempt', `SELECT a.*,rs.runtime_state,rs.state_revision FROM rag_incremental_schedule_attempts a JOIN rag_runtime_state rs ON rs.collection_name=a.collection_name WHERE a.attempt_id='{{ $json.attempt_id }}' AND a.decision='dispatched' AND a.schedule_enabled AND a.catchup_completed AND rs.runtime_state='serving' AND a.plan_id='{{ $json.plan_id }}';`),
+  pg('Verify Ready Attempt', `SELECT a.*,rs.runtime_state,rs.state_revision FROM rag_incremental_schedule_attempts a JOIN rag_runtime_state rs ON rs.collection_name=a.collection_name WHERE a.attempt_id='{{ $json.attempt_id }}' AND a.decision='dispatched' AND (a.schedule_enabled OR a.trigger_source='manual_execute') AND a.catchup_completed AND rs.runtime_state='serving' AND a.plan_id='{{ $json.plan_id }}';`),
   http('Create Incremental Run','http://127.0.0.1:5678/webhook/rag-incremental-phase-9c4',"={{ { action:'create', incremental_run_id:$items('Normalize Run Request')[0].json.incremental_run_id, plan_id:$items('Normalize Run Request')[0].json.plan_id, collection_name:$items('Normalize Run Request')[0].json.collection_name, requested_by:'phase9c5_schedule' } }}"),
   http('Run Baseline Regression','http://127.0.0.1:5678/webhook/rag-regression-batch',"={{ { cases:'all',mode:'retrieval_only',allow_gemini:false,allow_discord_post:false,write_eval_labels:false,requested_by:'phase9c5_schedule_baseline' } }}"),
   code('Require Accepted Baseline', `const r=$json.body||$json; if(Number(r.case_count||r.total_cases)!==48||Number(r.pass_count)!==43||Number(r.fail_count)!==1||Number(r.review_count)!==4) throw new Error('baseline regression differs from accepted 43/1/4'); return [{json:r}];`),
