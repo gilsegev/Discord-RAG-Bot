@@ -159,7 +159,8 @@ DECLARE
     v_run rag_incremental_runs%ROWTYPE;
     v_config rag_incremental_schedule_config%ROWTYPE;
     v_runtime rag_runtime_state%ROWTYPE;
-    v_remaining INTEGER;
+    v_unexplained INTEGER;
+    v_deferred_pending INTEGER;
 BEGIN
     IF jsonb_typeof(p_evidence) <> 'object' THEN
         RAISE EXCEPTION 'catch-up evidence must be an object'
@@ -201,10 +202,29 @@ BEGIN
         RAISE EXCEPTION 'runtime must be serving with schedule disabled'
             USING ERRCODE = '55000';
     END IF;
-    SELECT count(*) INTO v_remaining FROM rag_pending_chunk_work
+    UPDATE rag_pending_chunk_work w SET
+        failure_reason = 'phase9c6_deferred_until_future_context'
+    WHERE w.status = 'pending'
+      AND w.capture_sequence <= v_attempt.batch_cutoff_sequence
+      AND w.source_message_id IN (
+          SELECT unnest(g.source_message_ids)
+          FROM rag_chunk_replacement_plan_groups g
+          WHERE g.plan_id = v_run.plan_id AND g.status = 'deferred'
+      );
+    SELECT count(*) INTO v_deferred_pending FROM rag_pending_chunk_work
     WHERE capture_sequence <= v_attempt.batch_cutoff_sequence
-      AND status IN ('pending', 'claimed');
-    IF v_remaining <> 0
+      AND status = 'pending'
+      AND failure_reason = 'phase9c6_deferred_until_future_context';
+    SELECT count(*) INTO v_unexplained FROM rag_pending_chunk_work
+    WHERE capture_sequence <= v_attempt.batch_cutoff_sequence
+      AND (
+          status = 'claimed'
+          OR (status = 'pending'
+              AND failure_reason IS DISTINCT FROM
+                  'phase9c6_deferred_until_future_context')
+      );
+    IF v_unexplained <> 0
+       OR v_deferred_pending <> v_run.deferred_message_count
        OR v_run.processed_message_count + v_run.deferred_message_count
           <> v_attempt.pending_message_count THEN
         RAISE EXCEPTION 'pre-cutoff work is not fully reconciled'

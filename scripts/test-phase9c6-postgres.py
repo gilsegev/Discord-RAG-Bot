@@ -69,9 +69,14 @@ def main() -> None:
         assert attached[1] == "ready"
         db.execute("SELECT rag_finish_incremental_schedule_attempt('catchup','dispatched',NULL,false,'{}')")
         db.execute("SELECT * FROM rag_create_incremental_run('run-a','plan-a','test_collection','{}')")
-        db.execute("UPDATE rag_pending_chunk_work SET status='completed',completed_at=now() WHERE capture_sequence<=3")
+        db.execute("UPDATE rag_pending_chunk_work SET status='completed',completed_at=now() WHERE capture_sequence<=2")
         db.execute("""
-            UPDATE rag_incremental_runs SET run_state='completed',processed_message_count=3,
+            INSERT INTO rag_chunk_replacement_plan_groups(plan_id,group_key,work_kind,channel_id,source_message_ids,old_point_ids,replacement_point_ids,status,evidence)
+            VALUES ('plan-a','deferred-3','recent_window','c',ARRAY['1003'],ARRAY[]::text[],ARRAY[]::text[],'deferred','{}')
+        """)
+        db.execute("""
+            UPDATE rag_incremental_runs SET run_state='completed',processed_message_count=2,
+              deferred_message_count=1,
               corpus_version_after='corpus-a',structural_verification_result='passed',
               regression_result='passed',snapshot_uri='postgres://affected;qdrant://test/full-snapshot',
               completed_at=now() WHERE incremental_run_id='run-a'
@@ -81,6 +86,8 @@ def main() -> None:
         config = db.execute("SELECT catchup_completed,schedule_enabled,config_metadata FROM rag_incremental_schedule_config WHERE collection_name='test_collection'").fetchone()
         assert config[0] is True and config[1] is False
         assert config[2]["accepted_history_gap"] is True
+        deferred = db.execute("SELECT status,failure_reason FROM rag_pending_chunk_work WHERE source_message_id='1003'").fetchone()
+        assert deferred == ("pending", "phase9c6_deferred_until_future_context")
         print("phase9c6 postgres checks passed")
     finally:
         db.execute(psycopg.sql.SQL("DROP SCHEMA {} CASCADE").format(psycopg.sql.Identifier(schema)))
