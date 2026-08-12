@@ -415,11 +415,15 @@ def _measure_embeddings(texts: Iterable[str], embedder_url: str, kind: str) -> d
 
 def embed_shadow(plan: dict[str, Any], embedder_url: str) -> dict[str, Any]:
     """Embed replacement text for timing/dimension proof; never writes Qdrant."""
-    texts = [
-        row["text"]
-        for rows in plan["_replacement_details"].values()
-        for row in rows
-    ]
+    unique: dict[str, dict[str, Any]] = {}
+    for rows in plan["_replacement_details"].values():
+        for row in rows:
+            point_id = str(row["point_id"])
+            existing = unique.get(point_id)
+            if existing is not None and existing != row:
+                raise PlanningError(f"conflicting replacement point {point_id}")
+            unique[point_id] = row
+    texts = [unique[point_id]["text"] for point_id in sorted(unique, key=int)]
     return _measure_embeddings(texts, embedder_url, "shadow_replacements")
 
 

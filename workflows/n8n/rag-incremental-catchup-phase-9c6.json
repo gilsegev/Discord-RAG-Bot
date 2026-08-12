@@ -1,4 +1,5 @@
 {
+  "id": "SUeM1vqB3uASBfnO",
   "name": "RAG One-Time Catch-up - Phase 9C.6",
   "active": false,
   "nodes": [
@@ -550,6 +551,5 @@
   "staticData": null,
   "meta": {
     "templateCredsSetupCompleted": false
-  },
-  "pinData": {}
+  }
 }
