@@ -1,0 +1,246 @@
+{
+  "name": "RAG Incremental Operator Alerts - Phase 9C.5",
+  "active": false,
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "minutes",
+              "minutesInterval": 5
+            }
+          ]
+        }
+      },
+      "id": "p9c5-alert-schedule",
+      "name": "Alert Outbox Schedule",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        -800,
+        -100
+      ]
+    },
+    {
+      "parameters": {},
+      "id": "p9c5-alert-manual",
+      "name": "Manual Alert Check",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        -800,
+        100
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT alert_id,attempt_id,severity,alert_code,alert_payload,created_at\nFROM rag_incremental_operator_alerts WHERE delivery_status='queued'\nORDER BY CASE severity WHEN 'critical' THEN 1 WHEN 'warning' THEN 2 ELSE 3 END,created_at LIMIT 20;"
+      },
+      "id": "p9c5-load-queued-incremental-alerts",
+      "name": "Load Queued Incremental Alerts",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        8480,
+        0
+      ],
+      "credentials": {
+        "postgres": {
+          "id": "JcwnINxG4CstrGKy",
+          "name": "Postgres account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "return $input.all().map(item=>{const a=item.json; const configured=Boolean(String($env.INCREMENTAL_ALERT_WEBHOOK_URL||'').trim()); const reasons=a.alert_payload?.reasons||[]; return {json:{...a,configured,alert_url:String($env.INCREMENTAL_ALERT_WEBHOOK_URL||''),content:'['+String(a.severity).toUpperCase()+'] Incremental ingestion '+a.alert_code+' (attempt '+a.attempt_id+')'+(reasons.length?' — '+reasons.join(', '):'')}};});"
+      },
+      "id": "p9c5-prepare-alert-delivery",
+      "name": "Prepare Alert Delivery",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        8700,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "Alert Destination Configured?-condition",
+              "leftValue": "={{ $json.configured }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "p9c5-alert-destination-configured-",
+      "name": "Alert Destination Configured?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        8920,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $json.alert_url }}",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ { content: $json.content } }}",
+        "options": {
+          "response": {
+            "response": {
+              "fullResponse": true,
+              "neverError": true,
+              "responseFormat": "json"
+            }
+          }
+        }
+      },
+      "id": "p9c5-send-alert",
+      "name": "Send Operator Alert",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        9140,
+        -100
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "UPDATE rag_incremental_operator_alerts SET\ndelivery_status=CASE WHEN {{ Number($json.statusCode || 0) }} BETWEEN 200 AND 299 THEN 'sent' ELSE 'failed' END,\ndelivery_attempts=delivery_attempts+1,delivered_at=CASE WHEN {{ Number($json.statusCode || 0) }} BETWEEN 200 AND 299 THEN now() ELSE delivered_at END,\nlast_error=CASE WHEN {{ Number($json.statusCode || 0) }} BETWEEN 200 AND 299 THEN NULL ELSE 'http_status_{{ Number($json.statusCode || 0) }}' END\nWHERE alert_id='{{ $(\"Prepare Alert Delivery\").item.json.alert_id }}'::uuid RETURNING alert_id,delivery_status,delivery_attempts;"
+      },
+      "id": "p9c5-record-alert-delivery",
+      "name": "Record Alert Delivery",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        9360,
+        0
+      ],
+      "credentials": {
+        "postgres": {
+          "id": "JcwnINxG4CstrGKy",
+          "name": "Postgres account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "return [{json:{alert_id:$json.alert_id,delivery_status:'queued',reason:'INCREMENTAL_ALERT_WEBHOOK_URL_not_configured'}}];"
+      },
+      "id": "p9c5-keep-alert-queued",
+      "name": "Keep Alert Queued",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        9580,
+        100
+      ]
+    }
+  ],
+  "connections": {
+    "Alert Outbox Schedule": {
+      "main": [
+        [
+          {
+            "node": "Load Queued Incremental Alerts",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Manual Alert Check": {
+      "main": [
+        [
+          {
+            "node": "Load Queued Incremental Alerts",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Load Queued Incremental Alerts": {
+      "main": [
+        [
+          {
+            "node": "Prepare Alert Delivery",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare Alert Delivery": {
+      "main": [
+        [
+          {
+            "node": "Alert Destination Configured?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Alert Destination Configured?": {
+      "main": [
+        [
+          {
+            "node": "Send Operator Alert",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Keep Alert Queued",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send Operator Alert": {
+      "main": [
+        [
+          {
+            "node": "Record Alert Delivery",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "meta": {
+    "templateCredsSetupCompleted": false
+  },
+  "pinData": {}
+}

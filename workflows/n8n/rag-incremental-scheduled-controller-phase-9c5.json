@@ -1,0 +1,635 @@
+{
+  "name": "RAG Incremental Scheduled Controller - Phase 9C.5",
+  "active": false,
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "cronExpression",
+              "expression": "={{ $env.PHASE9C5_CRON || '0 3 * * *' }}"
+            }
+          ]
+        }
+      },
+      "id": "p9c5-schedule",
+      "name": "Low Traffic Schedule",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        -1200,
+        -180
+      ]
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "rag-incremental-schedule-phase-9c5",
+        "responseMode": "lastNode",
+        "options": {}
+      },
+      "id": "p9c5-webhook",
+      "name": "Schedule Control Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        -1200,
+        0
+      ],
+      "webhookId": "rag-incremental-schedule-phase-9c5"
+    },
+    {
+      "parameters": {},
+      "id": "p9c5-manual",
+      "name": "Manual Dry Run",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        -1200,
+        180
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const envelope=$json||{}; const raw=envelope.body||envelope;\nconst headers=envelope.headers||{}; const secret=String($env.N8N_WEBHOOK_SHARED_SECRET||'');\nif(envelope.body&&secret&&String(headers['x-rag-webhook-secret']||'')!==secret) throw new Error('Unauthorized schedule request');\nconst scheduled=!envelope.body&&!raw.trigger_source&&Boolean(raw.timestamp);\nconst requested=String(raw.mode||'dry_run').toLowerCase();\nconst triggerSource=scheduled?'scheduled':(requested==='execute'?'manual_execute':'manual_dry_run');\nconst attemptId=String(raw.attempt_id||('phase9c5-'+$execution.id)).replace(/[^A-Za-z0-9._:-]/g,'');\nreturn [{json:{attempt_id:attemptId,collection_name:String(raw.collection_name||'tpm_unite_history'),trigger_source:triggerSource,requested_mode:requested}}];"
+      },
+      "id": "p9c5-normalize-schedule-request",
+      "name": "Normalize Schedule Request",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -980,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT * FROM rag_prepare_incremental_schedule_attempt(\n  '{{ $json.attempt_id }}','{{ $json.collection_name }}','{{ $json.trigger_source }}');"
+      },
+      "id": "p9c5-prepare-scheduled-attempt",
+      "name": "Prepare Scheduled Attempt",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        -760,
+        0
+      ],
+      "credentials": {
+        "postgres": {
+          "id": "JcwnINxG4CstrGKy",
+          "name": "Postgres account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "Should Build Plan?-condition",
+              "leftValue": "={{ $json.decision === 'planning' }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "p9c5-should-build-plan-",
+      "name": "Should Build Plan?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        -540,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ ($env.INCREMENTAL_WORKER_URL || 'http://incremental-worker:8003') + '/plan' }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "X-Incremental-Worker-Token",
+              "value": "={{ $env.INCREMENTAL_WORKER_TOKEN }}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ { collection_name: $items('Normalize Schedule Request')[0].json.collection_name, batch_cutoff_sequence: Number($items('Prepare Scheduled Attempt')[0].json.batch_cutoff_sequence), persist: true } }}",
+        "options": {
+          "response": {
+            "response": {
+              "fullResponse": true,
+              "neverError": true,
+              "responseFormat": "json"
+            }
+          }
+        }
+      },
+      "id": "p9c5-plan-worker",
+      "name": "Build Shadow Validated Plan",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -320,
+        -120
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT * FROM rag_attach_incremental_schedule_plan(\n  '{{ $items(\"Normalize Schedule Request\")[0].json.attempt_id }}',\n  '{{ $items(\"Build Shadow Validated Plan\")[0].json.body.plan_id }}');"
+      },
+      "id": "p9c5-attach-plan-safety-gates",
+      "name": "Attach Plan Safety Gates",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        -100,
+        0
+      ],
+      "credentials": {
+        "postgres": {
+          "id": "JcwnINxG4CstrGKy",
+          "name": "Postgres account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "Plan Is Safe?-condition",
+              "leftValue": "={{ $json.decision === 'ready' }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "p9c5-plan-is-safe-",
+      "name": "Plan Is Safe?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        120,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT (rag_finish_incremental_schedule_attempt(\n  '{{ $items(\"Normalize Schedule Request\")[0].json.attempt_id }}','dispatched',NULL,false,\n  jsonb_build_object('controller_execution_id','{{ $execution.id }}')\n)).*;"
+      },
+      "id": "p9c5-mark-attempt-dispatched",
+      "name": "Mark Attempt Dispatched",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        340,
+        0
+      ],
+      "credentials": {
+        "postgres": {
+          "id": "JcwnINxG4CstrGKy",
+          "name": "Postgres account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://127.0.0.1:5678/webhook/rag-incremental-scheduled-run-phase-9c5",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "X-RAG-Webhook-Secret",
+              "value": "={{ $env.N8N_WEBHOOK_SHARED_SECRET }}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ { attempt_id: $items('Normalize Schedule Request')[0].json.attempt_id, plan_id: $items('Build Shadow Validated Plan')[0].json.body.plan_id, collection_name: $items('Normalize Schedule Request')[0].json.collection_name } }}",
+        "options": {
+          "response": {
+            "response": {
+              "fullResponse": true,
+              "neverError": true,
+              "responseFormat": "json"
+            }
+          }
+        }
+      },
+      "id": "p9c5-call-proven-scheduled-runner",
+      "name": "Call Proven Scheduled Runner",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        560,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT (rag_finish_incremental_schedule_attempt(\n  '{{ $items(\"Normalize Schedule Request\")[0].json.attempt_id }}',\n  CASE WHEN {{ Number($json.statusCode || 0) }} BETWEEN 200 AND 299 AND '{{ String($json.body.status || \"\").replace(/'/g,\"''\") }}'='completed' THEN 'completed' ELSE 'failed' END,\n  NULLIF('{{ String($json.body.incremental_run_id || \"\").replace(/'/g,\"''\") }}',''),\n  {{ $json.body.qdrant_mutations === true ? 'true' : 'false' }},\n  '{{ JSON.stringify($json.body || {}).replace(/'/g,\"''\") }}'::jsonb\n)).*;"
+      },
+      "id": "p9c5-finish-scheduled-attempt",
+      "name": "Finish Scheduled Attempt",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        780,
+        0
+      ],
+      "credentials": {
+        "postgres": {
+          "id": "JcwnINxG4CstrGKy",
+          "name": "Postgres account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT (rag_queue_incremental_alert(\n  '{{ $json.attempt_id }}',CASE WHEN '{{ $json.decision }}'='completed' THEN 'info' ELSE 'critical' END,\n  'incremental_run_{{ $json.decision }}','{{ $json.attempt_id }}:{{ $json.decision }}',\n  jsonb_build_object('decision','{{ $json.decision }}','run_id','{{ String($json.incremental_run_id || \"\").replace(/'/g,\"''\") }}','qdrant_mutations',{{ $json.qdrant_mutations ? 'true' : 'false' }})\n)).*;"
+      },
+      "id": "p9c5-queue-attempt-outcome-alert",
+      "name": "Queue Attempt Outcome Alert",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        1000,
+        0
+      ],
+      "credentials": {
+        "postgres": {
+          "id": "JcwnINxG4CstrGKy",
+          "name": "Postgres account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "let row={}; try{row=$items('Finish Scheduled Attempt')[0]?.json||{};}catch(e){} if(!row.attempt_id){try{row=$items('Finish Unsafe Plan Attempt')[0]?.json||{};}catch(e){}} return [{json:{attempt_id:row.attempt_id,decision:row.decision,schedule_enabled:row.schedule_enabled,catchup_completed:row.catchup_completed,batch_cutoff_sequence:row.batch_cutoff_sequence,pending_message_count:row.pending_message_count,plan_id:row.plan_id,incremental_run_id:row.incremental_run_id,qdrant_mutations:row.qdrant_mutations,decision_reasons:row.decision_reasons,report:row.report,alert_status:$json.delivery_status}}];"
+      },
+      "id": "p9c5-build-attempt-summary",
+      "name": "Build Attempt Summary",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1220,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT (rag_finish_incremental_schedule_attempt(\n  '{{ $items(\"Normalize Schedule Request\")[0].json.attempt_id }}','{{ $json.decision }}',NULL,false,\n  jsonb_build_object('controller_execution_id','{{ $execution.id }}','dry_run',true)\n)).*;"
+      },
+      "id": "p9c5-finish-skipped-attempt",
+      "name": "Finish Skipped Attempt",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        1440,
+        180
+      ],
+      "credentials": {
+        "postgres": {
+          "id": "JcwnINxG4CstrGKy",
+          "name": "Postgres account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT (rag_queue_incremental_alert(\n  '{{ $json.attempt_id }}',\n  CASE WHEN '{{ $json.decision }}'='blocked' THEN 'warning' ELSE 'info' END,\n  'incremental_schedule_{{ $json.decision }}',\n  '{{ $json.attempt_id }}:{{ $json.decision }}',\n  jsonb_build_object('decision','{{ $json.decision }}','reasons','{{ JSON.stringify($json.decision_reasons).replace(/'/g,\"''\") }}'::jsonb)\n)).*;"
+      },
+      "id": "p9c5-queue-skipped-alert",
+      "name": "Queue Skipped Alert",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        1660,
+        180
+      ],
+      "credentials": {
+        "postgres": {
+          "id": "JcwnINxG4CstrGKy",
+          "name": "Postgres account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const attempt=$items('Finish Skipped Attempt')[0].json; const alert=$json; return [{json:{attempt_id:attempt.attempt_id,decision:attempt.decision,schedule_enabled:attempt.schedule_enabled,catchup_completed:attempt.catchup_completed,batch_cutoff_sequence:attempt.batch_cutoff_sequence,pending_message_count:attempt.pending_message_count,qdrant_mutations:false,decision_reasons:attempt.decision_reasons,alert_status:alert.delivery_status}}];"
+      },
+      "id": "p9c5-return-skipped-summary",
+      "name": "Return Skipped Summary",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1880,
+        180
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT (rag_finish_incremental_schedule_attempt(\n  '{{ $items(\"Normalize Schedule Request\")[0].json.attempt_id }}','blocked',NULL,false,\n  jsonb_build_object('plan_id','{{ $items(\"Build Shadow Validated Plan\")[0].json.body.plan_id }}')\n)).*;"
+      },
+      "id": "p9c5-finish-unsafe-plan-attempt",
+      "name": "Finish Unsafe Plan Attempt",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        2100,
+        60
+      ],
+      "credentials": {
+        "postgres": {
+          "id": "JcwnINxG4CstrGKy",
+          "name": "Postgres account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT (rag_queue_incremental_alert(\n  '{{ $json.attempt_id }}','warning','incremental_plan_blocked','{{ $json.attempt_id }}:plan_blocked',\n  jsonb_build_object('decision_reasons','{{ JSON.stringify($json.decision_reasons).replace(/'/g,\"''\") }}'::jsonb)\n)).*;"
+      },
+      "id": "p9c5-queue-unsafe-plan-alert",
+      "name": "Queue Unsafe Plan Alert",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        2320,
+        60
+      ],
+      "credentials": {
+        "postgres": {
+          "id": "JcwnINxG4CstrGKy",
+          "name": "Postgres account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const row=$items('Finish Unsafe Plan Attempt')[0].json; return [{json:{...row,qdrant_mutations:false,alert_status:$json.delivery_status}}];"
+      },
+      "id": "p9c5-return-unsafe-plan-summary",
+      "name": "Return Unsafe Plan Summary",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2540,
+        60
+      ]
+    }
+  ],
+  "connections": {
+    "Low Traffic Schedule": {
+      "main": [
+        [
+          {
+            "node": "Normalize Schedule Request",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Schedule Control Webhook": {
+      "main": [
+        [
+          {
+            "node": "Normalize Schedule Request",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Manual Dry Run": {
+      "main": [
+        [
+          {
+            "node": "Normalize Schedule Request",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Normalize Schedule Request": {
+      "main": [
+        [
+          {
+            "node": "Prepare Scheduled Attempt",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare Scheduled Attempt": {
+      "main": [
+        [
+          {
+            "node": "Should Build Plan?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Should Build Plan?": {
+      "main": [
+        [
+          {
+            "node": "Build Shadow Validated Plan",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Finish Skipped Attempt",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Shadow Validated Plan": {
+      "main": [
+        [
+          {
+            "node": "Attach Plan Safety Gates",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Attach Plan Safety Gates": {
+      "main": [
+        [
+          {
+            "node": "Plan Is Safe?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Plan Is Safe?": {
+      "main": [
+        [
+          {
+            "node": "Mark Attempt Dispatched",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Finish Unsafe Plan Attempt",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Mark Attempt Dispatched": {
+      "main": [
+        [
+          {
+            "node": "Call Proven Scheduled Runner",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Call Proven Scheduled Runner": {
+      "main": [
+        [
+          {
+            "node": "Finish Scheduled Attempt",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Finish Scheduled Attempt": {
+      "main": [
+        [
+          {
+            "node": "Queue Attempt Outcome Alert",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Queue Attempt Outcome Alert": {
+      "main": [
+        [
+          {
+            "node": "Build Attempt Summary",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Finish Skipped Attempt": {
+      "main": [
+        [
+          {
+            "node": "Queue Skipped Alert",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Queue Skipped Alert": {
+      "main": [
+        [
+          {
+            "node": "Return Skipped Summary",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Finish Unsafe Plan Attempt": {
+      "main": [
+        [
+          {
+            "node": "Queue Unsafe Plan Alert",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Queue Unsafe Plan Alert": {
+      "main": [
+        [
+          {
+            "node": "Return Unsafe Plan Summary",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "meta": {
+    "templateCredsSetupCompleted": false
+  },
+  "pinData": {}
+}

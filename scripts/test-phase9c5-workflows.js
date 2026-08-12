@@ -1,0 +1,44 @@
+const assert = require('assert');
+const fs = require('fs');
+
+const controller = JSON.parse(fs.readFileSync('workflows/n8n/rag-incremental-scheduled-controller-phase-9c5.json'));
+const runner = JSON.parse(fs.readFileSync('workflows/n8n/rag-incremental-scheduled-run-phase-9c5.json'));
+const alerts = JSON.parse(fs.readFileSync('workflows/n8n/rag-incremental-operator-alerts-phase-9c5.json'));
+const node = (workflow, name) => {
+  const found = workflow.nodes.find(candidate => candidate.name === name);
+  assert(found, `missing node ${name}`);
+  return found;
+};
+const destinations = (workflow, name, branch = 0) => (workflow.connections[name]?.main?.[branch] || []).map(value => value.node);
+
+assert.strictEqual(controller.active, false);
+assert.strictEqual(runner.active, false);
+assert(node(controller, 'Low Traffic Schedule'));
+assert.match(node(controller, 'Low Traffic Schedule').parameters.rule.interval[0].expression, /PHASE9C5_CRON/);
+assert.match(node(controller, 'Prepare Scheduled Attempt').parameters.query, /rag_prepare_incremental_schedule_attempt/);
+assert.match(node(controller, 'Build Shadow Validated Plan').parameters.url, /INCREMENTAL_WORKER_URL/);
+assert.match(node(controller, 'Attach Plan Safety Gates').parameters.query, /rag_attach_incremental_schedule_plan/);
+assert.deepStrictEqual(destinations(controller, 'Should Build Plan?', 1), ['Finish Skipped Attempt']);
+assert.deepStrictEqual(destinations(controller, 'Plan Is Safe?', 0), ['Mark Attempt Dispatched']);
+assert.deepStrictEqual(destinations(controller, 'Plan Is Safe?', 1), ['Finish Unsafe Plan Attempt']);
+assert.match(node(controller, 'Call Proven Scheduled Runner').parameters.url, /scheduled-run-phase-9c5/);
+assert.match(node(controller, 'Queue Attempt Outcome Alert').parameters.query, /incremental_run_/);
+assert.deepStrictEqual(destinations(controller, 'Finish Unsafe Plan Attempt'), ['Queue Unsafe Plan Alert']);
+assert(!JSON.stringify(controller).includes('collections/tpm_unite_history/points'));
+
+assert.match(node(runner, 'Create Incremental Run').parameters.url, /rag-incremental-phase-9c4/);
+assert.match(node(runner, 'Run Baseline Regression').parameters.url, /rag-regression-batch/);
+assert.match(node(runner, 'Run Replacement Preflight').parameters.url, /rag-incremental-phase-9c4/);
+assert.match(node(runner, 'Apply Replacement').parameters.jsonBody, /PHASE9C4_APPLY/);
+assert.match(node(runner, 'Run Post Regression').parameters.jsonBody, /maintenance_validation_run_id/);
+assert.deepStrictEqual(destinations(runner, 'Drain Timed Out?', 0), ['Cancel Timed Out Drain']);
+assert.deepStrictEqual(destinations(runner, 'Drain Timed Out?', 1), ['Wait For Active Retrievals']);
+assert.deepStrictEqual(destinations(runner, 'Apply Verified?', 1), ['Rollback Failed Validation']);
+assert.deepStrictEqual(destinations(runner, 'Post Regression Matches?', 1), ['Rollback Failed Validation']);
+assert(!JSON.stringify(runner).includes('qdrant.railway.internal'));
+assert.strictEqual(alerts.active, false);
+assert.match(node(alerts, 'Load Queued Incremental Alerts').parameters.query, /delivery_status='queued'/);
+assert.match(node(alerts, 'Prepare Alert Delivery').parameters.jsCode, /INCREMENTAL_ALERT_WEBHOOK_URL/);
+assert.deepStrictEqual(destinations(alerts, 'Alert Destination Configured?', 0), ['Send Operator Alert']);
+assert.deepStrictEqual(destinations(alerts, 'Alert Destination Configured?', 1), ['Keep Alert Queued']);
+console.log('phase9c5 workflow checks passed');
