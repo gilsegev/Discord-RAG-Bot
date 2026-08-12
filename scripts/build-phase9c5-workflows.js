@@ -12,7 +12,7 @@ const connect = (workflow, from, to, branch = 0) => {
   workflow.connections[from].main[branch].push({ node: to, type: 'main', index: 0 });
 };
 
-const controller = { name: 'RAG Incremental Scheduled Controller - Phase 9C.5', active: false, nodes: [], connections: {}, settings: { executionOrder: 'v1' }, staticData: null, meta: { templateCredsSetupCompleted: false }, pinData: {} };
+const controller = { name: 'RAG Incremental Scheduled Controller - Phase 9C.5', active: false, nodes: [], connections: {}, settings: { executionOrder: 'v1', timezone: 'UTC' }, staticData: null, meta: { templateCredsSetupCompleted: false }, pinData: {} };
 controller.nodes.push(
   { parameters: { rule: { interval: [{ field: 'cronExpression', expression: "={{ $env.PHASE9C5_CRON || '0 3 * * *' }}" }] } }, id: 'p9c5-schedule', name: 'Low Traffic Schedule', type: 'n8n-nodes-base.scheduleTrigger', typeVersion: 1.2, position: [-1200,-180] },
   { parameters: { httpMethod: 'POST', path: 'rag-incremental-schedule-phase-9c5', responseMode: 'lastNode', options: {} }, id: 'p9c5-webhook', name: 'Schedule Control Webhook', type: 'n8n-nodes-base.webhook', typeVersion: 2, position: [-1200,0], webhookId: 'rag-incremental-schedule-phase-9c5' },

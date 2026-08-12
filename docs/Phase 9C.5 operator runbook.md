@@ -40,7 +40,9 @@ Only after the 9C.6 acceptance evidence is recorded:
 1. Set `catchup_completed=true`.
 2. Confirm the cron, timezone, message/chunk limits, and time budgets.
    Keep `PHASE9C5_CRON` in n8n aligned with the recorded cron expression; the
-   default for both is `0 3 * * *` (03:00 UTC).
+   default for both is `0 3 * * *` (03:00 UTC). The scheduled controller sets
+   its workflow timezone explicitly to `UTC`; do not rely on the n8n instance
+   timezone.
 3. Run one manual dry run and inspect its plan/report.
 4. Run one operator-approved manual execution through the scheduled controller.
 5. If it completes with matching structural and regression results, set
