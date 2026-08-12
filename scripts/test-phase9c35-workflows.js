@@ -151,8 +151,9 @@ assert.deepStrictEqual(
 );
 assert.deepStrictEqual(
   destinations(core, 'Acquire Execution Lease'),
-  ['Restore Runtime After Lease'],
+  ['Lease Admitted?'],
 );
+assert.deepStrictEqual(destinations(core, 'Lease Admitted?', 0), ['Restore Runtime After Lease']);
 assert.deepStrictEqual(
   destinations(core, 'Restore Runtime After Lease'),
   ['Apply Stage 0 Safety Gate'],

@@ -491,29 +491,77 @@ link to the durable Postgres run.
 - Apply planned Qdrant replacement and manifest updates.
 - Add idempotent retry and failure-state handling.
 - Run structural verification.
+- Run the complete Phase 8 regression suite before replacement and again after
+  structural verification. Reopen serving only when the post-replacement run
+  matches the accepted baseline, or after completed recovery.
 
 **Gate:** simulated failures at each replacement step are recoverable, and no
-query runs against a partially updated corpus.
+query runs against a partially updated corpus. Structural verification and the
+full regression suite pass before serving reopens.
 
-### Phase 9C.5 — Full regression and scheduled operation
+### Phase 9C.5 — Scheduled-operation readiness
 
-- Invoke the complete Phase 8 regression suite after structural verification.
-- Associate regression results with the ingestion run and corpus version.
-- Reopen the service only when all gates pass.
-- Schedule updates for a configurable low-traffic window.
+- Add a configurable low-traffic schedule around the proven Phase 9C.4 path.
+- Keep the schedule disabled until the Phase 9C.6 catch-up run succeeds.
 - Publish run duration, processed-message count, affected chunks, regression
   result, and maintenance duration.
+- Add alerting and an operator runbook for failed, rolled-back, and
+  `review_needed` runs.
 
-**Gate:** repeated incremental batches pass structural checks and the complete
-regression suite without quality degradation.
+**Gate:** repeated manual incremental batches pass the Phase 9C.4 structural
+and regression gates without quality degradation, and scheduled execution is
+safe to enable after catch-up.
 
-### Future Phase 9C.6 — Edits and deletions
+### Phase 9C.6 — One-time captured-message catch-up
+
+Run one migration-style incremental batch for all eligible messages received
+after the message boundary represented by the current healthy Qdrant corpus and
+at or before a fixed catch-up cutoff. Messages captured after that cutoff remain
+pending for the normal scheduled path.
+
+Before planning, prove capture coverage by comparing the current corpus's last
+represented Discord message boundary with the earliest continuously captured
+message in `rag_discord_messages`. Reconcile counts and IDs against
+`rag_pending_chunk_work`. If the interval contains a gap, stop: recover the
+missing messages through an export/backfill, capture them idempotently, and
+repeat the coverage check. Do not treat an incomplete capture table as a
+successful catch-up.
+
+The catch-up must reuse the Phase 9C.4 planner, maintenance gate, snapshot,
+replacement, manifest update, rollback, structural verification, and pre/post
+regression path. Take the required full Qdrant snapshot before this first
+production run. Record the fixed cutoff and before/after message, work-row,
+point, manifest, corpus-version, and regression counts as permanent migration
+evidence.
+
+The August 12, 2026 production preflight found that the current manifest ends
+at Discord message `1529684708294787083` (approximately July 23 03:00 UTC),
+while durable capture starts July 26 18:35 UTC. It also found 182 pending
+captured messages through August 12. Transaction history provides a minimum
+recovery checklist of 20 real, not-yet-manifested Discord IDs in the gap; see
+[the Phase 9C.6 known-gap checklist](phase9c6-known-gap-message-ids.csv). Twelve
+additional gap records have synthetic `replay-*` IDs and are evidence only.
+
+Reconcile every checklist ID against the recovery export, but do not use the
+checklist as proof that the interval is complete. The export/history scan must
+cover all corpus-eligible channels and can discover messages that never entered
+the bot transaction path. Import every recovered eligible message through the
+idempotent capture contract; give every known but excluded or unrecoverable ID
+an explicit durable reason. Never import synthetic replay IDs as Discord IDs.
+
+**Gate:** every eligible, proven-captured message through the cutoff is either
+completed or explicitly deferred with a reason; no pre-cutoff work remains
+silently pending; the new corpus is healthy; and the full regression matches
+the accepted baseline before serving reopens. Only then may the Phase 9C.5
+schedule be enabled.
+
+### Future Phase 9C.7 — Edits and deletions
 
 - Capture update/delete events.
 - Rebuild or remove affected chunks.
 - Add historical mutation validation cases.
 
-### Future Phase 9C.7 — Downtime gap workflow
+### Future Phase 9C.8 — Downtime gap workflow
 
 - Detect unresumable gaps.
 - Automatically create a review issue with recovery evidence.
