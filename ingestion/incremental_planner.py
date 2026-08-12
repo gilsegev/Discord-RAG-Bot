@@ -3,6 +3,11 @@
 The planner reads captured messages, the ownership manifest, and Qdrant payloads.
 It never calls a Qdrant mutation API. Plan persistence is opt-in and writes only
 the Phase 9C.3 Postgres plan tables for later Phase 9C.4 execution.
+
+Captured Discord messages are treated as immutable MESSAGE_CREATE records.
+Discord message edits and deletions are deliberately outside the incremental
+ingestion contract; an operator may use the full rebuild path when historical
+corpus correction is important enough to warrant it.
 """
 
 from __future__ import annotations

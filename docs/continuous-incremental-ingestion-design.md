@@ -113,10 +113,12 @@ exceptional baseline migration, but is not a steady-state production dependency.
 - complete Phase 8 regression run
 - update audit records and Phoenix spans
 
-### Deferred scope
+### Explicit non-goals
 
-- `MESSAGE_UPDATE`
-- `MESSAGE_DELETE` and bulk delete events
+- `MESSAGE_UPDATE`, `MESSAGE_DELETE`, and bulk delete events are deliberately
+  unsupported. Incremental ingestion treats captured `MESSAGE_CREATE` records
+  as immutable; an operator may use the full rebuild path for material corpus
+  corrections.
 - automatic REST history catch-up
 - automated ingestion of messages missed during an unresumable listener outage
 - zero-downtime Qdrant updates
@@ -550,12 +552,6 @@ completed or explicitly deferred with a reason; no pre-cutoff work remains
 silently pending; the new corpus is healthy; and the full regression matches
 the accepted baseline before serving reopens. Only then may the Phase 9C.5
 schedule be enabled.
-
-### Future Phase 9C.7 — Edits and deletions
-
-- Capture update/delete events.
-- Rebuild or remove affected chunks.
-- Add historical mutation validation cases.
 
 ### Future Phase 9C.8 — Downtime gap workflow
 
