@@ -250,6 +250,8 @@ Passive decision attributes should include:
 - thresholds used
 - final retrieval/context outcome
 - whether a hypothetical answer was generated
+- the raw Gemini output, final guarded response, model, and generation metadata
+  in the durable `rag_transactions` row for full-answer executions
 
 Full message text should follow the existing privacy and retention policy.
 Hashes and short summaries should be preferred in traces when full text is not
