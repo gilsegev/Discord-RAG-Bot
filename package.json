@@ -15,6 +15,7 @@
     "test:phase9c4:e2e": "python scripts/test-phase9c4-e2e.py",
     "test:phase9c6:postgres": "python scripts/test-phase9c6-postgres.py",
     "sync:regression-cases": "node scripts/sync-regression-cases.js",
-    "test:regression-cases": "node scripts/sync-regression-cases.js --check"
+    "test:regression-cases": "node scripts/sync-regression-cases.js --check",
+    "test:generation-output": "node scripts/test-generation-output-persistence.js"
   }
 }
