@@ -118,6 +118,11 @@ assertIgnored({ user_query: "Who should I contact about this opening?" }, "job_o
 assertLevel3Ignored({ user_query: "I am thinking about building an interview tracker. What do people think?" });
 assertLevel3Ignored({ user_query: "They often have insight on new roles, so this may be useful." });
 assertIgnored({ user_query: "Has anyone contacts replay.Delay or interviewed with them?" }, "job_or_referral", "passive_job_or_referral");
+// Explicit request words do not overcome an off-topic subject. Passive RAG is
+// for the historical TPM Unite corpus, not a general-purpose advice bot.
+assertLevel3Ignored({ user_query: "Could use advice on choosing a car" });
+assertLevel3Ignored({ user_query: "Looking for advice on wedding planning" });
+assertLevel3Ignored({ user_query: "Could use advice on renewing my H-1B visa" });
 
 // Level 2 must preserve genuine, corpus-answerable information requests with
 // and without a question mark.

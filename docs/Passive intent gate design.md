@@ -1,7 +1,7 @@
 # Passive Intent Gate Design
 
-**Status:** Proposed for implementation  
-**Owner:** Discord RAG Bot maintainers  
+**Status:** Implemented in shadow mode
+**Owner:** Discord RAG Bot maintainers
 **Related:** Phase 9; Retrieval, Context & Prompt Contracts; Observability Design; Regression README
 
 ## 1. Purpose
@@ -88,8 +88,13 @@ Admission requires both of the following:
    - Explicit information request such as `looking for advice`, `seeking recommendations`, `would appreciate insights`, or `curious about others' experience`.
 2. At least one corpus-oriented signal: a stable, historically answerable TPM
    topic (for example an interview process, leveling, role scope, career
-   practice, or company experience) or an explicit request for community/member
-   experience, advice, or recommendations.
+   practice, contract hiring, or company experience), or explicit TPM Unite
+   historical-community framing such as asking about member or community
+   experience, advice, or recommendations. Request words alone do not qualify:
+   the message must establish professional/TPM domain evidence or expressly
+   seek TPM Unite's historical community knowledge. General advice requests
+   about choosing a car, wedding planning, or renewing an H-1B visa are Level 3
+   outcomes unless they also establish that supported corpus relationship.
 
 An actual request marker must be present. For example, `any insights on
 contract hiring patterns` is an explicit request; a declarative statement that
@@ -165,3 +170,76 @@ Fixtures store synthetic or sanitized text and expected gate outcomes; they do n
 - Conversation-thread context for determining whether a question targets another member or the bot.
 - Enabling passive Discord responses.
 - Output-integrity and temporal-caveat changes tracked separately in GitHub issues #59 and #61.
+
+## 11. Implementation Review Record
+
+**Review date:** 2026-09-13  
+**Result:** No remaining deviations after fixes.
+
+Three independent code-quality passes and a replay of the rolling production
+sample identified and corrected these deviations before deployment:
+
+- Coordination, rhetorical, reported, and quoted questions could still be admitted by question syntax alone.
+- Referral keywords could suppress legitimate questions about historical referral practices.
+- Some unpunctuated knowledge questions were too narrowly recognized.
+- Gate metadata did not survive both terminal workflow branches.
+- Explicit advice wording could admit off-topic requests without TPM or historical-community evidence.
+- Phase 9 retained an older instruction that conflicted with the precision-first contract.
+
+The review re-ran after these fixes. The repository-specific
+`docs/04_Coding_Agent_Rules/engineering_insights.md` checklist referenced by the
+review procedure is not present in this repository, so its numbered-clause audit
+was not applicable; the repository `AGENTS.md` rules were checked instead.
+
+### As-built system view
+
+```text
+Discord -> listener -> n8n intake -> shared RAG core
+                         |                 |
+                         v                 v
+                    Postgres trace     Qdrant/Gemini
+                         |
+                         v
+                  shadow result only
+```
+
+### As-built component view
+
+```text
+Intake
+  +-- normalize and capture
+  +-- Level 1 exclusions
+  +-- Level 2 evidenced admission
+  +-- Level 3 fail-closed result
+  +-- routing trace
+  +-- optional shared-core call
+```
+
+### As-built code view
+
+```text
+Set Intake Active Call
+  +-- ignore(level, reason, class, evidence)
+  +-- admit(reason, evidence)
+  +-- exclusion patterns
+  +-- request + corpus-evidence rules
+  +-- route fields
+```
+
+### As-built workflow view
+
+```text
+event -> duplicate check -> active/direct? -> bypass
+                              |
+                              no
+                              v
+                    L1 exclude? -> ignored
+                              |
+                              no
+                              v
+                    L2 admit? -> RAG shadow
+                              |
+                              no
+                              v
+                         L3 ignored
+```
