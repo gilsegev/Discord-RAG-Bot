@@ -42,7 +42,7 @@ def assert_active_pointer(connection: Any, state: dict[str, Any], persisted: dic
         "SELECT collection_name,corpus_version_id,manifest_digest,revision,state FROM rag_active_corpus WHERE logical_name=%s",
         (logical_name,),
     ).fetchone()
-    expected = (state["collection_name"], state["source_corpus_version_id"], state["source_manifest_digest"], persisted.get("source_active_revision"), "serving")
+    expected = (state.get("target_collection_name", state["collection_name"]), state["source_corpus_version_id"], state["source_manifest_digest"], persisted.get("source_active_revision"), "serving")
     if not active or tuple(active) != expected:
         raise ExecutionError("active corpus pointer changed after planning")
 
@@ -102,15 +102,22 @@ def reconstruct(
 ) -> tuple[dict[str, Any], dict[str, Any], dict[str, list[float]], list[dict[str, Any]]]:
     """Rebuild and fully attest persisted plan material without mutation."""
     state, persisted = _run_and_plan(connection, run_id)
+    target_collection = state["collection_name"]
+    if persisted.get("source_logical_name"):
+        active = connection.execute("SELECT collection_name FROM rag_active_corpus WHERE logical_name=%s", (persisted["source_logical_name"],)).fetchone()
+        if not active:
+            raise ExecutionError("active corpus pointer is missing")
+        target_collection = str(active[0])
+    state["target_collection_name"] = target_collection
     assert_active_pointer(connection, state, persisted)
     work, live, manifest, source_corpus = load_postgres(
         connection,
         cutoff=int(state["batch_cutoff_sequence"]),
-        collection=state["collection_name"],
+        collection=target_collection,
         work_statuses=("pending", "claimed"),
     )
     records = parse_all_exports(exports) + live
-    points = scan_qdrant(qdrant, state["collection_name"])
+    points = scan_qdrant(qdrant, target_collection)
     plan = create_shadow_plan(
         work,
         records,
@@ -310,7 +317,7 @@ def _commit_database(
             ON CONFLICT (run_id) DO UPDATE SET status='completed',point_count=EXCLUDED.point_count,
                 manifest_digest=EXCLUDED.manifest_digest,completed_at=now()
             """,
-            (run_id, state["collection_name"], plan["chunker_version"],
+            (run_id, state.get("target_collection_name", state["collection_name"]), plan["chunker_version"],
              plan["embedding_version"], point_count, manifest_digest),
         )
         if old_ids:
@@ -338,7 +345,7 @@ def _commit_database(
                     ingestion_run_id=EXCLUDED.ingestion_run_id,payload_digest=EXCLUDED.payload_digest,
                     active=true,superseded_at=NULL
                 """,
-                (row.point_id,state["collection_name"],row.logical_group_id,row.channel_id,
+                (row.point_id,state.get("target_collection_name", state["collection_name"]),row.logical_group_id,row.channel_id,
                  row.thread_id,row.root_message_id,list(row.message_ids),row.first_message_id,
                  row.last_message_id,plan["chunker_version"],plan["embedding_version"],
                  run_id,row.payload_digest),
@@ -361,8 +368,30 @@ def _commit_database(
             VALUES (%s,%s,%s,%s,%s,'healthy',now())
             ON CONFLICT (corpus_version_id) DO UPDATE SET status='healthy',activated_at=now(),superseded_at=NULL
             """,
-            (corpus_version,run_id,state["collection_name"],manifest_digest,point_count),
+            (corpus_version,run_id,state.get("target_collection_name", state["collection_name"]),manifest_digest,point_count),
         )
+        connection.execute(
+            """INSERT INTO rag_corpus_manifest_versions
+               (corpus_version_id,collection_name,point_id,logical_group_id,channel_id,thread_id,root_message_id,
+                message_ids,first_message_id,last_message_id,chunker_version,embedding_version,ingestion_run_id,payload_digest)
+               SELECT %s,collection_name,point_id,logical_group_id,channel_id,thread_id,root_message_id,message_ids,
+                first_message_id,last_message_id,chunker_version,embedding_version,ingestion_run_id,payload_digest
+               FROM rag_chunk_manifest WHERE active AND collection_name=%s
+               ON CONFLICT(corpus_version_id,point_id) DO NOTHING""",
+            (corpus_version, state.get("target_collection_name", state["collection_name"])),
+        )
+        if plan.get("source_logical_name"):
+            updated = connection.execute(
+                """UPDATE rag_active_corpus SET corpus_version_id=%s,manifest_digest=%s,
+                   capture_cutoff_sequence=%s,revision=revision+1,changed_at=now()
+                   WHERE logical_name=%s AND collection_name=%s AND corpus_version_id=%s
+                     AND manifest_digest=%s AND revision=%s AND state='serving' RETURNING revision""",
+                (corpus_version, manifest_digest, state["batch_cutoff_sequence"], plan["source_logical_name"],
+                 state.get("target_collection_name", state["collection_name"]), state["source_corpus_version_id"], state["source_manifest_digest"],
+                 plan["source_active_revision"]),
+            ).fetchone()
+            if not updated:
+                raise ExecutionError("active corpus pointer changed before incremental commit")
         ready_ids = sorted({value for group in plan["groups"] if group["status"] == "ready" for value in group["source_message_ids"]})
         processed = connection.execute(
             """UPDATE rag_pending_chunk_work SET status='completed',completed_at=now(),failure_reason=NULL
@@ -406,10 +435,11 @@ def apply_replacement(
     if state["run_state"] != "replacing":
         raise ExecutionError("apply requires replacing run state")
     rows, _ = _replacement_material(plan)
+    target_collection = state.get("target_collection_name", state["collection_name"])
     old_ids = sorted({value for group in plan["groups"] for value in group["old_point_ids"]}, key=int)
-    before_count = int(qdrant.get_collection(state["collection_name"]).points_count or 0)
+    before_count = int(qdrant.get_collection(target_collection).points_count or 0)
     old_points = qdrant.retrieve(
-        state["collection_name"], ids=[int(value) for value in old_ids],
+        target_collection, ids=[int(value) for value in old_ids],
         with_payload=True, with_vectors=True,
     ) if old_ids else []
     if len(old_points) != len(old_ids):
@@ -420,10 +450,10 @@ def apply_replacement(
     )
     full_snapshot_name = ""
     if take_full_snapshot:
-        full_snapshot_name = str(qdrant.create_snapshot(state["collection_name"]).name)
+        full_snapshot_name = str(qdrant.create_snapshot(target_collection).name)
     snapshot_uri = f"postgres://rag_incremental_point_snapshots/{run_id}"
     if full_snapshot_name:
-        snapshot_uri += f";qdrant://{state['collection_name']}/{full_snapshot_name}"
+        snapshot_uri += f";qdrant://{target_collection}/{full_snapshot_name}"
     new_ids = set(rows)
     deleted_ids = set(old_ids) - new_ids
     mutated = False
@@ -433,21 +463,21 @@ def apply_replacement(
             id=int(point_id), vector=vectors[point_id], payload=row["_payload"]
         ) for point_id, row in sorted(rows.items(), key=lambda item: int(item[0]))]
         if points:
-            qdrant.upsert(state["collection_name"], points=points, wait=True)
+            qdrant.upsert(target_collection, points=points, wait=True)
             mutated = True
         if fail_after_step == "upsert":
             raise ExecutionError("injected failure after upsert")
         if deleted_ids:
-            qdrant.delete(state["collection_name"], points_selector=[int(value) for value in deleted_ids], wait=True)
+            qdrant.delete(target_collection, points_selector=[int(value) for value in deleted_ids], wait=True)
             mutated = True
         if fail_after_step == "delete":
             raise ExecutionError("injected failure after delete")
         expected_count = before_count - len(deleted_ids) + len(new_ids - set(old_ids))
-        actual_count = int(qdrant.get_collection(state["collection_name"]).points_count or 0)
+        actual_count = int(qdrant.get_collection(target_collection).points_count or 0)
         if actual_count != expected_count:
             raise ExecutionError(f"Qdrant point count {actual_count} != {expected_count}")
         verified = qdrant.retrieve(
-            state["collection_name"], ids=[int(value) for value in sorted(new_ids, key=int)],
+            target_collection, ids=[int(value) for value in sorted(new_ids, key=int)],
             with_payload=True, with_vectors=False,
         ) if new_ids else []
         if len(verified) != len(new_ids):
@@ -482,6 +512,12 @@ def rollback_replacement(
     connection: Any, qdrant: Any, run_id: str, *, automatic: bool = False
 ) -> dict[str, Any]:
     state, persisted = _run_and_plan(connection, run_id)
+    target_collection = state["collection_name"]
+    if persisted.get("source_logical_name"):
+        active = connection.execute("SELECT collection_name FROM rag_active_corpus WHERE logical_name=%s", (persisted["source_logical_name"],)).fetchone()
+        if not active:
+            raise ExecutionError("active corpus pointer is missing")
+        target_collection = str(active[0])
     if state["runtime_state"] != "maintenance" or state["active_incremental_run_id"] != run_id:
         raise ExecutionError("rollback requires run-owned maintenance")
     old_ids = {value for group in persisted["groups"] for value in group["old_point_ids"]}
@@ -495,14 +531,14 @@ def rollback_replacement(
     from qdrant_client.models import PointStruct
     if snapshots:
         qdrant.upsert(
-            state["collection_name"],
+            target_collection,
             points=[PointStruct(id=int(row[0]),vector=row[1],payload=row[2]) for row in snapshots],
             wait=True,
         )
     remove_ids = new_ids - old_ids
     if remove_ids:
         qdrant.delete(
-            state["collection_name"],
+            target_collection,
             points_selector=[int(value) for value in remove_ids], wait=True,
         )
     with connection.transaction():

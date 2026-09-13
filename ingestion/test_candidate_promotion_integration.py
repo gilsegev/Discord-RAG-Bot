@@ -16,7 +16,7 @@ class Connection:
 
 class CandidatePromotionIntegrationTests(unittest.TestCase):
     def test_post_cutoff_plan_targets_promoted_candidate(self):
-        state = {"collection_name": "candidate-v2", "source_corpus_version_id": "corpus-v2", "source_manifest_digest": "digest-v2"}
+        state = {"collection_name": "rag_active", "target_collection_name": "candidate-v2", "source_corpus_version_id": "corpus-v2", "source_manifest_digest": "digest-v2"}
         evidence = {"source_logical_name": "rag_active", "source_active_revision": 9}
         assert_active_pointer(Connection(("candidate-v2", "corpus-v2", "digest-v2", 9, "serving")), state, evidence)
 

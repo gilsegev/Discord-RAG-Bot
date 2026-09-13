@@ -28,6 +28,7 @@ CREATE TABLE IF NOT EXISTS rag_active_corpus (
  previous_corpus_version_id TEXT, previous_manifest_digest TEXT, previous_capture_cutoff_sequence BIGINT,
  promotion_id TEXT, state TEXT NOT NULL CHECK(state IN ('serving','maintenance','switching','rollback_switching')),
  revision BIGINT NOT NULL DEFAULT 1, changed_at TIMESTAMPTZ NOT NULL DEFAULT now(), CHECK(logical_name<>collection_name));
+INSERT INTO rag_runtime_state(collection_name) VALUES('rag_active') ON CONFLICT(collection_name) DO NOTHING;
 CREATE TABLE IF NOT EXISTS rag_candidate_promotions (
  promotion_id TEXT PRIMARY KEY, logical_name TEXT NOT NULL REFERENCES rag_active_corpus(logical_name),
  candidate_id TEXT NOT NULL REFERENCES rag_candidate_rebuilds(candidate_id), previous_collection_name TEXT NOT NULL,
@@ -40,7 +41,7 @@ CREATE UNIQUE INDEX IF NOT EXISTS idx_rag_candidate_one_transition ON rag_candid
  WHERE status IN ('switching','rollback_switching','reconciliation_required');
 INSERT INTO rag_active_corpus(logical_name,control_collection_name,collection_name,corpus_version_id,
  manifest_digest,capture_cutoff_sequence,state)
-SELECT 'rag_active',v.collection_name,v.collection_name,v.corpus_version_id,v.manifest_digest,
+SELECT 'rag_active','rag_active',v.collection_name,v.corpus_version_id,v.manifest_digest,
  coalesce((SELECT max(capture_sequence) FROM rag_discord_messages),0),'serving'
 FROM rag_corpus_versions v JOIN rag_runtime_state s ON s.collection_name=v.collection_name
 WHERE v.status='healthy' ORDER BY v.activated_at DESC NULLS LAST LIMIT 1
@@ -73,8 +74,13 @@ DECLARE a rag_active_corpus%ROWTYPE; c rag_candidate_rebuilds%ROWTYPE; p TEXT; B
  SELECT * INTO c FROM rag_candidate_rebuilds WHERE candidate_id=p_candidate_id FOR UPDATE;
  IF a.state<>'serving' OR NOT EXISTS(SELECT 1 FROM rag_runtime_state WHERE collection_name=a.control_collection_name AND runtime_state='maintenance')
  THEN RAISE EXCEPTION 'promotion requires Phase 9C maintenance' USING ERRCODE='55000'; END IF;
+ IF NOT EXISTS(SELECT 1 FROM rag_runtime_state s JOIN rag_incremental_runs r ON r.incremental_run_id=s.active_incremental_run_id
+   WHERE s.collection_name=a.control_collection_name AND s.runtime_state='maintenance' AND r.run_state='maintenance')
+ THEN RAISE EXCEPTION 'maintenance owner is not at a safe promotion gate' USING ERRCODE='55000'; END IF;
  IF EXISTS(SELECT 1 FROM rag_active_execution_leases WHERE collection_name=a.control_collection_name AND released_at IS NULL AND expires_at>clock_timestamp())
  THEN RAISE EXCEPTION 'active execution leases have not drained' USING ERRCODE='55000'; END IF;
+ IF EXISTS(SELECT 1 FROM rag_runtime_state WHERE runtime_state<>'serving' AND collection_name<>a.control_collection_name)
+ THEN RAISE EXCEPTION 'another corpus runtime is not serving' USING ERRCODE='55000'; END IF;
  IF c.status<>'regression_passed' OR c.frozen_capture_sequence<a.capture_cutoff_sequence
  THEN RAISE EXCEPTION 'candidate is unapproved or stale' USING ERRCODE='55000'; END IF;
  p:='promotion-'||substr(encode(digest(p_candidate_id||':'||a.revision::text,'sha256'),'hex'),1,24);
@@ -133,8 +139,13 @@ DECLARE p rag_candidate_promotions%ROWTYPE; a rag_active_corpus%ROWTYPE; BEGIN
  IF p.status<>'promoted' OR a.state<>'serving' OR a.collection_name<>p.target_collection_name
   OR NOT EXISTS(SELECT 1 FROM rag_runtime_state WHERE collection_name=a.control_collection_name AND runtime_state='maintenance')
  THEN RAISE EXCEPTION 'rollback requires matching promoted corpus in maintenance' USING ERRCODE='55000'; END IF;
+ IF NOT EXISTS(SELECT 1 FROM rag_runtime_state s JOIN rag_incremental_runs r ON r.incremental_run_id=s.active_incremental_run_id
+   WHERE s.collection_name=a.control_collection_name AND s.runtime_state='maintenance' AND r.run_state='maintenance')
+ THEN RAISE EXCEPTION 'maintenance owner is not at a safe rollback gate' USING ERRCODE='55000'; END IF;
  IF EXISTS(SELECT 1 FROM rag_active_execution_leases WHERE collection_name=a.control_collection_name AND released_at IS NULL AND expires_at>clock_timestamp())
  THEN RAISE EXCEPTION 'active execution leases have not drained' USING ERRCODE='55000'; END IF;
+ IF EXISTS(SELECT 1 FROM rag_runtime_state WHERE runtime_state<>'serving' AND collection_name<>a.control_collection_name)
+ THEN RAISE EXCEPTION 'another corpus runtime is not serving' USING ERRCODE='55000'; END IF;
  UPDATE rag_candidate_promotions SET status='rollback_switching' WHERE promotion_id=p_promotion_id;
  UPDATE rag_active_corpus SET state='rollback_switching',revision=revision+1 WHERE logical_name=p.logical_name;
  RETURN QUERY SELECT p.target_collection_name,p.previous_collection_name,p.logical_name; END $$;

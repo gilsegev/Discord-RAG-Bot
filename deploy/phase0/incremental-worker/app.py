@@ -178,9 +178,12 @@ def plan(request: PlanRequest, x_incremental_worker_token: str | None = Header(d
     try:
         qdrant = QdrantClient(url=QDRANT_URL)
         with psycopg.connect(DATABASE_URL) as connection:
-            target = (resolve_active_corpus(connection, request.collection_name)
-                      if request.collection_name == "rag_active" else None)
+            try:
+                target = resolve_active_corpus(connection, request.collection_name)
+            except PlanningError:
+                target = None
             physical_collection = target["collection_name"] if target else request.collection_name
+            planning_collection = "rag_active" if target else request.collection_name
             work, live, manifest, source_corpus = load_postgres(
                 connection,
                 cutoff=request.batch_cutoff_sequence,
@@ -191,7 +194,7 @@ def plan(request: PlanRequest, x_incremental_worker_token: str | None = Header(d
             records = parse_all_exports(EXPORT_DIR) + live
             points = scan_qdrant(qdrant, physical_collection)
             shadow = create_shadow_plan(
-                work, records, manifest, points, physical_collection,
+                work, records, manifest, points, planning_collection,
                 source_corpus=source_corpus,
             )
             measurement = (

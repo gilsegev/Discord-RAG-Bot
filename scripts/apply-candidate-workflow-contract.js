@@ -20,10 +20,12 @@ for (const name of files) {
             !node.parameters[key].includes('lease_collection:')) {
           node.parameters[key] = node.parameters[key].replace(
             "qdrant_collection: input.qdrant_collection || tx.qdrant_collection || 'rag_active',",
-            "qdrant_collection: input.qdrant_collection || tx.qdrant_collection || 'rag_active',\n    lease_collection: input.lease_collection || tx.lease_collection || 'tpm_unite_history',"
+            "qdrant_collection: input.qdrant_collection || tx.qdrant_collection || 'rag_active',\n    lease_collection: input.lease_collection || tx.lease_collection || 'rag_active',"
           );
         }
-        node.parameters[key] = node.parameters[key].replace(/(    lease_collection: input\.lease_collection \|\| tx\.lease_collection \|\| 'tpm_unite_history',\n)(?:\1)+/g, '$1');
+        node.parameters[key] = node.parameters[key].replaceAll("lease_collection: input.lease_collection || tx.lease_collection || 'tpm_unite_history'", "lease_collection: input.lease_collection || tx.lease_collection || 'rag_active'");
+        node.parameters[key] = node.parameters[key].replace(/(    lease_collection: input\.lease_collection \|\| tx\.lease_collection \|\| 'rag_active',\n)(?:\1)+/g, '$1');
+        node.parameters[key] = node.parameters[key].replaceAll('$json.lease_collection || "tpm_unite_history"', '$json.lease_collection || "rag_active"');
       }
     }
   }
