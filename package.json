@@ -1,5 +1,6 @@
 {
   "scripts": {
+    "test:issue17": "python -m unittest ingestion.test_reply_roots ingestion.test_chunk_manifest ingestion.test_incremental_planner && node scripts/test-issue17-root-dedupe.js",
     "n8n:list": "node scripts/n8n-sync.js list",
     "n8n:pull": "node scripts/n8n-sync.js pull",
     "n8n:push": "node scripts/n8n-sync.js push",

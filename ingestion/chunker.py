@@ -1,40 +1,9 @@
-"""
-ingestion/chunker.py - v11 reply-aware chunking
-v11 fix (Issue #17):
-  - root_message_id computed in _reply_aware_chunk() (via existing
-    get_root_id()) is now stored on the chunk dict, not discarded
-    after grouping. Enables Phase 6 reply-root dedupe downstream.
-  - Time-window chunks (non-reply) get root_message_id=None.
-  - Split pieces inherit root_message_id automatically via the
-    existing {**chunk} shallow-copy in _split_if_needed() - no
-    split-specific code needed.
-  - Scope safety: a resolved root is only trusted as root_message_id
-    when it shares the group's channel_id and thread_name (mirrors
-    chunk_manifest.py's scope_is_safe check). An out-of-scope root
-    is stored as None instead of risking cross-channel/cross-thread
-    grouping in Phase 6 dedupe.
-  - Test coverage: direct/nested replies, split inheritance, a
-    genuine multi-hop cycle (A->B->C->A), a missing mid-chain parent,
-    cross-channel scope rejection, and a message whose immediate
-    parent was never parsed at all (Test 7 - the most common real-
-    world "no root" case, confirmed via corpus analysis below).
-  - Note: an earlier corpus-wide diagnostic was removed from this
-    file. It classified "reply-derived" chunks by a naive text match
-    ("  > " in rendered text), which conflates genuine scope-rejected
-    roots with messages whose parent was never parsed at all (a much
-    larger, unrelated bucket) - producing a misleading null rate.
-    A one-off external script (not part of this package) replicating
-    _reply_aware_chunk's actual grouping and metadata-resolution logic
-    measured the TRUE scope-rejection rate at 1.91% (256/13,386
-    qualifying reply groups) across the full 77,558-message corpus -
-    in line with expectations for a rare edge case. This figure
-    reflects the v11.1 fix (see below), which separates the GROUPING
-    key (a resilient walk, always resolvable) from the
-    root_message_id METADATA resolution (may walk to an unresolved
-    ancestor, matching chunk_manifest.py's resolve_root()) - an
-    earlier version conflated the two, causing 225 messages
-    corpus-wide to be mis-grouped. See PR description for the
-    validation scripts and full breakdown.
+"""Discord reply-aware and time-window chunking.
+
+Reply chunks carry a nullable trusted ``root_message_id``. Incomplete,
+cyclic, or cross-channel reply chains remain searchable through ordinary
+channel-local time-window chunks.
+
 v10 fixes (post PR #5):
   - Fix 1: reply line detection in _build_line_to_msg_id() now handles
             '  > [author @ date]:' format - previously lstrip() left '> ['
@@ -52,7 +21,10 @@ Prior fixes retained from v8/v9:
 Author: ThinkInSystems (Hemanth Aragonda)
 """
 import tiktoken
+from collections import Counter
 from datetime import datetime
+
+from ingestion.reply_roots import resolve_reply_root
 
 enc             = tiktoken.get_encoding("cl100k_base")
 WINDOW_MINS     = 15
@@ -72,15 +44,16 @@ def chunk_records(records: list[dict]) -> list[dict]:
 
     by_channel = {}
     for r in records:
-        group_key = (r["channel"], r.get("thread_name"))
-        by_channel.setdefault(group_key, []).append(r)
+        by_channel.setdefault(str(r["channel_id"]), []).append(r)
 
     all_chunks = []
-    for (channel, thread_name), msgs in by_channel.items():
+    root_failures = Counter()
+    for channel_id, msgs in by_channel.items():
         msgs      = sorted(msgs, key=lambda m: m["timestamp"])
-        is_thread = thread_name is not None
-        chunks    = _reply_aware_chunk(msgs, id_to_msg,
-                                       is_thread=is_thread)
+        is_thread = msgs[0].get("thread_name") is not None
+        chunks    = _reply_aware_chunk(
+            msgs, id_to_msg, is_thread=is_thread, root_failures=root_failures
+        )
         for chunk in chunks:
             all_chunks.extend(_split_if_needed(chunk, id_to_msg))
 
@@ -89,65 +62,17 @@ def chunk_records(records: list[dict]) -> list[dict]:
     print(f"Created {len(all_chunks)} chunks from "
           f"{len(records)} messages across "
           f"{len(by_channel)} channel/thread group(s)")
+    if root_failures:
+        summary = ", ".join(
+            f"{reason}={count}" for reason, count in sorted(root_failures.items())
+        )
+        print(f"Unresolved reply roots: {summary}")
     return all_chunks
 
 
-def get_root_id(msg: dict, id_to_msg: dict) -> str:
-    """
-    Follow parent_id chain to find the root message id.
-    Cycle detection via visited set prevents infinite loops.
-
-    v11.1 fix (align with chunk_manifest.py resolve_root()): if the
-    chain terminates at a parent_id that was never parsed (deleted,
-    export gap), return that MISSING id itself rather than the last
-    successfully resolved message. This matches Phase 9C.2 manifest
-    behavior so both systems agree on root_message_id for the same
-    reply chain. Previously this returned the last known message,
-    which silently understated the chain and could disagree with
-    chunk_manifest.py resolve_root() on the same edge case.
-    """
-    visited = set()
-    current = msg
-    while current.get("parent_id"):
-        pid = current["parent_id"]
-        if pid in visited:
-            break
-        if pid not in id_to_msg:
-            return pid
-        visited.add(pid)
-        current = id_to_msg[pid]
-    return current["id"]
-
-def _resolve_grouping_root_id(msg: dict, id_to_msg: dict) -> str:
-    """
-    Resolve the ancestor used as the CHUNK GROUPING key.
-
-    Deliberately resilient: if the parent_id chain hits a message that
-    was never parsed (deleted, export gap), stop and return the last
-    successfully resolved message's id - never a missing/unresolvable
-    id. This guarantees replies still coalesce into one chunk even
-    when an upstream ancestor is missing from this export.
-
-    This is intentionally DIFFERENT from get_root_id(), which is used
-    only for the root_message_id metadata field and (to match
-    chunk_manifest.py's resolve_root()) may return an unresolved
-    parent id itself. Using get_root_id() here instead would silently
-    route affected reply groups to time-window chunking whenever a
-    chain has any gap above the immediate parent - a chunk-membership
-    regression, not just a metadata change. See Issue #17 review.
-    """
-    visited = set()
-    current = msg
-    while current.get("parent_id"):
-        pid = current["parent_id"]
-        if pid in visited or pid not in id_to_msg:
-            break
-        visited.add(pid)
-        current = id_to_msg[pid]
-    return current["id"]
-
 def _reply_aware_chunk(msgs: list[dict], id_to_msg: dict,
-                       is_thread: bool = False) -> list[dict]:
+                       is_thread: bool = False,
+                       root_failures: Counter | None = None) -> list[dict]:
     """
     Two-pass chunking:
     Pass 1: group reply chains by parent_id.
@@ -155,34 +80,28 @@ def _reply_aware_chunk(msgs: list[dict], id_to_msg: dict,
     Orphans collected BEFORE _window_chunk call (critical ordering).
     Filtered root handling: bot/system roots make replies standalone.
 
-    v11 fix (Issue #17): a resolved root is only trusted as
-    root_message_id when it shares this group's channel_id and
-    thread_name (mirrors chunk_manifest.py's scope_is_safe check).
-    An out-of-scope root is stored as root_message_id=None rather
-    than risking cross-channel/cross-thread grouping in Phase 6
-    dedupe. This does NOT change which messages get grouped into
-    the chunk's text - that grouping logic is unchanged - it only
-    guards the root_message_id metadata field itself.
-
-    Note: a message whose parent_id is set but never appears in
-    id_to_msg at all (parent never parsed - deleted, export gap)
-    never enters root_groups below - it falls straight to the
-    standalone/time-window path with root_message_id=None. This is
-    pre-existing behavior, unrelated to the scope-safety check, and
-    is the dominant real-world reason root_message_id ends up None
-    (see Test 7 and the module docstring's corpus note above).
+    Only complete, same-channel reply chains receive a root. All unresolved
+    records fall through to the same time-window path as standalone messages.
     """
     min_msgs = MIN_MSGS_THREAD if is_thread else MIN_MSGS
 
-    group_channel_id  = msgs[0].get("channel_id") if msgs else None
-    group_thread_name = msgs[0].get("thread_name") if msgs else None
+    group_channel_id = str(msgs[0]["channel_id"]) if msgs else None
 
     root_groups = {}
     assigned    = set()
+    unresolved_ids = set()
 
     for msg in msgs:
-        if msg.get("parent_id") and msg["parent_id"] in id_to_msg:
-            root_id = _resolve_grouping_root_id(msg, id_to_msg)
+        if msg.get("parent_id"):
+            resolution = resolve_reply_root(
+                msg["id"], id_to_msg, group_channel_id
+            )
+            root_id = resolution.root_message_id
+            if root_id is None:
+                if root_failures is not None:
+                    root_failures[resolution.failure_reason or "unknown"] += 1
+                unresolved_ids.add(msg["id"])
+                continue
             root_groups.setdefault(root_id, []).append(msg)
             assigned.add(msg["id"])
             if root_id in id_to_msg and root_id not in assigned:
@@ -201,41 +120,24 @@ def _reply_aware_chunk(msgs: list[dict], id_to_msg: dict,
 
         group_msgs = sorted(group_msgs, key=lambda m: m["timestamp"])
         if len(group_msgs) >= min_msgs:
-            # v11.1 fix (Issue #17 + grouping-regression fix):
-            # root_id is the GROUPING key from
-            # _resolve_grouping_root_id() - always an existing
-            # message, deliberately resilient to upstream gaps so
-            # chunk membership never regresses.
-            #
-            # root_message_id METADATA resolves further from that
-            # anchor using get_root_id(), which may walk past it to
-            # an unresolved ancestor id (matching chunk_manifest.py's
-            # resolve_root()). scope_is_safe is checked against THAT
-            # resolved value - an unresolved id has no record, so it
-            # is automatically rejected to None, same as an
-            # out-of-scope root.
-            group_root_record = id_to_msg.get(root_id)
-            resolved_root_id  = (
-                get_root_id(group_root_record, id_to_msg)
-                if group_root_record else None
-            )
-            root_record   = (
-                id_to_msg.get(resolved_root_id) if resolved_root_id else None
-            )
-            scope_is_safe = bool(root_record) and (
-                root_record.get("channel_id") == group_channel_id and
-                root_record.get("thread_name") == group_thread_name
-            )
-            safe_root_id = resolved_root_id if scope_is_safe else None
-            reply_chunks.append(
-                _build(group_msgs, root_message_id=safe_root_id)
-            )
+            reply_chunks.append(_build(group_msgs, root_message_id=root_id))
         else:
             orphans.extend(group_msgs)
 
     # Add orphans BEFORE calling _window_chunk (critical ordering)
     standalone.extend(orphans)
     time_chunks = _window_chunk(standalone, min_msgs=min_msgs)
+    searchable_ids = {
+        message_id
+        for chunk in time_chunks
+        for message_id in chunk["message_ids"]
+    }
+    time_chunks.extend(
+        _build([message])
+        for message in standalone
+        if message["id"] in unresolved_ids
+        and message["id"] not in searchable_ids
+    )
 
     return reply_chunks + time_chunks
 
@@ -283,11 +185,7 @@ def _build(msgs: list[dict], root_message_id: str | None = None) -> dict:
     span_days calculated for long-span metadata filtering.
     dict.fromkeys preserves insertion order while deduplicating authors.
 
-    v11 fix (Issue #17): root_message_id is passed in by the caller
-    (already resolved via get_root_id() for reply chains, scope-
-    checked by _reply_aware_chunk(), None for time-window chunks)
-    and stored on the chunk dict so it survives into the Qdrant
-    payload for Phase 6 reply-root dedupe.
+    ``root_message_id`` is trusted by the caller and copied into every split.
     """
     assert msgs, "_build() called with empty message list"
 
@@ -508,14 +406,11 @@ def _run_regression_tests() -> bool:
               defaults to None on non-reply chunks, and survives split.
     Test 4 - Unit: genuine multi-hop cycle (A->B->C->A) resolves without
               an infinite loop.
-    Test 5 - Unit: a missing/malformed mid-chain parent resolves to the
-              last known message instead of crashing.
+    Test 5 - Unit: a missing/malformed parent fails closed.
     Test 6 - Integration: a root in a different channel is rejected -
               root_message_id comes back None, not the foreign id.
     Test 7 - Integration: a message whose immediate parent_id was never
-              parsed at all never enters a reply group and produces no
-              crash - the dominant real-world "no root" case, confirmed
-              against the full corpus (see module docstring).
+              parsed remains searchable without receiving a guessed root.
 
     Returns True if all tests pass, False otherwise.
     """
@@ -571,8 +466,9 @@ def _run_regression_tests() -> bool:
     tokens = len(enc.encode(chunk["text"]))
 
     if tokens <= MAX_TOKENS:
-        print(f"  Test 2 SKIP: synthetic chunk only {tokens} tokens "
+        print(f"  Test 2 FAIL: synthetic chunk only {tokens} tokens "
               f"- increase n_msgs to exceed {MAX_TOKENS}")
+        all_pass = False
     else:
         pieces = _split_if_needed(chunk, id_to_msg_test)
 
@@ -623,7 +519,8 @@ def _run_regression_tests() -> bool:
             print(f"  Test 3c PASS: all {len(reply_pieces)} split pieces "
                   f"inherit root_message_id")
     else:
-        print(f"  Test 3c SKIP: synthetic chunk only {reply_tokens} tokens")
+        print(f"  Test 3c FAIL: synthetic chunk only {reply_tokens} tokens")
+        all_pass = False
 
     # -- Test 4: genuine multi-hop cycle (A -> B -> C -> A) ---------------
     # Trivial self-loops (msg pointing to itself) are a much weaker test
@@ -631,34 +528,27 @@ def _run_regression_tests() -> bool:
     # as a required case, so this exercises the visited-set break logic
     # across 3 distinct nodes rather than 1.
     cyclic_msgs = {
-        "cyc_a": {"id": "cyc_a", "parent_id": "cyc_b"},
-        "cyc_b": {"id": "cyc_b", "parent_id": "cyc_c"},
-        "cyc_c": {"id": "cyc_c", "parent_id": "cyc_a"},
+        "cyc_a": {"id": "cyc_a", "parent_id": "cyc_b", "channel_id": "999"},
+        "cyc_b": {"id": "cyc_b", "parent_id": "cyc_c", "channel_id": "999"},
+        "cyc_c": {"id": "cyc_c", "parent_id": "cyc_a", "channel_id": "999"},
     }
-    cycle_root = get_root_id(cyclic_msgs["cyc_a"], cyclic_msgs)
-    if cycle_root in cyclic_msgs:
-        print(f"  Test 4 PASS: multi-hop cycle (A->B->C->A) resolved "
-              f"without infinite loop (root={cycle_root!r})")
+    cycle_root = resolve_reply_root("cyc_a", cyclic_msgs, "999")
+    if cycle_root.root_message_id is None and cycle_root.failure_reason == "cycle":
+        print("  Test 4 PASS: multi-hop cycle failed closed")
     else:
-        print(f"  Test 4 FAIL: resolved root {cycle_root!r} is not one "
-              f"of the cycle's own message ids")
+        print(f"  Test 4 FAIL: cycle result was {cycle_root!r}")
         all_pass = False
 
     # -- Test 5: missing/malformed parent mid-chain -----------------------
-    # parent_id references a message that was never parsed (deleted,
-    # export gap, or malformed reference) - must resolve gracefully,
-    # returning the MISSING parent's id itself (v11.1), matching
-    # chunk_manifest.py's resolve_root() so both systems agree on
-    # root_message_id for the same reply chain. No crash either way.
+    # A missing parent must return no root without crashing.
     broken_chain = {
-        "orphan_child": {"id": "orphan_child", "parent_id": "ghost_parent"},
+        "orphan_child": {"id": "orphan_child", "parent_id": "ghost_parent", "channel_id": "999"},
     }
-    broken_root = get_root_id(broken_chain["orphan_child"], broken_chain)
-    if broken_root == "ghost_parent":
-        print("  Test 5 PASS: missing mid-chain parent returns the "
-              "unresolved parent id, matching resolve_root(), no crash")
+    broken_root = resolve_reply_root("orphan_child", broken_chain, "999")
+    if broken_root.root_message_id is None:
+        print("  Test 5 PASS: missing parent failed closed")
     else:
-        print(f"  Test 5 FAIL: expected 'ghost_parent', got "
+        print(f"  Test 5 FAIL: expected no root, got "
               f"{broken_root!r}")
         all_pass = False
 
@@ -688,8 +578,9 @@ def _run_regression_tests() -> bool:
     )
     reply_like = [c for c in cross_chunks if c.get("message_count", 0) > 1]
     if not reply_like:
-        print("  Test 6 SKIP: synthetic group did not reach min_msgs "
+        print("  Test 6 FAIL: synthetic group did not reach min_msgs "
               "threshold - adjust test data")
+        all_pass = False
     elif reply_like[0].get("root_message_id") is None:
         print("  Test 6 PASS: cross-channel root correctly nulled, "
               "not leaked into root_message_id")
@@ -700,13 +591,8 @@ def _run_regression_tests() -> bool:
         all_pass = False
 
     # -- Test 7: immediate parent never parsed at all ----------------------
-    # Distinct from Test 5 (mid-chain gap, tested via get_root_id directly).
-    # Here the VERY FIRST parent lookup in _reply_aware_chunk's own gate
-    # ("if msg.get('parent_id') and msg['parent_id'] in id_to_msg") fails,
-    # so the message never enters root_groups at all - confirmed via
-    # corpus analysis to be the dominant real-world "no root" case
-    # (897 of ~14,283 "  > "-rendered chunks in the full corpus run),
-    # distinct from and much larger than genuine scope-rejection (147).
+    # Distinct from Test 5's direct resolver check, this exercises fallback
+    # chunking and verifies that no guessed root is emitted.
     lone_reply = {
         "id": "lone_reply_msg", "author": "someone",
         "timestamp": "2021-08-10T00:00:00+00:00",
@@ -730,13 +616,8 @@ def _run_regression_tests() -> bool:
         all_pass = False
 
     # -- Test 8: immediate parent exists, grandparent missing --------------
-    # The exact scenario Finding 1 identified as untested: a chain
-    # where the immediate parent IS parsed (so the outer gate lets it
-    # into root_groups), but that parent's own parent_id points to a
-    # message never parsed. Chunk grouping must NOT regress to
-    # time-window chunking - the reply pair must still coalesce into
-    # one reply chunk - while root_message_id metadata correctly
-    # comes back None (unresolvable root, not falsely claimed).
+    # A missing higher ancestor routes the available messages through the
+    # ordinary time-window fallback with root_message_id=None.
     gap_parent = {
         "id": "gap_parent_msg", "author": "alice",
         "timestamp": "2021-08-10T00:00:00+00:00",
@@ -760,16 +641,15 @@ def _run_regression_tests() -> bool:
     )
     reply_like_gap = [c for c in gap_chunks if c.get("message_count", 0) >= 2]
     if not reply_like_gap:
-        print("  Test 8 FAIL: parent+child did not coalesce into one "
-              "reply chunk - chunk membership regressed on upstream gap")
+        print("  Test 8 FAIL: fallback window lost the available messages")
         all_pass = False
     elif reply_like_gap[0].get("root_message_id") is not None:
         print(f"  Test 8 FAIL: expected root_message_id=None (unresolvable "
               f"root), got {reply_like_gap[0].get('root_message_id')!r}")
         all_pass = False
     else:
-        print("  Test 8 PASS: parent+child still coalesce into one chunk "
-              "despite missing grandparent, root_message_id correctly None")
+        print("  Test 8 PASS: missing-grandparent messages remain searchable "
+              "with root_message_id=None")
 
     return all_pass
 

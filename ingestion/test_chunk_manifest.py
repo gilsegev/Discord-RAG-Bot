@@ -209,8 +209,8 @@ class ChunkManifestTests(unittest.TestCase):
 
     def test_reply_cycle_fails_closed(self):
         records = [record(1, 2), record(2, 1)]
-        with self.assertRaisesRegex(OwnershipError, "reply cycle"):
-            create_plan([point([1, 2])], records, "c", "v10", "embed")
+        plan = create_plan([point([1, 2])], records, "c", "v10", "embed")
+        self.assertIsNone(plan["rows"][0]["root_message_id"])
 
     def test_orphan_replies_with_multiple_roots_are_a_window(self):
         records = [record(1), record(2, 1), record(3), record(4, 3)]
