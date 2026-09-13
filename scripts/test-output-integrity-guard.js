@@ -5,13 +5,20 @@ const vm = require('vm');
 const workflow = JSON.parse(fs.readFileSync(
   'workflows/n8n/rag-core-execution-phase-8.json', 'utf8'
 ));
+const intakeWorkflow = JSON.parse(fs.readFileSync(
+  'workflows/n8n/rag-intake-routing-phase-9.json', 'utf8'
+));
 const node = workflow.nodes.find(candidate => candidate.name === 'Build Gemini Result');
 const resultNode = workflow.nodes.find(candidate => candidate.name === 'Return RAG Core Result');
 const generationNode = workflow.nodes.find(candidate => candidate.name === 'Gemini Generation');
+const shouldPostNode = intakeWorkflow.nodes.find(candidate => candidate.name === 'Should Post Discord?');
+const notPostedNode = intakeWorkflow.nodes.find(candidate => candidate.name === 'Build Not Posted Result');
 
 assert(node, 'missing Build Gemini Result node');
 assert(resultNode, 'missing Return RAG Core Result node');
 assert(generationNode, 'missing Gemini Generation node');
+assert(shouldPostNode, 'missing Should Post Discord? node');
+assert(notPostedNode, 'missing Build Not Posted Result node');
 
 const generationRequest = generationNode.parameters.jsonBody;
 assert(generationRequest.includes('responseMimeType'));
@@ -64,6 +71,14 @@ function finalize(gemini) {
   return result[0].json;
 }
 
+function buildNotPosted(state) {
+  const result = vm.runInNewContext(
+    `(function () { ${notPostedNode.parameters.jsCode}\n})()`,
+    { $json: state }
+  );
+  return result[0].json;
+}
+
 const cleanAnswer = 'TPM Unite members recommend mapping dependencies early (#tpm-tradecraft, 2024-05-01).';
 const clean = run(responseFor([
   { thought: true, text: 'Citation checking: this must never be exposed.' },
@@ -89,6 +104,17 @@ assert.strictEqual(finalDrafting.final_status, 'failed');
 assert.strictEqual(finalDrafting.failure_reason, 'gemini_output_integrity_failed');
 assert.strictEqual(finalDrafting.gemini_response_text, '');
 assert.strictEqual(finalDrafting.discord_response_text, '');
+
+const shouldPostExpression = shouldPostNode.parameters.conditions.conditions[0].leftValue;
+assert.strictEqual(shouldPostExpression, '={{ $json.allow_discord_post && !$json.output_integrity_failed }}');
+const notPostedDrafting = buildNotPosted({
+  ...finalDrafting,
+  allow_discord_post: true,
+  output_integrity_failed: true,
+});
+assert.strictEqual(notPostedDrafting.response_status, 'not_posted');
+assert.strictEqual(notPostedDrafting.discord_response_text, '');
+assert.strictEqual(notPostedDrafting.discord_response_message_id, '');
 
 const draftingBeforeAnswer = run(responseFor([
   { text: JSON.stringify({ final_answer: `Analysis:\n${cleanAnswer}` }) },
