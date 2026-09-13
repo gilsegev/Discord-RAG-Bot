@@ -26,7 +26,7 @@ Messages captured after `T` remain in `rag_pending_chunk_work`. After promotion,
 
 ## Promote
 
-1. Confirm `rag_active_corpus.state = 'maintenance'`, no live lease remains, and the approved candidate cutoff is not behind the active cutoff.
+1. Confirm `rag_active_corpus.state = 'serving'`, its Phase 9C control runtime is in maintenance, no live lease remains, and the approved candidate cutoff is not behind the active cutoff.
 2. Call `POST /candidate/promote` with the candidate ID and `logical_alias: rag_active`.
 3. The worker durably records switching intent, snapshots the current physical collection, moves the alias in one Qdrant aliases request, then commits the matching active pointer.
 4. Reopen serving only after the pointer and observed alias agree. Do not delete the prior collection.
