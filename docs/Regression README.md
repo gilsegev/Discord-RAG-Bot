@@ -51,7 +51,7 @@ Totals:
 - 48 cases
 - 32 expected answers
 - 16 expected refusals
-- 14 caveat-required cases
+- 15 caveat-required cases
 - 6 PII/adversarial cases
 
 ## How It Maps To The Rubric
