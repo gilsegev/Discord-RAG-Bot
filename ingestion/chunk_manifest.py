@@ -94,11 +94,15 @@ def point_to_manifest(
     # could include a cross-channel reply root in a chunk, so export records are
     # optional enrichment and must not redefine the point's owning scope.
     thread_name = payload.get("thread_name")
-    # Discord threads already have their own stable channel_id. Keep the
-    # legacy nullable column empty rather than persisting a duplicate scope ID.
-    thread_id = None
+    # Thread ID remains metadata only. Forum exports do not expose it apart
+    # from their channel ID, so retain that value for compatibility.
+    thread_id = (
+        str(payload["thread_id"])
+        if payload.get("thread_id") is not None
+        else channel_id if thread_name else None
+    )
     root_message_id: str | None = None
-    logical_group_id = f"point:{channel_id}:{thread_id or '-'}:{point_id}"
+    logical_group_id = f"point:{channel_id}:{point_id}"
     if records and all(message_id in records for message_id in message_ids):
         point_records = [records[message_id] for message_id in message_ids]
         reply_ids = [
@@ -141,10 +145,7 @@ def point_to_manifest(
         )
         if is_reply_group:
             root_message_id = candidate_root
-            logical_group_id = (
-                f"reply:{channel_id}:{thread_id or '-'}:"
-                f"{root_message_id}"
-            )
+            logical_group_id = f"reply:{channel_id}:{root_message_id}"
 
     owned_payload = {
         "channel_id": channel_id,
