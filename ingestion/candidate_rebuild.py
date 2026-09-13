@@ -92,10 +92,18 @@ def payload_for(chunk: dict[str, Any]) -> dict[str, Any]:
 def plan_candidate(
     exports: Iterable[dict[str, Any]], captures: Iterable[dict[str, Any]],
     *, candidate_collection: str, frozen_capture_sequence: int,
+    frozen_at: datetime | None = None,
     chunker_version: str = "v11", embedding_version: str = "nomic-ai/nomic-embed-text-v1.5",
 ) -> dict[str, Any]:
     exports = list(exports)
     captures = list(captures)
+    if frozen_at is not None:
+        if frozen_at.tzinfo is None:
+            raise CandidateRebuildError("frozen_at must include an offset")
+        boundary = frozen_at.astimezone(timezone.utc)
+        too_new = [row for row in exports if datetime.fromisoformat(str(row["timestamp"]).replace("Z", "+00:00")).astimezone(timezone.utc) > boundary]
+        if too_new:
+            raise CandidateRebuildError("export rows exceed frozen timestamp")
     over_cutoff = [row for row in captures if row.get("capture_sequence") is not None
                    and int(row["capture_sequence"]) > frozen_capture_sequence]
     if over_cutoff:
@@ -126,11 +134,13 @@ def plan_candidate(
     payload_digest = hashlib.sha256(json.dumps(sorted(points, key=lambda item: int(item[0])), sort_keys=True, separators=(",", ":"), ensure_ascii=False).encode()).hexdigest()
     digest = hashlib.sha256(json.dumps({
         "collection": candidate_collection, "cutoff": frozen_capture_sequence,
+        "frozen_at": frozen_at.astimezone(timezone.utc).isoformat() if frozen_at else None,
         "manifest": manifest["manifest_digest"], "payload": payload_digest,
         "embedding_version": embedding_version, "source_ids": sorted(source_ids, key=int),
     }, sort_keys=True, separators=(",", ":")).encode()).hexdigest()
     return {**manifest, "candidate_id": f"candidate-{digest[:20]}",
             "frozen_capture_sequence": frozen_capture_sequence,
+            "frozen_at": frozen_at.astimezone(timezone.utc).isoformat().replace("+00:00", "Z") if frozen_at else None,
             "source_message_count": len(source_ids), "source_message_digest": hashlib.sha256(
                 "\n".join(sorted(source_ids, key=int)).encode()).hexdigest(),
             "candidate_payload_digest": payload_digest,

@@ -39,6 +39,11 @@ class CandidateRebuildTests(unittest.TestCase):
         with self.assertRaisesRegex(CandidateRebuildError, "exceed frozen cutoff"):
             plan_candidate([message(2)], [capture], candidate_collection="candidate", frozen_capture_sequence=7)
 
+    def test_plan_rejects_export_after_frozen_timestamp(self):
+        with self.assertRaisesRegex(CandidateRebuildError, "export rows exceed"):
+            plan_candidate([message(2)], [], candidate_collection="candidate", frozen_capture_sequence=7,
+                           frozen_at=datetime(2026, 1, 1, 0, 1, tzinfo=timezone.utc))
+
     def test_plan_fails_when_a_source_message_is_not_chunk_covered(self):
         with self.assertRaisesRegex(CandidateRebuildError, "uncovered=1"):
             plan_candidate([message(1)], [], candidate_collection="candidate", frozen_capture_sequence=0)

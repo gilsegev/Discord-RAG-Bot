@@ -13,4 +13,5 @@ assert(regressionText.includes("body.qdrant_collection || 'rag_active'"), 'regre
 for (const field of ['target_corpus_version_id', 'target_manifest_digest', 'target_capture_cutoff_sequence']) {
   assert(regressionText.includes(field), `regression must persist ${field}`);
 }
+assert(regressionText.includes('ON CONFLICT (run_id) DO NOTHING'), 'regression run IDs must be immutable');
 console.log('candidate promotion workflow checks passed');

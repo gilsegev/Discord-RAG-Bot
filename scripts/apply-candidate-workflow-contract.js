@@ -41,6 +41,10 @@ for (const name of files) {
     start.parameters.query = start.parameters.query
       .replace('  case_count,\n  summary_json', '  case_count,\n  target_collection_name,\n  target_corpus_version_id,\n  target_manifest_digest,\n  target_capture_cutoff_sequence,\n  summary_json')
       .replace("  {{ $json.total_case_count }},\n  jsonb_build_object(", "  {{ $json.total_case_count }},\n  '{{ String($json.qdrant_collection || '').replace(/'/g, \"''\") }}',\n  NULLIF('{{ String($json.target_corpus_version_id || '').replace(/'/g, \"''\") }}', ''),\n  NULLIF('{{ String($json.target_manifest_digest || '').replace(/'/g, \"''\") }}', ''),\n  {{ $json.target_capture_cutoff_sequence === null ? 'NULL' : Number($json.target_capture_cutoff_sequence) }},\n  jsonb_build_object(");
+    start.parameters.query = start.parameters.query.replace(
+      /ON CONFLICT \(run_id\) DO UPDATE[\s\S]*?RETURNING run_id;/,
+      'ON CONFLICT (run_id) DO NOTHING\nRETURNING run_id;'
+    );
   }
   fs.writeFileSync(name, JSON.stringify(workflow, null, 2) + '\n');
 }

@@ -87,9 +87,12 @@ def candidate_build(request: CandidateBuildRequest, x_incremental_worker_token: 
     try:
         qdrant = QdrantClient(url=QDRANT_URL)
         with psycopg.connect(DATABASE_URL) as connection:
+            boundary = connection.execute("SELECT max(message_created_at) FROM rag_discord_messages WHERE capture_sequence<=%s", (request.frozen_capture_sequence,)).fetchone()[0]
+            if boundary is None and request.frozen_capture_sequence:
+                raise CandidateRebuildError("frozen cutoff has no captured boundary")
             plan = plan_candidate(parse_all_exports(EXPORT_DIR), load_captures(connection, request.frozen_capture_sequence),
                                   candidate_collection=request.collection_name,
-                                  frozen_capture_sequence=request.frozen_capture_sequence)
+                                  frozen_capture_sequence=request.frozen_capture_sequence, frozen_at=boundary)
             create_candidate_collection(qdrant, request.collection_name)
             created = True
             embed_candidate(EMBEDDER_URL, qdrant, plan)
@@ -155,14 +158,20 @@ def candidate_rollback(request: CandidateTransitionRequest, x_incremental_worker
 @app.post("/candidate/reconcile")
 def candidate_reconcile(request: CandidateTransitionRequest, x_incremental_worker_token: str | None = Header(default=None)):
     authorize(x_incremental_worker_token)
-    if not request.promotion_id:
-        raise HTTPException(status_code=400, detail="promotion_id is required")
+    if not request.promotion_id and not request.candidate_id:
+        raise HTTPException(status_code=400, detail="promotion_id or candidate_id is required")
     if not operation_lock.acquire(blocking=False):
         raise HTTPException(status_code=409, detail="incremental operation already running")
     try:
         with psycopg.connect(DATABASE_URL) as connection:
-            status = reconcile_promotion(connection, QdrantClient(url=QDRANT_URL), request.promotion_id, request.logical_alias)
-        return {"promotion_id": request.promotion_id, "status": status}
+            promotion_id = request.promotion_id
+            if not promotion_id:
+                row = connection.execute("SELECT promotion_id FROM rag_candidate_promotions WHERE candidate_id=%s ORDER BY created_at DESC LIMIT 1", (request.candidate_id,)).fetchone()
+                if not row:
+                    raise HTTPException(status_code=404, detail="candidate has no promotion")
+                promotion_id = str(row[0])
+            status = reconcile_promotion(connection, QdrantClient(url=QDRANT_URL), promotion_id, request.logical_alias)
+        return {"promotion_id": promotion_id, "status": status}
     finally:
         operation_lock.release()
 

@@ -14,7 +14,7 @@ This capability replaces a full in-place rebuild with a non-serving candidate an
 
 ## Build and catch up
 
-1. Record the current maximum `capture_sequence` as cutoff `S`.
+1. Record the current maximum `capture_sequence` and its message timestamp as boundary `S`; both exports and captures are rejected if they exceed that frozen boundary.
 2. Call the incremental worker `POST /candidate/build` with a new physical collection name and `S`.
 3. The worker unions all eligible exports with captured rows through `S`, rejects normalized duplicate conflicts, chunks once with the existing chunker, audits complete one-to-one ownership and channel boundaries, embeds, and writes only to the new collection.
 4. Before final regression, enter the existing Phase 9C maintenance boundary and wait for execution leases to drain.
@@ -32,6 +32,7 @@ Messages captured after `T` remain in `rag_pending_chunk_work`. After promotion,
 4. Reopen serving only after the pointer and observed alias agree. Do not delete the prior collection.
 
 Because Qdrant and Postgres do not share a transaction, an interruption can leave the promotion in `switching`. Inspect the Qdrant alias: if it names the recorded target, finish the database commit; if it names the recorded previous collection, restore the candidate to `regression_passed`; any other target is corruption and must remain fail-closed in maintenance.
+The reconciliation endpoint accepts either the returned promotion ID or the candidate ID, so a timeout before the promotion response does not hide the recovery key.
 
 ## Roll back
 
