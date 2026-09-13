@@ -13,6 +13,12 @@ from ingestion.incremental_executor import (
     rollback_replacement,
 )
 from ingestion.chunk_manifest import scan_qdrant
+from ingestion.candidate_rebuild import (
+    CandidateRebuildError, create_candidate_collection, embed_candidate,
+    load_captures, plan_candidate, promote_candidate, rollback_promotion,
+    reconcile_promotion, seed_candidate_metadata,
+    switch_serving_alias,
+)
 from ingestion.incremental_planner import (
     PlanningError,
     create_shadow_plan,
@@ -46,6 +52,17 @@ class PlanRequest(BaseModel):
     persist: bool = False
 
 
+class CandidateBuildRequest(BaseModel):
+    collection_name: str
+    frozen_capture_sequence: int
+
+
+class CandidateTransitionRequest(BaseModel):
+    candidate_id: str | None = None
+    promotion_id: str | None = None
+    logical_alias: str = "rag_active"
+
+
 def authorize(value: str | None) -> None:
     if WORKER_TOKEN and value != WORKER_TOKEN:
         raise HTTPException(status_code=401, detail="invalid worker token")
@@ -54,6 +71,99 @@ def authorize(value: str | None) -> None:
 @app.get("/health")
 def health():
     return {"status": "ok", "qdrant_url": QDRANT_URL, "exports": EXPORT_DIR}
+
+
+@app.post("/candidate/build")
+def candidate_build(request: CandidateBuildRequest, x_incremental_worker_token: str | None = Header(default=None)):
+    """Build a new immutable physical collection without changing the serving alias."""
+    authorize(x_incremental_worker_token)
+    if request.collection_name == "rag_active" or request.frozen_capture_sequence < 0:
+        raise HTTPException(status_code=400, detail="candidate requires a physical collection and non-negative cutoff")
+    if not operation_lock.acquire(blocking=False):
+        raise HTTPException(status_code=409, detail="incremental operation already running")
+    qdrant = None
+    created = False
+    try:
+        qdrant = QdrantClient(url=QDRANT_URL)
+        with psycopg.connect(DATABASE_URL) as connection:
+            plan = plan_candidate(parse_all_exports(EXPORT_DIR), load_captures(connection, request.frozen_capture_sequence),
+                                  candidate_collection=request.collection_name,
+                                  frozen_capture_sequence=request.frozen_capture_sequence)
+            create_candidate_collection(qdrant, request.collection_name)
+            created = True
+            embed_candidate(EMBEDDER_URL, qdrant, plan)
+            seed_candidate_metadata(connection, plan)
+        return {k: v for k, v in plan.items() if not k.startswith("_")}
+    except CandidateRebuildError as error:
+        if created and qdrant is not None:
+            qdrant.delete_collection(request.collection_name)
+        raise HTTPException(status_code=409, detail=str(error)) from error
+    except Exception:
+        if created and qdrant is not None:
+            qdrant.delete_collection(request.collection_name)
+        raise
+    finally:
+        operation_lock.release()
+
+
+@app.post("/candidate/bootstrap-alias")
+def candidate_bootstrap_alias(request: CandidateTransitionRequest, x_incremental_worker_token: str | None = Header(default=None)):
+    """One-time idempotent creation of the stable alias from the seeded pointer."""
+    authorize(x_incremental_worker_token)
+    qdrant = QdrantClient(url=QDRANT_URL)
+    with psycopg.connect(DATABASE_URL) as connection:
+        row = connection.execute("SELECT collection_name FROM rag_active_corpus WHERE logical_name=%s AND state='serving'", (request.logical_alias,)).fetchone()
+    if not row:
+        raise HTTPException(status_code=409, detail="active corpus pointer is not bootstrapped")
+    matches = [a.collection_name for a in qdrant.get_aliases().aliases if a.alias_name == request.logical_alias]
+    if matches and matches != [str(row[0])]:
+        raise HTTPException(status_code=409, detail="existing alias disagrees with active corpus pointer")
+    if not matches:
+        switch_serving_alias(qdrant, request.logical_alias, None, str(row[0]))
+    return {"logical_alias": request.logical_alias, "collection_name": str(row[0]), "status": "serving"}
+
+
+@app.post("/candidate/promote")
+def candidate_promote(request: CandidateTransitionRequest, x_incremental_worker_token: str | None = Header(default=None)):
+    authorize(x_incremental_worker_token)
+    if not request.candidate_id:
+        raise HTTPException(status_code=400, detail="candidate_id is required")
+    if not operation_lock.acquire(blocking=False):
+        raise HTTPException(status_code=409, detail="incremental operation already running")
+    try:
+        with psycopg.connect(DATABASE_URL) as connection:
+            return promote_candidate(connection, QdrantClient(url=QDRANT_URL), request.candidate_id, request.logical_alias)
+    finally:
+        operation_lock.release()
+
+
+@app.post("/candidate/rollback")
+def candidate_rollback(request: CandidateTransitionRequest, x_incremental_worker_token: str | None = Header(default=None)):
+    authorize(x_incremental_worker_token)
+    if not request.promotion_id:
+        raise HTTPException(status_code=400, detail="promotion_id is required")
+    if not operation_lock.acquire(blocking=False):
+        raise HTTPException(status_code=409, detail="incremental operation already running")
+    try:
+        with psycopg.connect(DATABASE_URL) as connection:
+            return rollback_promotion(connection, QdrantClient(url=QDRANT_URL), request.promotion_id, request.logical_alias)
+    finally:
+        operation_lock.release()
+
+
+@app.post("/candidate/reconcile")
+def candidate_reconcile(request: CandidateTransitionRequest, x_incremental_worker_token: str | None = Header(default=None)):
+    authorize(x_incremental_worker_token)
+    if not request.promotion_id:
+        raise HTTPException(status_code=400, detail="promotion_id is required")
+    if not operation_lock.acquire(blocking=False):
+        raise HTTPException(status_code=409, detail="incremental operation already running")
+    try:
+        with psycopg.connect(DATABASE_URL) as connection:
+            status = reconcile_promotion(connection, QdrantClient(url=QDRANT_URL), request.promotion_id, request.logical_alias)
+        return {"promotion_id": request.promotion_id, "status": status}
+    finally:
+        operation_lock.release()
 
 
 @app.post("/plan")
