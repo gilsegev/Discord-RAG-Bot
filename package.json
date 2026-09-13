@@ -18,6 +18,7 @@
     "sync:regression-cases": "node scripts/sync-regression-cases.js",
     "test:regression-cases": "node scripts/sync-regression-cases.js --check",
     "test:generation-output": "node scripts/test-generation-output-persistence.js",
+    "test:output-integrity": "node scripts/test-output-integrity-guard.js",
     "test:phoenix-generation-preview": "node scripts/test-phoenix-generation-preview.js"
   }
 }
