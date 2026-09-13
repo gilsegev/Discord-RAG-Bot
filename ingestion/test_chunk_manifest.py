@@ -239,6 +239,43 @@ class ChunkManifestTests(unittest.TestCase):
         )
         self.assertIsNone(plan["rows"][0]["root_message_id"])
 
+    def test_thread_id_is_metadata_not_a_second_grouping_identity(self):
+        records = [record(1, thread_name="forum topic")]
+        plan = create_plan(
+            [point([1], thread_name="forum topic", thread_id="10")],
+            records,
+            "c",
+            "v11",
+            "embed",
+        )
+
+        row = plan["rows"][0]
+        self.assertEqual(row["thread_id"], "10")
+        self.assertEqual(row["logical_group_id"], f"point:10:{row['point_id']}")
+
+    def test_cross_channel_intermediate_ancestor_does_not_infer_root(self):
+        records = [
+            record(1, 2, channel_id="10"),
+            record(2, 3, channel_id="20"),
+            record(3, channel_id="10"),
+        ]
+        plan = create_plan(
+            [point([1], channel_id="10")], records, "c", "v11", "embed"
+        )
+
+        self.assertIsNone(plan["rows"][0]["root_message_id"])
+
+    def test_cross_channel_cycle_does_not_abort_manifest(self):
+        records = [
+            record(1, 2, channel_id="10"),
+            record(2, 1, channel_id="20"),
+        ]
+        plan = create_plan(
+            [point([1], channel_id="10")], records, "c", "v11", "embed"
+        )
+
+        self.assertIsNone(plan["rows"][0]["root_message_id"])
+
 
 if __name__ == "__main__":
     unittest.main()

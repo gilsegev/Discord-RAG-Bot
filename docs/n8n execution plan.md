@@ -493,7 +493,9 @@ Implementation:
 The implementation entry point is `python -m ingestion.chunk_manifest`. It is
 read-only by default; use `--output <plan.json>` for the reviewed plan,
 `--verify-plan <plan.json>` for a fresh Qdrant comparison, and add `--apply`
-plus `--database-url` only after verification to seed Postgres atomically.
+plus `--database-url` only after verification to seed Postgres atomically. The
+required `--chunker-version` must identify the corpus actually present in
+Qdrant; it must not label a pre-rebuild corpus as v11.
 
 Required evidence:
 
@@ -567,15 +569,15 @@ the plan does not need another lifecycle status.
 Implementation:
 
 1. Read a fixed pending-work cutoff without claiming or completing work.
-2. Coalesce replies by proven conversation root and reproduce the v10
+2. Coalesce replies by proven conversation root and reproduce the v11
    non-reply window behavior. A singleton remains buffered until the next
    same-scope message; once a window contains two messages, a later message
    beyond 15 minutes starts the next window.
 3. Resolve affected existing points through `rag_chunk_manifest` and Qdrant
    payload timestamps, including the configured two-message overlap.
-4. Run the existing v10 chunker on the bounded region.
+4. Run the existing v11 chunker on the bounded region.
 5. Produce stable old-point and replacement-point IDs. A final unmatched
-   singleton remains `deferred`, matching the full v10 chunker.
+   singleton remains `deferred`, matching the full v11 chunker.
 6. Optionally call the production embedding service for every replacement chunk
    to validate the 768-dimension contract and measure Railway throughput.
 7. Persist the immutable plan and evidence in
@@ -589,8 +591,8 @@ Exit criteria:
 
 - reply and window work is deterministically coalesced
 - repeated planning at the same cutoff produces the same plan ID and digest
-- selected old points belong only to affected channel/thread/conversation scopes
-- fixture shadow output matches full v10 chunker output for the affected scope
+- selected old points belong only to affected stable-channel/conversation scopes
+- fixture shadow output matches full v11 chunker output for the affected scope
 - every shadow embedding is exactly 768 dimensions and reports the expected
   production model/version
 - persisted plans bind to the current source corpus version/digest

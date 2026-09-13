@@ -3,13 +3,14 @@ import json
 import subprocess
 import sys
 import tempfile
+from datetime import datetime, timezone
 from unittest import mock
 from pathlib import Path
 
 from ingestion.incremental_planner import (
     PlanningError, WorkItem, _validate_existing_groups,
     _validate_status_transition, coalesce_work, create_shadow_plan, embed_shadow,
-    render_plan,
+    load_postgres, render_plan,
 )
 
 
@@ -25,6 +26,7 @@ def message(mid, minute, parent=None, channel="10", thread=None):
 SOURCE_CORPUS = {
     "corpus_version_id": "corpus-fixture",
     "manifest_digest": "a" * 64,
+    "chunker_version": "v11",
 }
 def complete_measurement(plan):
     return {
@@ -37,9 +39,53 @@ def complete_measurement(plan):
 
 
 class IncrementalPlannerTests(unittest.TestCase):
+    def test_postgres_load_uses_message_channel_id_and_parent_display_name(self):
+        class Cursor:
+            def __init__(self):
+                self.query = ""
+
+            def __enter__(self):
+                return self
+
+            def __exit__(self, *_):
+                return False
+
+            def execute(self, query, _params=None):
+                self.query = query
+
+            def fetchall(self):
+                if "FROM rag_pending_chunk_work" in self.query:
+                    return [("1", 1, "recent_window", "thread-20", "thread-20", None)]
+                if "FROM rag_discord_messages" in self.query:
+                    return [(
+                        "1", "thread-20", "topic", "forum-10", "forum-discussion",
+                        "thread-20", "topic", None, "user", "content",
+                        datetime(2026, 9, 13, tzinfo=timezone.utc),
+                    )]
+                if "FROM rag_chunk_manifest" in self.query:
+                    return []
+                raise AssertionError(self.query)
+
+            def fetchone(self):
+                if "FROM rag_corpus_versions" in self.query:
+                    return ("corpus", "digest", "v11")
+                raise AssertionError(self.query)
+
+        class Connection:
+            def cursor(self):
+                return Cursor()
+
+        work, live, _, source = load_postgres(Connection())
+
+        self.assertEqual(work[0].channel_id, "thread-20")
+        self.assertEqual(live[0]["channel_id"], "thread-20")
+        self.assertEqual(live[0]["channel"], "forum-discussion")
+        self.assertEqual(live[0]["thread_name"], "topic")
+        self.assertEqual(source["chunker_version"], "v11")
+
     def test_current_plan_version_records_unique_embedding_semantics(self):
         plan = create_shadow_plan([], [], [], [])
-        self.assertEqual(plan["plan_version"], 2)
+        self.assertEqual(plan["plan_version"], 3)
 
     def test_shadow_embedding_deduplicates_points_shared_by_overlapping_groups(self):
         shared = {"point_id": "100", "text": "same replacement"}
@@ -216,6 +262,31 @@ class IncrementalPlannerTests(unittest.TestCase):
         self.assertEqual(rendered["validation"]["status"], "shadow_validated")
         self.assertTrue(all(rendered["validation"]["checks"].values()))
 
+    def test_source_chunker_version_mismatch_fails_validation(self):
+        records = [message(1, 0), message(2, 1)]
+        plan = create_shadow_plan(
+            [
+                WorkItem("1", 1, "recent_window", "10", None, None),
+                WorkItem("2", 2, "recent_window", "10", None, None),
+            ],
+            records,
+            [],
+            [],
+            source_corpus={**SOURCE_CORPUS, "chunker_version": "v10"},
+        )
+
+        rendered = render_plan(
+            plan,
+            complete_measurement(plan),
+            source_corpus_current=True,
+        )
+
+        self.assertEqual(rendered["validation"]["status"], "failed")
+        self.assertIn(
+            "source corpus chunker version mismatch",
+            rendered["validation"]["contradictions"],
+        )
+
     def test_embedding_contradictions_fail_closed(self):
         records = [message(1, 0), message(2, 1)]
         work = [
@@ -330,7 +401,7 @@ class IncrementalPlannerTests(unittest.TestCase):
 
     def test_existing_persisted_groups_must_match_immutable_evidence(self):
         group = {
-            "group_key": "window:10:-:2026-07-28T00:00:00+00:00",
+            "group_key": "window:10:2026-07-28T00:00:00+00:00",
             "work_kind": "recent_window",
             "channel_id": "10",
             "thread_id": None,

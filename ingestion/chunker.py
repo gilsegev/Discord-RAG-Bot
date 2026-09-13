@@ -40,8 +40,6 @@ def chunk_records(records: list[dict]) -> list[dict]:
     Pass 1: reply-aware grouping via parent_id chains.
     Pass 2: 15-min time window fallback for standalone messages.
     """
-    id_to_msg = {r["id"]: r for r in records}
-
     by_channel = {}
     for r in records:
         by_channel.setdefault(str(r["channel_id"]), []).append(r)
@@ -50,6 +48,10 @@ def chunk_records(records: list[dict]) -> list[dict]:
     root_failures = Counter()
     for channel_id, msgs in by_channel.items():
         msgs      = sorted(msgs, key=lambda m: m["timestamp"])
+        # A Discord channel ID is the only membership boundary.  A local
+        # index prevents an invalid cross-channel reference from being used
+        # while constructing or splitting a chunk.
+        id_to_msg = {m["id"]: m for m in msgs}
         is_thread = msgs[0].get("thread_name") is not None
         chunks    = _reply_aware_chunk(
             msgs, id_to_msg, is_thread=is_thread, root_failures=root_failures
@@ -61,7 +63,7 @@ def chunk_records(records: list[dict]) -> list[dict]:
 
     print(f"Created {len(all_chunks)} chunks from "
           f"{len(records)} messages across "
-          f"{len(by_channel)} channel/thread group(s)")
+          f"{len(by_channel)} stable channel group(s)")
     if root_failures:
         summary = ", ".join(
             f"{reason}={count}" for reason, count in sorted(root_failures.items())

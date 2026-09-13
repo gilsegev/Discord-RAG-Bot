@@ -99,6 +99,27 @@ exceptional baseline migration, but is not a steady-state production dependency.
 
 ## 3. Scope
 
+### Stable chunk grouping contract
+
+Full and incremental chunking use the Discord `channel_id` as the sole scope
+identity. Equal display names do not combine distinct channels, and a rename
+does not create a second scope for one channel. Discord threads already have
+their own stable `channel_id`, so `thread_id` remains compatibility metadata
+and is not a second grouping identity. `channel_name` and `thread_name` remain display metadata;
+the established thread header and single-message thread policy are unchanged.
+Reply ancestry is resolved only inside the originating `channel_id`; a
+cross-channel reply reference cannot import its parent into the chunk.
+
+This contract is chunker v11. Point IDs remain deterministic hashes of each
+split piece's `message_ids` and `split_index`, but correcting a boundary changes
+message membership and therefore changes affected point IDs. Deployment requires
+a future full Qdrant rebuild from the exports, followed by regeneration and
+verification of the chunk ownership manifest against that rebuilt collection.
+Run the complete retrieval regression suite after the rebuild and manifest seed
+before marking the new corpus healthy. Merging the code does not perform any of
+those production operations; as of 2026-09-13 production Qdrant has not been
+rebuilt for this correction.
+
 ### MVP scope
 
 - `MESSAGE_CREATE` events from permitted server channels and threads
@@ -229,7 +250,7 @@ affected fallback windows with the now-complete reply conversation.
 
 ### Non-reply messages
 
-Non-reply traffic is assigned to a provisional channel/thread time window using
+Non-reply traffic is assigned to a provisional channel time window using
 the chunker's existing window rules. Adjacent dirty windows are merged before
 processing so the chunker receives enough preceding and following context to
 reproduce overlap correctly.
@@ -244,7 +265,7 @@ independent rechunk jobs.
 CREATE TABLE rag_chunk_work_queue (
     work_key             TEXT PRIMARY KEY,
     channel_id           TEXT NOT NULL,
-    thread_id            TEXT,
+    thread_id            TEXT, -- compatibility metadata; not grouping identity
     root_message_id      TEXT,
     earliest_message_id  TEXT NOT NULL,
     latest_message_id    TEXT NOT NULL,
@@ -437,8 +458,9 @@ answer routing has no regression.
   ingestion-run/corpus-version state needed to identify the seeded baseline.
 - Build the manifest from the current Qdrant payloads without deleting,
   replacing, or re-embedding any production point.
-- Record deterministic logical ownership for every point using its channel,
-  thread, reply-root where known, and bounded window identity otherwise.
+- Record deterministic logical ownership for every point using its stable
+  channel ID, reply-root where known, and bounded window identity otherwise.
+  Thread ID is retained only as compatibility metadata.
 - Preserve the current point ID, complete per-piece `message_ids`, first/last
   message IDs, chunker version, embedding version, and corpus version.
 - Add indexed message-to-point, logical-group-to-point, and reply-root lookup
