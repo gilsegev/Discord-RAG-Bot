@@ -223,9 +223,42 @@ One row per Discord event considered by the bot.
 | `status` | `started`, `answered`, `refused`, `dropped`, `failed` |
 | `refusal_reason` | Why the bot refused, if applicable |
 | `failure_reason` | Why the workflow failed operationally, if applicable |
+| `generated_answer` | Raw non-empty Gemini output before final response guards |
+| `final_response_text` | Final guarded response for `full_answer` runs; null for retrieval-only runs |
+| `generation_model` | Model used when generation actually ran |
+| `generation_metadata` | Finish reason, token usage, latency, citation-guard result, and truncation status |
 | `created_at`, `completed_at` | Lifecycle timing |
 
 Use `refusal_reason` only when the bot deliberately refuses because product quality gates say it should not answer. Use `failure_reason` when the workflow could not complete because of an operational issue, such as Gemini failure, Discord dispatch failure, Qdrant API failure, Postgres write failure, or malformed third-party response.
+
+Postgres is the durable source of truth for generated and final response text.
+Phoenix remains the time-bounded trace and debugging surface. Retrieval-only
+runs must leave both answer fields null and generation metadata empty.
+
+### Generated-response retention
+
+Generated answer text can contain community-specific, sensitive material even
+when the originating request did not. Retain `generated_answer` and
+`final_response_text` for **30 days** from `completed_at`, then permanently
+delete both fields while keeping the transaction row. Retain the transaction
+metadata needed for operations and correlation—status, timing, route,
+`transaction_id`, hashes, model, and non-content generation metadata—for
+**90 days** from `completed_at`, then delete trace and retrieval-detail rows
+and minimize the transaction to a correlation tombstone. Feedback and
+evaluation labels have a one-year retention requirement, so their parent
+transaction must remain as the minimal foreign-key record until those
+dependents are deleted or detached into an archive. Do not cascade-delete a
+transaction at the 90-day metadata boundary. The 30-day window gives
+maintainers enough time to investigate feedback and safety reports; the
+shorter content lifetime reduces exposure of community material. The 90-day
+metadata window supports reliability trends and incident correlation without
+retaining response text.
+
+Phoenix is not an archive: it receives only a bounded, redacted generation
+preview, the output length, and the `transaction_id`. The production retention
+job must clear expired response fields before the 90-day minimization, retain
+only the required correlation tombstone for feedback/evaluation retention, and
+record its completion count as an operational event.
 
 Allowed `refusal_reason` values:
 

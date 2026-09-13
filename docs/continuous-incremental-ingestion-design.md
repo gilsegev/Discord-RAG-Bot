@@ -27,7 +27,8 @@ The MVP will:
 8. reopen the RAG service only after the update and validation pass.
 
 Message edits, message deletions, and recovery of messages missed during an
-unresumable listener outage are explicitly deferred beyond MVP.
+unresumable listener outage are explicitly outside the planned incremental
+ingestion phases.
 
 ## 2. Why a Maintenance Window
 
@@ -113,12 +114,15 @@ exceptional baseline migration, but is not a steady-state production dependency.
 - complete Phase 8 regression run
 - update audit records and Phoenix spans
 
-### Deferred scope
+### Explicit non-goals
 
-- `MESSAGE_UPDATE`
-- `MESSAGE_DELETE` and bulk delete events
-- automatic REST history catch-up
-- automated ingestion of messages missed during an unresumable listener outage
+- `MESSAGE_UPDATE`, `MESSAGE_DELETE`, and bulk delete events are deliberately
+  unsupported. Incremental ingestion treats captured `MESSAGE_CREATE` records
+  as immutable; an operator may use the full rebuild path for material corpus
+  corrections.
+- automatic REST history catch-up and automated recovery of messages missed
+  during an unresumable listener outage. These remain deferred with no planned
+  Phase 9C.8 implementation.
 - zero-downtime Qdrant updates
 - real-time per-message embedding
 
@@ -363,9 +367,10 @@ The listener must record:
 - queue overflow or durable-write failures;
 - suspected gap start and end.
 
-### Future phase: manual gap review and bulk recovery
+### Deferred manual gap recovery
 
-When the listener cannot resume or a gap is suspected:
+There is no planned Phase 9C.8 implementation. If a future gap becomes valuable
+enough to recover, an operator may run a one-off recovery using this outline:
 
 1. create a corpus-gap issue for admin review;
 2. mark the incident `review_needed`, consistent with the regression review
@@ -376,8 +381,8 @@ When the listener cannot resume or a gap is suspected:
 5. ingest the recovery export through a controlled bulk-import path;
 6. run structural verification and the complete regression suite.
 
-This phase is intentionally outside MVP. No automatic history pulling is
-required for MVP.
+This is an optional manual response, not a committed phase. Automatic history
+pulling, issue creation, and bulk-recovery tooling remain deferred.
 
 ## 11. Failure and Recovery Policy
 
@@ -491,34 +496,65 @@ link to the durable Postgres run.
 - Apply planned Qdrant replacement and manifest updates.
 - Add idempotent retry and failure-state handling.
 - Run structural verification.
+- Run the complete Phase 8 regression suite before replacement and again after
+  structural verification. Reopen serving only when the post-replacement run
+  matches the accepted baseline, or after completed recovery.
 
 **Gate:** simulated failures at each replacement step are recoverable, and no
-query runs against a partially updated corpus.
+query runs against a partially updated corpus. Structural verification and the
+full regression suite pass before serving reopens.
 
-### Phase 9C.5 — Full regression and scheduled operation
+### Phase 9C.5 — Scheduled-operation readiness
 
-- Invoke the complete Phase 8 regression suite after structural verification.
-- Associate regression results with the ingestion run and corpus version.
-- Reopen the service only when all gates pass.
-- Schedule updates for a configurable low-traffic window.
+- Add a configurable low-traffic schedule around the proven Phase 9C.4 path.
+- Keep the schedule disabled until the Phase 9C.6 catch-up run succeeds.
 - Publish run duration, processed-message count, affected chunks, regression
   result, and maintenance duration.
+- Add alerting and an operator runbook for failed, rolled-back, and
+  `review_needed` runs.
 
-**Gate:** repeated incremental batches pass structural checks and the complete
-regression suite without quality degradation.
+**Gate:** repeated manual incremental batches pass the Phase 9C.4 structural
+and regression gates without quality degradation, and scheduled execution is
+safe to enable after catch-up.
 
-### Future Phase 9C.6 — Edits and deletions
+### Phase 9C.6 — One-time captured-message catch-up
 
-- Capture update/delete events.
-- Rebuild or remove affected chunks.
-- Add historical mutation validation cases.
+Run one migration-style incremental batch for all eligible messages received
+after the message boundary represented by the current healthy Qdrant corpus and
+at or before a fixed catch-up cutoff. Messages captured after that cutoff remain
+pending for the normal scheduled path.
 
-### Future Phase 9C.7 — Downtime gap workflow
+The owner accepted the unrecorded July 23-26 interval as a permanent historical
+exclusion on August 12, 2026. Record that decision durably and do not describe
+the interval as recovered. Before planning, prove that every message actually
+present in `rag_discord_messages` through the fixed cutoff has consistent,
+non-orphaned work in `rag_pending_chunk_work`.
 
-- Detect unresumable gaps.
-- Automatically create a review issue with recovery evidence.
-- Add admin-provided missing-message bulk import.
-- Run structural and full regression gates after recovery.
+The catch-up must reuse the Phase 9C.4 planner, maintenance gate, snapshot,
+replacement, manifest update, rollback, structural verification, and pre/post
+regression path. Take the required full Qdrant snapshot before this first
+production run. Record the fixed cutoff and before/after message, work-row,
+point, manifest, corpus-version, and regression counts as permanent migration
+evidence.
+
+The August 12, 2026 production preflight found that the current manifest ends
+at Discord message `1529684708294787083` (approximately July 23 03:00 UTC),
+while durable capture starts July 26 18:35 UTC. It also found 182 pending
+captured messages through August 12. Transaction history provides a minimum
+recovery checklist of 20 real, not-yet-manifested Discord IDs in the gap; see
+[the Phase 9C.6 known-gap checklist](phase9c6-known-gap-message-ids.csv). Twelve
+additional gap records have synthetic `replay-*` IDs and are evidence only.
+
+The 20 checklist IDs are marked as accepted exclusions and are not imported.
+Never import synthetic replay IDs as Discord IDs. This choice knowingly leaves
+the historical interval incomplete while allowing the durable-capture catch-up
+to proceed.
+
+**Gate:** every eligible, proven-captured message through the cutoff is either
+completed or explicitly deferred with a reason; no pre-cutoff work remains
+silently pending; the new corpus is healthy; and the full regression matches
+the accepted baseline before serving reopens. Only then may the Phase 9C.5
+schedule be enabled.
 
 ## 13. PR sequencing
 

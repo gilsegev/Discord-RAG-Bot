@@ -3,6 +3,11 @@
 The planner reads captured messages, the ownership manifest, and Qdrant payloads.
 It never calls a Qdrant mutation API. Plan persistence is opt-in and writes only
 the Phase 9C.3 Postgres plan tables for later Phase 9C.4 execution.
+
+Captured Discord messages are treated as immutable MESSAGE_CREATE records.
+Discord message edits and deletions are deliberately outside the incremental
+ingestion contract; an operator may use the full rebuild path when historical
+corpus correction is important enough to warrant it.
 """
 
 from __future__ import annotations
@@ -23,7 +28,7 @@ from ingestion.chunker import OVERLAP_MSGS, WINDOW_MINS, chunk_records
 from ingestion.parser import parse_all_exports
 from ingestion.run import _stable_id
 
-PLAN_VERSION = 1
+PLAN_VERSION = 2
 DEFAULT_COLLECTION = "tpm_unite_history"
 
 
@@ -196,6 +201,25 @@ def _chunk_row(chunk: dict[str, Any]) -> dict[str, Any]:
         "thread_name": chunk.get("thread_name"),
         "text_digest": hashlib.sha256(chunk["text"].encode("utf-8")).hexdigest(),
         "text": chunk["text"],
+        # Private apply material. It is deliberately excluded from the
+        # persisted plan identity below so existing Phase 9C.3 plans remain
+        # byte-for-byte deterministic. Phase 9C.4 reconstructs it from source
+        # records and verifies the persisted identity before any mutation.
+        "_payload": {
+            "text": chunk["text"],
+            "start_ts": chunk["start_ts"],
+            "end_ts": chunk["end_ts"],
+            "channel": chunk["channel"],
+            "channel_id": chunk.get("channel_id"),
+            "thread_name": chunk.get("thread_name"),
+            "authors": chunk["authors"],
+            "message_count": chunk["message_count"],
+            "message_ids": [str(value) for value in chunk.get("message_ids", [])],
+            "first_message_id": str(chunk.get("first_message_id", "")),
+            "token_count": chunk.get("token_count", 0),
+            "span_days": chunk.get("span_days", 0),
+            "split_index": int(chunk.get("split_index", 0)),
+        },
     }
 
 
@@ -324,7 +348,11 @@ def create_shadow_plan(
         # Text stays out of the persisted plan, but its digest and all ownership
         # metadata participate in the immutable plan identity.
         group["replacement_points"] = [
-            {key: item for key, item in row.items() if key != "text"}
+            {
+                key: item
+                for key, item in row.items()
+                if key != "text" and not key.startswith("_")
+            }
             for row in replacement_rows
         ]
         public_groups.append(group)
@@ -392,11 +420,15 @@ def _measure_embeddings(texts: Iterable[str], embedder_url: str, kind: str) -> d
 
 def embed_shadow(plan: dict[str, Any], embedder_url: str) -> dict[str, Any]:
     """Embed replacement text for timing/dimension proof; never writes Qdrant."""
-    texts = [
-        row["text"]
-        for rows in plan["_replacement_details"].values()
-        for row in rows
-    ]
+    unique: dict[str, dict[str, Any]] = {}
+    for rows in plan["_replacement_details"].values():
+        for row in rows:
+            point_id = str(row["point_id"])
+            existing = unique.get(point_id)
+            if existing is not None and existing != row:
+                raise PlanningError(f"conflicting replacement point {point_id}")
+            unique[point_id] = row
+    texts = [unique[point_id]["text"] for point_id in sorted(unique, key=int)]
     return _measure_embeddings(texts, embedder_url, "shadow_replacements")
 
 
@@ -666,6 +698,7 @@ def load_postgres(
     connection: Any,
     cutoff: int | None = None,
     collection: str = DEFAULT_COLLECTION,
+    work_statuses: tuple[str, ...] = ("pending",),
 ) -> tuple[
     list[WorkItem],
     list[dict[str, Any]],
@@ -679,10 +712,10 @@ def load_postgres(
             SELECT w.source_message_id, w.capture_sequence, w.work_kind,
                    w.parent_channel_id, w.thread_id, w.parent_message_id
             FROM rag_pending_chunk_work w
-            WHERE w.status='pending' AND w.capture_sequence <= %s
+            WHERE w.status=ANY(%s) AND w.capture_sequence <= %s
             ORDER BY w.capture_sequence
             """,
-            (cutoff_sql,),
+            (list(work_statuses), cutoff_sql),
         )
         work = [WorkItem(*row) for row in cursor.fetchall()]
         cursor.execute(
