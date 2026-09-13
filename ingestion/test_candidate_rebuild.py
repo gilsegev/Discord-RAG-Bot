@@ -1,7 +1,8 @@
 import unittest
 from datetime import datetime, timezone
 
-from ingestion.candidate_rebuild import CandidateRebuildError, admit_frozen_cutoff, plan_candidate, union_records
+from ingestion.candidate_build_cli import qdrant_url_from_env
+from ingestion.candidate_rebuild import CandidateRebuildError, _embedding_endpoint, admit_frozen_cutoff, plan_candidate, union_records
 
 
 def message(message_id, channel_id="10", content="hello", parent_id=None):
@@ -40,6 +41,24 @@ class CandidateRebuildTests(unittest.TestCase):
         plan = plan_candidate([message(1), message(2)], [], candidate_collection="candidate", frozen_capture_sequence=7)
         self.assertTrue(plan["structural_audit"]["passed"])
         self.assertEqual(2, plan["source_message_count"])
+
+    def test_plan_accepts_intentional_overlap_between_chunks(self):
+        records = [message(i) for i in range(1, 6)]
+        for row, minute in zip(records, (0, 1, 20, 21, 40)):
+            row["timestamp"] = f"2026-01-01T00:{minute:02d}:00+00:00"
+        plan = plan_candidate(records, [], candidate_collection="candidate", frozen_capture_sequence=0)
+        occurrences = [mid for row in plan["rows"] for mid in row["message_ids"]]
+        self.assertGreater(len(occurrences), len(set(occurrences)))
+        self.assertTrue(plan["structural_audit"]["passed"])
+
+    def test_full_embedding_endpoint_is_not_duplicated(self):
+        self.assertEqual("http://embedder:8000/embed", _embedding_endpoint("http://embedder:8000/embed"))
+        self.assertEqual("http://embedder:8000/embed", _embedding_endpoint("http://embedder:8000"))
+
+    def test_qdrant_base_url_env_takes_precedence(self):
+        self.assertEqual("http://production-qdrant", qdrant_url_from_env({
+            "QDRANT_BASE_URL": "http://production-qdrant", "QDRANT_URL": "http://legacy-qdrant"
+        }))
 
     def test_export_after_frozen_boundary_is_rejected(self):
         with self.assertRaisesRegex(CandidateRebuildError,"export rows exceed"):

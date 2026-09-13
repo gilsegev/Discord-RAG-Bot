@@ -9,7 +9,6 @@ from __future__ import annotations
 import hashlib
 import json
 import urllib.request
-from collections import Counter
 from datetime import datetime, timezone
 from typing import Any, Iterable
 
@@ -118,7 +117,12 @@ def plan_candidate(
     ownership = [message_id for row in manifest["rows"] for message_id in row["message_ids"]]
     owned_ids = set(ownership)
     uncovered = sorted(source_ids - owned_ids, key=int)
-    duplicated = sorted((message_id for message_id, count in Counter(ownership).items() if count > 1), key=int)
+    payload_duplicates = [
+        {"point_id": point_id, "message_ids": message_ids}
+        for point_id, payload in points
+        if (message_ids := payload["message_ids"])
+        and len(message_ids) != len(set(message_ids))
+    ]
     cross_channel = []
     by_id = {row["id"]: row for row in records}
     for point_id, payload in points:
@@ -126,9 +130,9 @@ def plan_candidate(
                  if by_id[mid]["channel_id"] != str(payload["channel_id"])]
         if wrong:
             cross_channel.append({"point_id": point_id, "message_ids": wrong})
-    if uncovered or duplicated or cross_channel:
+    if uncovered or payload_duplicates or cross_channel:
         raise CandidateRebuildError(
-            f"structural audit failed: uncovered={len(uncovered)}, duplicated={len(duplicated)}, cross_channel={len(cross_channel)}"
+            f"structural audit failed: uncovered={len(uncovered)}, payload_duplicates={len(payload_duplicates)}, cross_channel={len(cross_channel)}"
         )
     payload_digest = hashlib.sha256(json.dumps(sorted(points, key=lambda item: int(item[0])), sort_keys=True, separators=(",", ":"), ensure_ascii=False).encode()).hexdigest()
     digest = hashlib.sha256(json.dumps({
@@ -145,7 +149,7 @@ def plan_candidate(
             "candidate_payload_digest": payload_digest,
             "vector_size": 768, "vector_distance": "Cosine",
             "corpus_version_id": f"corpus-{digest[:20]}",
-            "structural_audit": {"passed": True, "uncovered_message_ids": [], "duplicate_message_ids": [],
+            "structural_audit": {"passed": True, "uncovered_message_ids": [], "payload_duplicate_message_ids": [],
                                  "cross_channel_points": []}, "_points": points}
 
 
@@ -220,7 +224,7 @@ def embed_candidate(embedder_url: str, client: Any, plan: dict[str, Any], batch_
         batch = plan["_points"][start:start + batch_size]
         vectors = []
         for _, payload in batch:
-            request = urllib.request.Request(embedder_url.rstrip("/") + "/embed",
+            request = urllib.request.Request(_embedding_endpoint(embedder_url),
                 data=json.dumps({"text": "search_document: " + payload["text"]}).encode(),
                 headers={"Content-Type": "application/json"}, method="POST")
             with urllib.request.urlopen(request, timeout=180) as response:
@@ -234,3 +238,9 @@ def embed_candidate(embedder_url: str, client: Any, plan: dict[str, Any], batch_
     actual = int(client.get_collection(collection).points_count or 0)
     if actual != plan["point_count"]:
         raise CandidateRebuildError(f"candidate point count {actual} != {plan['point_count']}")
+
+
+def _embedding_endpoint(configured_url: str) -> str:
+    """Accept either the production full endpoint or a legacy service base URL."""
+    normalized = configured_url.rstrip("/")
+    return normalized if normalized.endswith("/embed") else normalized + "/embed"

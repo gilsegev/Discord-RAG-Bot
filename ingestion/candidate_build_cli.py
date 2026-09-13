@@ -13,6 +13,11 @@ from ingestion.candidate_rebuild import (
 from ingestion.parser import parse_all_exports
 
 
+def qdrant_url_from_env(environment=os.environ):
+    """Use the production name while retaining compatibility with older local setup."""
+    return environment.get("QDRANT_BASE_URL") or environment.get("QDRANT_URL") or "http://localhost:6333"
+
+
 def build_candidate(connection, qdrant, exports, collection, embedder_url, requested_cutoff=None):
     observed, frozen_at = admit_frozen_cutoff(connection, requested_cutoff)
     plan = plan_candidate(parse_all_exports(exports), load_captures(connection, observed),
@@ -36,7 +41,7 @@ def main():
     parser.add_argument("--requested-cutoff", type=int)
     parser.add_argument("--exports", default=os.getenv("EXPORT_DIR", "chat_logs"))
     parser.add_argument("--database-url", default=os.getenv("DATABASE_URL"), required=False)
-    parser.add_argument("--qdrant-url", default=os.getenv("QDRANT_URL", "http://localhost:6333"))
+    parser.add_argument("--qdrant-url", default=qdrant_url_from_env())
     parser.add_argument("--embedder-url", default=os.getenv("EMBEDDER_URL", "http://localhost:8000"))
     parser.add_argument("--authorize-regression", metavar="CANDIDATE_ID")
     args = parser.parse_args()
