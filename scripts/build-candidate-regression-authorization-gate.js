@@ -45,6 +45,10 @@ workflow.nodes.push({
 
 const load = node('Load Regression Cases');
 load.parameters.jsCode = load.parameters.jsCode.replace(
+  /^const requiredWebhookSecret = String\(\$env\.N8N_WEBHOOK_SHARED_SECRET \|\| ''\);\nif \(requiredWebhookSecret\) \{\n  const requestHeaders = \(\$json && \$json\.headers\) \|\| \{\};\n  const providedWebhookSecret = String\(requestHeaders\['x-rag-webhook-secret'\] \|\| requestHeaders\['X-RAG-Webhook-Secret'\] \|\| ''\);\n  if \(providedWebhookSecret !== requiredWebhookSecret\) throw new Error\('Unauthorized webhook request'\);\n\}\n/,
+  '',
+);
+load.parameters.jsCode = load.parameters.jsCode.replace(
   "const body = $json.body || $json || {};",
   "const body = $items('Regression Batch Webhook')[0].json.body || $items('Regression Batch Webhook')[0].json || {};",
 ).replace(
