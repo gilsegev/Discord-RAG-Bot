@@ -656,7 +656,7 @@
             },
             {
               "id": "phase8-allow-discord-post",
-              "leftValue": "={{ $json.allow_discord_post }}",
+        "leftValue": "={{ $json.allow_discord_post }}",
               "rightValue": true,
               "operator": {
                 "type": "boolean",
@@ -906,7 +906,7 @@
           "conditions": [
             {
               "id": "phase8-allow-discord-post",
-              "leftValue": "={{ $json.allow_discord_post }}",
+        "leftValue": "={{ $json.allow_discord_post && !$json.output_integrity_failed }}",
               "rightValue": true,
               "operator": {
                 "type": "boolean",
