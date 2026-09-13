@@ -21,7 +21,7 @@
     },
     {
       "parameters": {
-        "jsCode": "const envelope=$json||{},raw=envelope.body||envelope,headers=envelope.headers||{}; const secret=String($env.N8N_WEBHOOK_SHARED_SECRET||''); if(secret&&String(headers['x-rag-webhook-secret']||'')!==secret) throw new Error('Unauthorized scheduled run'); const clean=v=>String(v||'').replace(/[^A-Za-z0-9._:-]/g,''); const attempt=clean(raw.attempt_id),plan=clean(raw.plan_id),collection=clean(raw.collection_name||'tpm_unite_history'); if(!attempt||!plan) throw new Error('attempt_id and plan_id required'); return [{json:{attempt_id:attempt,plan_id:plan,collection_name:collection,incremental_run_id:'scheduled-'+attempt+'-'+$execution.id}}];"
+        "jsCode": "const envelope=$json||{},raw=envelope.body||envelope,headers=envelope.headers||{}; const secret=String($env.N8N_WEBHOOK_SHARED_SECRET||''); if(secret&&String(headers['x-rag-webhook-secret']||'')!==secret) throw new Error('Unauthorized scheduled run'); const clean=v=>String(v||'').replace(/[^A-Za-z0-9._:-]/g,''); const attempt=clean(raw.attempt_id),plan=clean(raw.plan_id),collection=clean(raw.collection_name||'rag_candidate_20260913t065539z'); if(!attempt||!plan) throw new Error('attempt_id and plan_id required'); return [{json:{attempt_id:attempt,plan_id:plan,collection_name:collection,incremental_run_id:'scheduled-'+attempt+'-'+$execution.id}}];"
       },
       "id": "p9c5-normalize-run-request",
       "name": "Normalize Run Request",

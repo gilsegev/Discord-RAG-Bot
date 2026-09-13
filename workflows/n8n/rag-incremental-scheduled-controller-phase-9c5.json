@@ -52,7 +52,7 @@
     },
     {
       "parameters": {
-        "jsCode": "const envelope=$json||{}; const raw=envelope.body||envelope;\nconst headers=envelope.headers||{}; const secret=String($env.N8N_WEBHOOK_SHARED_SECRET||'');\nif(envelope.body&&secret&&String(headers['x-rag-webhook-secret']||'')!==secret) throw new Error('Unauthorized schedule request');\nconst scheduled=!envelope.body&&!raw.trigger_source&&Boolean(raw.timestamp);\nconst requested=String(raw.mode||'dry_run').toLowerCase();\nconst triggerSource=scheduled?'scheduled':(requested==='execute'?'manual_execute':'manual_dry_run');\nconst attemptId=String(raw.attempt_id||('phase9c5-'+$execution.id)).replace(/[^A-Za-z0-9._:-]/g,'');\nreturn [{json:{attempt_id:attemptId,collection_name:String(raw.collection_name||'tpm_unite_history'),trigger_source:triggerSource,requested_mode:requested}}];"
+        "jsCode": "const envelope=$json||{}; const raw=envelope.body||envelope;\nconst headers=envelope.headers||{}; const secret=String($env.N8N_WEBHOOK_SHARED_SECRET||'');\nif(envelope.body&&secret&&String(headers['x-rag-webhook-secret']||'')!==secret) throw new Error('Unauthorized schedule request');\nconst scheduled=!envelope.body&&!raw.trigger_source&&Boolean(raw.timestamp);\nconst requested=String(raw.mode||'dry_run').toLowerCase();\nconst triggerSource=scheduled?'scheduled':(requested==='execute'?'manual_execute':'manual_dry_run');\nconst attemptId=String(raw.attempt_id||('phase9c5-'+$execution.id)).replace(/[^A-Za-z0-9._:-]/g,'');\nreturn [{json:{attempt_id:attemptId,collection_name:String(raw.collection_name||'rag_candidate_20260913t065539z'),trigger_source:triggerSource,requested_mode:requested}}];"
       },
       "id": "p9c5-normalize-schedule-request",
       "name": "Normalize Schedule Request",
