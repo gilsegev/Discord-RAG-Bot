@@ -32,10 +32,11 @@ assert(!admitted({...authorization, expires_at:now}, bound), 'expired authorizat
 assert(!admitted({...authorization, consumed_at:new Date()}, bound), 'consumed authorization is rejected');
 
 const sql = fs.readFileSync('deploy/phase0/sql/16-candidate-regression-authorization-gate.sql', 'utf8');
-for (const predicate of ['authorization.expires_at > now()', 'authorization.consumed_at IS NULL',
-  'authorization.candidate_id = p_candidate_id', 'authorization.collection_name = p_collection_name',
-  'authorization.corpus_version_id = p_corpus_version_id', 'authorization.manifest_digest = p_manifest_digest',
-  'authorization.frozen_capture_sequence = p_frozen_capture_sequence']) assert(sql.includes(predicate), predicate);
+assert(!/AS\s+authorization\b/i.test(sql), 'PostgreSQL reserved word AUTHORIZATION must not be used as an alias');
+for (const predicate of ['auth.expires_at > now()', 'auth.consumed_at IS NULL',
+  'auth.candidate_id = p_candidate_id', 'auth.collection_name = p_collection_name',
+  'auth.corpus_version_id = p_corpus_version_id', 'auth.manifest_digest = p_manifest_digest',
+  'auth.frozen_capture_sequence = p_frozen_capture_sequence']) assert(sql.includes(predicate), predicate);
 assert(sql.includes("candidate.status = 'regression_authorized'"));
 assert.deepEqual(workflow.connections['Regression Batch Webhook'].main[0][0].node, 'Normalize Regression Target');
 assert.deepEqual(workflow.connections['Authorize Regression Target'].main[0][0].node, 'Load Regression Cases');
