@@ -8,6 +8,11 @@ now proven in production (August 12, 2026). This document remains the passive
 listener design reference; `docs/n8n execution plan.md` is authoritative for
 the current Phase 9C execution status and the planned 9C.5/9C.6 work.
 
+Passive admission follows the three-level contract in
+`docs/Passive intent gate design.md`: deterministic exclusions, positive
+knowledge-request admission, then fail-closed ambiguity handling. Explicit bot
+invocations bypass this passive policy, and passive responses remain unposted.
+
 ## Goal
 
 Phase 9 replaces the Phase 8 intake with smarter routing for active, passive, and
@@ -104,12 +109,14 @@ Exclude before retrieval:
 - emoji-only, URL-only, or punctuation-only messages
 - very short conversational fragments with no question or help-seeking signal
 
-Do not initially exclude messages merely because they:
-
-- lack a question mark but contain a clear help-seeking phrase
-- are short but contain a clear question
-- look conversational rather than like a direct question
-- are unlikely to produce an answer
+Apply the three-level intent-gate contract for ordinary messages. A message
+without a question mark still passes when it has a strong, clause-level
+knowledge request. A short direct question also passes when it has that signal.
+Conversational-looking text is not sufficient for admission: coordination,
+status updates, acknowledgements, promotions, and statements are excluded when
+their bounded Level 1 pattern matches; all remaining messages without a strong
+knowledge request are ignored at Level 3. See
+`docs/Passive intent gate design.md` for the authoritative rules and fixtures.
 
 The gate must store a stable decision reason for every ignored message. Its rules
 should be configurable and covered by focused routing tests. Shadow outcomes can
