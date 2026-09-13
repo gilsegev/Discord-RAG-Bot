@@ -22,7 +22,7 @@ Request a short-lived database-backed target authorization:
 python -m ingestion.candidate_build_cli --authorize-regression candidate-ID
 ```
 
-Use the returned collection, corpus version, manifest digest, cutoff, and authorization ID only with the authenticated regression workflow. Ordinary Discord intake must continue using the serving collection. This PR intentionally does not add any promotion or cutover behavior.
+Send the returned authorization ID, candidate ID, collection, corpus version, manifest digest, and cutoff together to the authenticated regression workflow. The workflow consumes that short-lived authorization before it calls intake; omitted, mismatched, expired, or previously consumed authorization fails closed. Ordinary serving regressions against `tpm_unite_history` do not require candidate authorization. This path does not add any promotion or cutover behavior.
 
 ## Test
 
