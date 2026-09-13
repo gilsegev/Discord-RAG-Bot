@@ -282,6 +282,14 @@ I don't have enough TPM Unite specific context to answer this confidently, try r
 
 **Implementation note:** This must be a single unbroken string in the n8n node and LLM prompt. The evaluation rubric in `evaluation-and-feedback-scoring-design.md` checks this string exactly. A newline in the middle of the string counts as a variation and fails the tone/refusal dimension. When rendering in Discord, the string may wrap visually — that is fine. The underlying string must have no embedded newline.
 
+### 3.2a Generated-output integrity
+
+The generation request requires a JSON object with exactly one `final_answer`
+string. The response builder ignores Gemini thought parts, accepts only that
+field, and rejects malformed output or recognized drafting scaffolding. A
+rejection clears both persisted answer fields, sets `final_status` to `failed`,
+and records `gemini_output_integrity_failed`; no output writer may post it.
+
 ### 3.3 Source and citation style
 
 | Situation | Citation format |
