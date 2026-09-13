@@ -309,6 +309,19 @@
     },
     {
       "parameters": {
+        "jsCode": "const target = $items('Normalize Regression Target')[0].json;\nif ($json.admitted !== true) throw new Error('Candidate regression authorization was not admitted');\nreturn [{json:{...target, authorization_admitted:true}}];"
+      },
+      "id": "candidate-regression-restore",
+      "name": "Restore Authorized Regression Target",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -340,
+        0
+      ]
+    },
+    {
+      "parameters": {
         "operation": "executeQuery",
         "query": "SELECT CASE WHEN {{ $json.serving_target }} THEN true ELSE rag_consume_candidate_regression_authorization(\n  NULLIF('{{ String($json.candidate_authorization_id || '').replace(/'/g, \"''\") }}','')::uuid,\n  NULLIF('{{ String($json.regression_run_id).replace(/'/g, \"''\") }}','')::uuid,\n  '{{ String($json.candidate_id || '').replace(/'/g, \"''\") }}'::text,\n  '{{ String($json.qdrant_collection).replace(/'/g, \"''\") }}'::text,\n  '{{ String($json.target_corpus_version_id || '').replace(/'/g, \"''\") }}'::text,\n  '{{ String($json.target_manifest_digest || '').replace(/'/g, \"''\") }}'::text,\n  {{ $json.target_capture_cutoff_sequence === null ? 'NULL' : Number($json.target_capture_cutoff_sequence) }}::bigint\n) END AS admitted;"
       },
@@ -506,6 +519,17 @@
       ]
     },
     "Authorize Regression Target": {
+      "main": [
+        [
+          {
+            "node": "Restore Authorized Regression Target",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Restore Authorized Regression Target": {
       "main": [
         [
           {

@@ -5,10 +5,17 @@ const vm = require('vm');
 const workflow = JSON.parse(fs.readFileSync('workflows/n8n/rag-regression-batch-runner-phase-8.json', 'utf8'));
 const node = name => workflow.nodes.find(item => item.name === name);
 const normalizeCode = node('Normalize Regression Target').parameters.jsCode;
+const restoreCode = node('Restore Authorized Regression Target').parameters.jsCode;
 
 function normalize(body, secret = '', provided = '') {
   const source = `(function(){${normalizeCode}})()`;
   return vm.runInNewContext(source, {$json:{body,headers:{'x-rag-webhook-secret':provided}}, $env:{N8N_WEBHOOK_SHARED_SECRET:secret}})[0].json;
+}
+
+function restore(target, admitted = true) {
+  return vm.runInNewContext(`(function(){${restoreCode}})()`, {
+    $json:{admitted}, $items:name => name === 'Normalize Regression Target' ? [{json:target}] : []
+  })[0].json;
 }
 
 assert.equal(normalize({}).serving_target, true, 'ordinary serving regression remains admitted');
@@ -18,6 +25,11 @@ const bound = normalize({qdrant_collection:'candidate', candidate_authorization_
   target_corpus_version_id:'v', target_manifest_digest:'d', target_capture_cutoff_sequence:7});
 assert.equal(bound.qdrant_collection, 'candidate');
 assert.equal(bound.target_capture_cutoff_sequence, 7);
+const restored = restore(bound);
+assert.equal(restored.qdrant_collection, 'candidate');
+assert.equal(restored.regression_run_id, bound.regression_run_id);
+assert.equal(restored.candidate_id, 'c');
+assert.throws(() => restore(bound, false), /was not admitted/);
 const loadCode = node('Load Regression Cases').parameters.jsCode;
 const authCheckCount = workflow.nodes.reduce((count, item) =>
   count + ((item.parameters?.jsCode?.match(/Unauthorized webhook request/g) || []).length), 0);
@@ -48,9 +60,28 @@ assert(callSql.includes("target_capture_cutoff_sequence) }}::bigint"), 'cutoff f
 assert.equal((callSql.match(/'::text/g) || []).length, 4, 'text function arguments must be explicitly typed');
 assert.deepEqual(workflow.connections['Regression Batch Webhook'].main[0][0].node, 'Normalize Regression Target');
 assert.deepEqual(workflow.connections['Normalize Regression Target'].main[0][0].node, 'Authorize Regression Target');
-assert.deepEqual(workflow.connections['Authorize Regression Target'].main[0][0].node, 'Load Regression Cases');
+assert.deepEqual(workflow.connections['Authorize Regression Target'].main[0][0].node, 'Restore Authorized Regression Target');
+assert.deepEqual(workflow.connections['Restore Authorized Regression Target'].main[0][0].node, 'Load Regression Cases');
 assert.equal(normalize({}, 'secret', 'secret').serving_target, true, 'authenticated serving path reaches authorization then case loading');
 assert.equal(normalize({qdrant_collection:'candidate', candidate_authorization_id:'a', candidate_id:'c',
   target_corpus_version_id:'v', target_manifest_digest:'d', target_capture_cutoff_sequence:7}, 'secret', 'secret').serving_target,
   false, 'authenticated bound candidate path reaches authorization then case loading');
+const loadCases = (body, target) => vm.runInNewContext(`(function(){${loadCode}})()`, {
+  $json:target, $items:name => {
+    if (name === 'Regression Batch Webhook') return [{json:{body}}];
+    if (name === 'Normalize Regression Target') return [{json:target}];
+    throw new Error('unexpected item source ' + name);
+  }, $env:{}
+});
+const loaded = loadCases({cases:'RQ-001', qdrant_collection:'candidate'}, restored);
+assert.equal(loaded.length, 1, 'candidate request reaches case loading with selected cases');
+assert.equal(loaded[0].json.qdrant_collection, 'candidate');
+assert.equal(loaded[0].json.regression_run_id, bound.regression_run_id);
+assert(loaded[0].json.discord_message_id, 'case input has a defined ID for intake transaction creation');
+const servingTarget = restore(normalize({cases:'RQ-001'}));
+const servingCases = loadCases({cases:'RQ-001'}, servingTarget);
+assert.equal(servingCases[0].json.qdrant_collection, 'tpm_unite_history', 'serving case loading is unchanged');
+assert.equal(workflow.connections['Call Intake Workflow'].main[0][0].node, 'Fetch Retrieval Evidence');
+const intakeResponse = {transaction_id:'11111111-1111-4111-8111-111111111111'};
+assert(intakeResponse.transaction_id, 'valid intake output provides the transaction ID consumed by retrieval evidence');
 console.log('candidate regression authorization gate tests passed');
