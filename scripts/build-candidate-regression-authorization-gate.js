@@ -33,11 +33,11 @@ workflow.nodes.push({
   parameters: { operation: 'executeQuery', query: `SELECT CASE WHEN {{ $json.serving_target }} THEN true ELSE rag_consume_candidate_regression_authorization(
   NULLIF('{{ String($json.candidate_authorization_id || '').replace(/'/g, "''") }}','')::uuid,
   NULLIF('{{ String($json.regression_run_id).replace(/'/g, "''") }}','')::uuid,
-  '{{ String($json.candidate_id || '').replace(/'/g, "''") }}',
-  '{{ String($json.qdrant_collection).replace(/'/g, "''") }}',
-  '{{ String($json.target_corpus_version_id || '').replace(/'/g, "''") }}',
-  '{{ String($json.target_manifest_digest || '').replace(/'/g, "''") }}',
-  {{ $json.target_capture_cutoff_sequence === null ? 'NULL' : Number($json.target_capture_cutoff_sequence) }}
+  '{{ String($json.candidate_id || '').replace(/'/g, "''") }}'::text,
+  '{{ String($json.qdrant_collection).replace(/'/g, "''") }}'::text,
+  '{{ String($json.target_corpus_version_id || '').replace(/'/g, "''") }}'::text,
+  '{{ String($json.target_manifest_digest || '').replace(/'/g, "''") }}'::text,
+  {{ $json.target_capture_cutoff_sequence === null ? 'NULL' : Number($json.target_capture_cutoff_sequence) }}::bigint
 ) END AS admitted;` },
   id: 'candidate-regression-authorize', name: 'Authorize Regression Target', type: 'n8n-nodes-base.postgres', typeVersion: 2.6, position: [-560, 0],
   credentials: node('Ensure Regression Run').credentials,

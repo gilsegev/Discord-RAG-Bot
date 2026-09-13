@@ -38,6 +38,9 @@ for (const predicate of ['auth.expires_at > now()', 'auth.consumed_at IS NULL',
   'auth.corpus_version_id = p_corpus_version_id', 'auth.manifest_digest = p_manifest_digest',
   'auth.frozen_capture_sequence = p_frozen_capture_sequence']) assert(sql.includes(predicate), predicate);
 assert(sql.includes("candidate.status = 'regression_authorized'"));
+const callSql = node('Authorize Regression Target').parameters.query;
+assert(callSql.includes("target_capture_cutoff_sequence) }}::bigint"), 'cutoff function argument must be bigint');
+assert.equal((callSql.match(/'::text/g) || []).length, 4, 'text function arguments must be explicitly typed');
 assert.deepEqual(workflow.connections['Regression Batch Webhook'].main[0][0].node, 'Normalize Regression Target');
 assert.deepEqual(workflow.connections['Authorize Regression Target'].main[0][0].node, 'Load Regression Cases');
 console.log('candidate regression authorization gate tests passed');
