@@ -25,6 +25,7 @@ from ingestion.incremental_planner import (
     embed_shadow,
     load_postgres,
     persist_plan,
+    resolve_active_corpus,
     render_plan,
 )
 from ingestion.parser import parse_all_exports
@@ -47,7 +48,7 @@ class RunRequest(BaseModel):
 
 
 class PlanRequest(BaseModel):
-    collection_name: str = "tpm_unite_history"
+    collection_name: str = "rag_active"
     batch_cutoff_sequence: int | None = None
     persist: bool = False
 
@@ -177,15 +178,20 @@ def plan(request: PlanRequest, x_incremental_worker_token: str | None = Header(d
     try:
         qdrant = QdrantClient(url=QDRANT_URL)
         with psycopg.connect(DATABASE_URL) as connection:
+            target = (resolve_active_corpus(connection, request.collection_name)
+                      if request.collection_name == "rag_active" else None)
+            physical_collection = target["collection_name"] if target else request.collection_name
             work, live, manifest, source_corpus = load_postgres(
                 connection,
                 cutoff=request.batch_cutoff_sequence,
-                collection=request.collection_name,
+                collection=physical_collection,
             )
+            if source_corpus is not None and target is not None:
+                source_corpus = {**source_corpus, "active_revision": target["active_revision"], "logical_name": request.collection_name}
             records = parse_all_exports(EXPORT_DIR) + live
-            points = scan_qdrant(qdrant, request.collection_name)
+            points = scan_qdrant(qdrant, physical_collection)
             shadow = create_shadow_plan(
-                work, records, manifest, points, request.collection_name,
+                work, records, manifest, points, physical_collection,
                 source_corpus=source_corpus,
             )
             measurement = (

@@ -10,7 +10,7 @@ from pathlib import Path
 from ingestion.incremental_planner import (
     PlanningError, WorkItem, _validate_existing_groups,
     _validate_status_transition, coalesce_work, create_shadow_plan, embed_shadow,
-    load_postgres, render_plan,
+    load_postgres, render_plan, resolve_active_corpus,
 )
 
 
@@ -39,6 +39,17 @@ def complete_measurement(plan):
 
 
 class IncrementalPlannerTests(unittest.TestCase):
+    def test_resolves_promoted_physical_target_and_revision(self):
+        class Result:
+            def fetchone(self): return ("candidate-v2", "corpus-v2", "digest-v2", 42, 9, "serving")
+        class Connection:
+            def execute(self, sql, params):
+                self.sql, self.params = sql, params
+                return Result()
+        resolved = resolve_active_corpus(Connection(), "rag_active")
+        self.assertEqual("candidate-v2", resolved["collection_name"])
+        self.assertEqual(9, resolved["active_revision"])
+
     def test_postgres_load_uses_message_channel_id_and_parent_display_name(self):
         class Cursor:
             def __init__(self):

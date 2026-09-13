@@ -34,6 +34,19 @@ class ExecutionError(RuntimeError):
     """The replacement cannot be safely applied or verified."""
 
 
+def assert_active_pointer(connection: Any, state: dict[str, Any], persisted: dict[str, Any]) -> None:
+    logical_name = persisted.get("source_logical_name")
+    if not logical_name:
+        return
+    active = connection.execute(
+        "SELECT collection_name,corpus_version_id,manifest_digest,revision,state FROM rag_active_corpus WHERE logical_name=%s",
+        (logical_name,),
+    ).fetchone()
+    expected = (state["collection_name"], state["source_corpus_version_id"], state["source_manifest_digest"], persisted.get("source_active_revision"), "serving")
+    if not active or tuple(active) != expected:
+        raise ExecutionError("active corpus pointer changed after planning")
+
+
 def _embed(text: str, embedder_url: str) -> tuple[list[float], str]:
     request = urllib.request.Request(
         embedder_url.rstrip("/") + "/embed",
@@ -89,6 +102,7 @@ def reconstruct(
 ) -> tuple[dict[str, Any], dict[str, Any], dict[str, list[float]], list[dict[str, Any]]]:
     """Rebuild and fully attest persisted plan material without mutation."""
     state, persisted = _run_and_plan(connection, run_id)
+    assert_active_pointer(connection, state, persisted)
     work, live, manifest, source_corpus = load_postgres(
         connection,
         cutoff=int(state["batch_cutoff_sequence"]),

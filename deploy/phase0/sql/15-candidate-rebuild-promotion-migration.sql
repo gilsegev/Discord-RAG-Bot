@@ -15,6 +15,12 @@ CREATE TABLE IF NOT EXISTS rag_candidate_chunk_manifest (
  logical_group_id TEXT NOT NULL, channel_id TEXT NOT NULL, thread_id TEXT, root_message_id TEXT,
  message_ids TEXT[] NOT NULL CHECK(cardinality(message_ids)>0), first_message_id TEXT NOT NULL,
  last_message_id TEXT NOT NULL, payload_digest TEXT NOT NULL, PRIMARY KEY(corpus_version_id,point_id), UNIQUE(candidate_id,point_id));
+CREATE TABLE IF NOT EXISTS rag_corpus_manifest_versions (
+ corpus_version_id TEXT NOT NULL, collection_name TEXT NOT NULL, point_id TEXT NOT NULL,
+ logical_group_id TEXT NOT NULL, channel_id TEXT NOT NULL, thread_id TEXT, root_message_id TEXT,
+ message_ids TEXT[] NOT NULL CHECK(cardinality(message_ids)>0), first_message_id TEXT NOT NULL,
+ last_message_id TEXT NOT NULL, chunker_version TEXT NOT NULL, embedding_version TEXT NOT NULL,
+ ingestion_run_id TEXT NOT NULL, payload_digest TEXT NOT NULL, PRIMARY KEY(corpus_version_id,point_id));
 CREATE TABLE IF NOT EXISTS rag_active_corpus (
  logical_name TEXT PRIMARY KEY, control_collection_name TEXT NOT NULL REFERENCES rag_runtime_state(collection_name),
  collection_name TEXT NOT NULL, corpus_version_id TEXT NOT NULL,
@@ -39,6 +45,11 @@ SELECT 'rag_active',v.collection_name,v.collection_name,v.corpus_version_id,v.ma
 FROM rag_corpus_versions v JOIN rag_runtime_state s ON s.collection_name=v.collection_name
 WHERE v.status='healthy' ORDER BY v.activated_at DESC NULLS LAST LIMIT 1
 ON CONFLICT(logical_name) DO NOTHING;
+INSERT INTO rag_corpus_manifest_versions
+SELECT a.corpus_version_id,m.collection_name,m.point_id,m.logical_group_id,m.channel_id,m.thread_id,m.root_message_id,
+ m.message_ids,m.first_message_id,m.last_message_id,m.chunker_version,m.embedding_version,m.ingestion_run_id,m.payload_digest
+FROM rag_active_corpus a JOIN rag_chunk_manifest m ON m.collection_name=a.collection_name AND m.active
+ON CONFLICT(corpus_version_id,point_id) DO NOTHING;
 ALTER TABLE rag_regression_runs ADD COLUMN IF NOT EXISTS target_collection_name TEXT,
  ADD COLUMN IF NOT EXISTS target_corpus_version_id TEXT, ADD COLUMN IF NOT EXISTS target_manifest_digest TEXT,
  ADD COLUMN IF NOT EXISTS target_capture_cutoff_sequence BIGINT;
@@ -85,6 +96,33 @@ DECLARE p rag_candidate_promotions%ROWTYPE; BEGIN SELECT * INTO p FROM rag_candi
  capture_cutoff_sequence=p.target_capture_cutoff_sequence,state='serving',revision=revision+1,changed_at=now()
  WHERE logical_name=p.logical_name AND state='switching' AND promotion_id=p_promotion_id;
  IF NOT FOUND THEN RAISE EXCEPTION 'active pointer changed' USING ERRCODE='40001'; END IF;
+ INSERT INTO rag_ingestion_runs(run_id,run_kind,status,collection_name,chunker_version,embedding_version,point_count,manifest_digest,completed_at)
+ SELECT c.candidate_id,'baseline_seed','completed',c.collection_name,c.chunker_version,c.embedding_version,c.point_count,c.manifest_digest,now()
+ FROM rag_candidate_rebuilds c WHERE c.candidate_id=p.candidate_id ON CONFLICT(run_id) DO NOTHING;
+ INSERT INTO rag_corpus_manifest_versions
+ SELECT c.corpus_version_id,m.collection_name,m.point_id,m.logical_group_id,m.channel_id,m.thread_id,m.root_message_id,m.message_ids,
+ m.first_message_id,m.last_message_id,c.chunker_version,c.embedding_version,c.candidate_id,m.payload_digest
+ FROM rag_candidate_rebuilds c JOIN rag_candidate_chunk_manifest m ON m.candidate_id=c.candidate_id WHERE c.candidate_id=p.candidate_id
+ ON CONFLICT(corpus_version_id,point_id) DO NOTHING;
+ DELETE FROM rag_chunk_message_ownership WHERE point_id IN(SELECT point_id FROM rag_chunk_manifest WHERE active);
+ UPDATE rag_chunk_manifest SET active=false,superseded_at=now() WHERE active;
+ INSERT INTO rag_chunk_manifest(point_id,collection_name,logical_group_id,channel_id,thread_id,root_message_id,message_ids,
+ first_message_id,last_message_id,chunker_version,embedding_version,ingestion_run_id,payload_digest,active)
+ SELECT m.point_id,c.collection_name,m.logical_group_id,m.channel_id,m.thread_id,m.root_message_id,m.message_ids,m.first_message_id,
+ m.last_message_id,c.chunker_version,c.embedding_version,c.candidate_id,m.payload_digest,true
+ FROM rag_candidate_rebuilds c JOIN rag_candidate_chunk_manifest m ON m.candidate_id=c.candidate_id WHERE c.candidate_id=p.candidate_id
+ ON CONFLICT(point_id) DO UPDATE SET collection_name=excluded.collection_name,logical_group_id=excluded.logical_group_id,
+ channel_id=excluded.channel_id,thread_id=excluded.thread_id,root_message_id=excluded.root_message_id,message_ids=excluded.message_ids,
+ first_message_id=excluded.first_message_id,last_message_id=excluded.last_message_id,chunker_version=excluded.chunker_version,
+ embedding_version=excluded.embedding_version,ingestion_run_id=excluded.ingestion_run_id,payload_digest=excluded.payload_digest,active=true,superseded_at=NULL;
+ INSERT INTO rag_chunk_message_ownership(point_id,message_id,message_position)
+ SELECT m.point_id,u.message_id,u.ordinality-1 FROM rag_candidate_chunk_manifest m
+ CROSS JOIN LATERAL unnest(m.message_ids) WITH ORDINALITY u(message_id,ordinality) WHERE m.candidate_id=p.candidate_id;
+ UPDATE rag_corpus_versions SET status='superseded',superseded_at=now() WHERE corpus_version_id=p.previous_corpus_version_id;
+ INSERT INTO rag_corpus_versions(corpus_version_id,ingestion_run_id,collection_name,manifest_digest,point_count,status,activated_at)
+ SELECT c.corpus_version_id,c.candidate_id,c.collection_name,c.manifest_digest,c.point_count,'healthy',now()
+ FROM rag_candidate_rebuilds c WHERE c.candidate_id=p.candidate_id
+ ON CONFLICT(corpus_version_id) DO UPDATE SET status='healthy',activated_at=now(),superseded_at=NULL;
  UPDATE rag_candidate_promotions SET status='promoted',completed_at=now() WHERE promotion_id=p_promotion_id;
  UPDATE rag_candidate_rebuilds SET status='promoted',promoted_at=now() WHERE candidate_id=p.candidate_id; END $$;
 CREATE OR REPLACE FUNCTION rag_begin_candidate_rollback(p_promotion_id TEXT)
@@ -107,6 +145,21 @@ DECLARE p rag_candidate_promotions%ROWTYPE; BEGIN SELECT * INTO p FROM rag_candi
  manifest_digest=p.previous_manifest_digest,capture_cutoff_sequence=p.previous_capture_cutoff_sequence,state='serving',revision=revision+1,changed_at=now()
  WHERE logical_name=p.logical_name AND state='rollback_switching';
  IF NOT FOUND THEN RAISE EXCEPTION 'active pointer changed' USING ERRCODE='40001'; END IF;
+ DELETE FROM rag_chunk_message_ownership WHERE point_id IN(SELECT point_id FROM rag_chunk_manifest WHERE active);
+ UPDATE rag_chunk_manifest SET active=false,superseded_at=now() WHERE active;
+ INSERT INTO rag_chunk_manifest(point_id,collection_name,logical_group_id,channel_id,thread_id,root_message_id,message_ids,
+ first_message_id,last_message_id,chunker_version,embedding_version,ingestion_run_id,payload_digest,active)
+ SELECT point_id,collection_name,logical_group_id,channel_id,thread_id,root_message_id,message_ids,first_message_id,last_message_id,
+ chunker_version,embedding_version,ingestion_run_id,payload_digest,true FROM rag_corpus_manifest_versions WHERE corpus_version_id=p.previous_corpus_version_id
+ ON CONFLICT(point_id) DO UPDATE SET collection_name=excluded.collection_name,logical_group_id=excluded.logical_group_id,
+ channel_id=excluded.channel_id,thread_id=excluded.thread_id,root_message_id=excluded.root_message_id,message_ids=excluded.message_ids,
+ first_message_id=excluded.first_message_id,last_message_id=excluded.last_message_id,chunker_version=excluded.chunker_version,
+ embedding_version=excluded.embedding_version,ingestion_run_id=excluded.ingestion_run_id,payload_digest=excluded.payload_digest,active=true,superseded_at=NULL;
+ INSERT INTO rag_chunk_message_ownership(point_id,message_id,message_position)
+ SELECT m.point_id,u.message_id,u.ordinality-1 FROM rag_corpus_manifest_versions m
+ CROSS JOIN LATERAL unnest(m.message_ids) WITH ORDINALITY u(message_id,ordinality) WHERE m.corpus_version_id=p.previous_corpus_version_id;
+ UPDATE rag_corpus_versions SET status='superseded',superseded_at=now() WHERE corpus_version_id=p.target_corpus_version_id;
+ UPDATE rag_corpus_versions SET status='healthy',activated_at=now(),superseded_at=NULL WHERE corpus_version_id=p.previous_corpus_version_id;
  UPDATE rag_candidate_promotions SET status='rolled_back',completed_at=now() WHERE promotion_id=p_promotion_id;
  UPDATE rag_candidate_rebuilds SET status='rolled_back' WHERE candidate_id=p.candidate_id; END $$;
 

@@ -418,6 +418,12 @@ def create_shadow_plan(
         "source_manifest_digest": (
             source_corpus.get("manifest_digest") if source_corpus else None
         ),
+        "source_active_revision": (
+            source_corpus.get("active_revision") if source_corpus else None
+        ),
+        "source_logical_name": (
+            source_corpus.get("logical_name") if source_corpus else None
+        ),
         "source_chunker_version": (
             source_corpus.get("chunker_version") if source_corpus else None
         ),
@@ -834,6 +840,16 @@ def load_postgres(
             else None
         )
     return work, live, manifest, source_corpus
+
+
+def resolve_active_corpus(connection: Any, logical_name: str) -> dict[str, Any]:
+    row = connection.execute(
+        "SELECT collection_name,corpus_version_id,manifest_digest,capture_cutoff_sequence,revision,state "
+        "FROM rag_active_corpus WHERE logical_name=%s OR control_collection_name=%s", (logical_name, logical_name)
+    ).fetchone()
+    if not row or row[5] != "serving":
+        raise PlanningError(f"active corpus {logical_name} is not serving")
+    return dict(zip(("collection_name","corpus_version_id","manifest_digest","capture_cutoff_sequence","active_revision","state"), row))
 
 
 def main() -> int:

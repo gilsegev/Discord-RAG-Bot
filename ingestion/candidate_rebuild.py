@@ -123,7 +123,7 @@ def plan_candidate(
         raise CandidateRebuildError(
             f"structural audit failed: uncovered={len(uncovered)}, duplicated={len(duplicated)}, cross_channel={len(cross_channel)}"
         )
-    payload_digest = hashlib.sha256(json.dumps(points, sort_keys=True, separators=(",", ":"), ensure_ascii=False).encode()).hexdigest()
+    payload_digest = hashlib.sha256(json.dumps(sorted(points, key=lambda item: int(item[0])), sort_keys=True, separators=(",", ":"), ensure_ascii=False).encode()).hexdigest()
     digest = hashlib.sha256(json.dumps({
         "collection": candidate_collection, "cutoff": frozen_capture_sequence,
         "manifest": manifest["manifest_digest"], "payload": payload_digest,
@@ -226,10 +226,15 @@ def promote_candidate(connection: Any, client: Any, candidate_id: str, alias: st
     evidence_row = connection.execute("SELECT collection_name,evidence FROM rag_candidate_rebuilds WHERE candidate_id=%s", (candidate_id,)).fetchone()
     if not evidence_row:
         raise CandidateRebuildError("unknown candidate")
+    live_points = scan_qdrant(client, str(evidence_row[0]))
     try:
-        verify_plan(evidence_row[1], scan_qdrant(client, str(evidence_row[0])))
+        verify_plan(evidence_row[1], live_points)
     except OwnershipError as error:
         raise CandidateRebuildError(f"candidate changed after validation: {error}") from error
+    live_payload_digest = hashlib.sha256(json.dumps(sorted(live_points, key=lambda item: int(item[0])),
+        sort_keys=True, separators=(",", ":"), ensure_ascii=False).encode()).hexdigest()
+    if live_payload_digest != evidence_row[1].get("candidate_payload_digest"):
+        raise CandidateRebuildError("candidate payload changed after validation")
     row = connection.execute("SELECT * FROM rag_begin_candidate_promotion(%s,%s)", (candidate_id, alias)).fetchone()
     if not row:
         raise CandidateRebuildError("candidate promotion was not admitted")
