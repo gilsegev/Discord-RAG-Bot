@@ -26,6 +26,7 @@ from typing import Any, Iterable
 from ingestion.chunk_manifest import scan_qdrant
 from ingestion.chunker import OVERLAP_MSGS, WINDOW_MINS, chunk_records
 from ingestion.parser import parse_all_exports
+from ingestion.reply_roots import resolve_reply_root
 from ingestion.run import _stable_id
 
 PLAN_VERSION = 2
@@ -57,10 +58,8 @@ def _dt(value: str) -> datetime:
     return datetime.fromisoformat(value.replace("Z", "+00:00"))
 
 
-def _scope(record: dict[str, Any]) -> tuple[str, str | None]:
-    return str(record["channel_id"]), (
-        str(record["thread_id"]) if record.get("thread_id") else None
-    )
+def _scope(record: dict[str, Any]) -> str:
+    return str(record["channel_id"])
 
 
 def _record_index(records: Iterable[dict[str, Any]]) -> dict[str, dict[str, Any]]:
@@ -72,45 +71,39 @@ def _record_index(records: Iterable[dict[str, Any]]) -> dict[str, dict[str, Any]
     return result
 
 
-def _root_id(
-    message_id: str,
-    records: dict[str, dict[str, Any]],
-    baseline_roots: dict[str, str],
-) -> str:
-    current = message_id
-    seen: set[str] = set()
-    while True:
-        if current in seen:
-            raise PlanningError(f"reply cycle at {current}")
-        seen.add(current)
-        record = records.get(current)
-        parent = str(record.get("parent_id") or "") if record else ""
-        if not parent:
-            return baseline_roots.get(current, current)
-        if parent not in records:
-            return baseline_roots.get(parent, parent)
-        current = parent
-
-
 def coalesce_work(
     work: Iterable[WorkItem],
     records: Iterable[dict[str, Any]],
-    baseline_roots: dict[str, str] | None = None,
 ) -> list[dict[str, Any]]:
-    """Coalesce replies by root and windows exactly as the v10 chunker does."""
+    """Coalesce replies by trusted root and channel-local fallback windows."""
     index = _record_index(records)
-    roots = baseline_roots or {}
     reply_groups: dict[tuple[str, str | None, str], list[WorkItem]] = {}
     windows: dict[tuple[str, str | None], list[WorkItem]] = {}
     ordered_work = sorted(work, key=lambda value: value.capture_sequence)
+    recent_ids = {
+        item.message_id for item in ordered_work
+        if item.work_kind == "recent_window"
+    }
+    repaired_roots: dict[str, set[str]] = {message_id: set() for message_id in recent_ids}
+    for message_id, record in index.items():
+        if not record.get("parent_id"):
+            continue
+        resolution = resolve_reply_root(message_id, index, record["channel_id"])
+        if resolution.root_message_id is None:
+            continue
+        for ancestor_id in _ancestor_ids(message_id, index).intersection(recent_ids):
+            repaired_roots[ancestor_id].add(resolution.root_message_id)
     for item in ordered_work:
         if item.message_id not in index:
             raise PlanningError(f"pending message {item.message_id} is missing")
         if item.work_kind == "reply_conversation":
-            root = _root_id(item.message_id, index, roots)
-            reply_groups.setdefault(
-                (item.channel_id, item.thread_id, root), []
-            ).append(item)
+            root = resolve_reply_root(
+                item.message_id, index, item.channel_id
+            ).root_message_id
+            if root is None:
+                windows.setdefault((item.channel_id, None), []).append(item)
+            else:
+                reply_groups.setdefault((item.channel_id, None, root), []).append(item)
         elif item.work_kind != "recent_window":
             raise PlanningError(f"unsupported work kind {item.work_kind}")
 
@@ -120,11 +113,15 @@ def coalesce_work(
     for item in ordered_work:
         if item.work_kind != "recent_window":
             continue
+        newly_resolved_roots = repaired_roots[item.message_id]
+        if len(newly_resolved_roots) == 1:
+            root = next(iter(newly_resolved_roots))
+            reply_groups.setdefault((item.channel_id, None, root), []).append(item)
+            continue
         matching_reply_key = next(
             (
                 key for key in reply_groups
                 if key[0] == item.channel_id
-                and key[1] == item.thread_id
                 and key[2] == item.message_id
             ),
             None,
@@ -132,7 +129,7 @@ def coalesce_work(
         if matching_reply_key:
             reply_groups[matching_reply_key].append(item)
         else:
-            windows.setdefault((item.channel_id, item.thread_id), []).append(item)
+            windows.setdefault((item.channel_id, None), []).append(item)
 
     groups: list[dict[str, Any]] = []
     for (channel_id, thread_id, root), items in reply_groups.items():
@@ -180,6 +177,21 @@ def coalesce_work(
     return sorted(groups, key=lambda group: group["group_key"])
 
 
+def _ancestor_ids(
+    message_id: str, records: dict[str, dict[str, Any]]
+) -> set[str]:
+    """Return available ancestors for late-ancestor repair detection."""
+    ancestors: set[str] = set()
+    current = str(message_id)
+    while current in records and current not in ancestors:
+        ancestors.add(current)
+        parent = records[current].get("parent_id")
+        if not parent:
+            break
+        current = str(parent)
+    return ancestors
+
+
 def _point_payloads(
     points: Iterable[tuple[str, dict[str, Any]]],
 ) -> dict[str, dict[str, Any]]:
@@ -199,6 +211,7 @@ def _chunk_row(chunk: dict[str, Any]) -> dict[str, Any]:
         "split_index": int(chunk.get("split_index", 0)),
         "channel_id": str(chunk["channel_id"]),
         "thread_name": chunk.get("thread_name"),
+        "root_message_id": chunk.get("root_message_id"),
         "text_digest": hashlib.sha256(chunk["text"].encode("utf-8")).hexdigest(),
         "text": chunk["text"],
         # Private apply material. It is deliberately excluded from the
@@ -216,6 +229,7 @@ def _chunk_row(chunk: dict[str, Any]) -> dict[str, Any]:
             "message_count": chunk["message_count"],
             "message_ids": [str(value) for value in chunk.get("message_ids", [])],
             "first_message_id": str(chunk.get("first_message_id", "")),
+            "root_message_id": chunk.get("root_message_id"),
             "token_count": chunk.get("token_count", 0),
             "span_days": chunk.get("span_days", 0),
             "split_index": int(chunk.get("split_index", 0)),
@@ -228,8 +242,9 @@ def _shadow_records(
     index: dict[str, dict[str, Any]],
     point_payloads: dict[str, dict[str, Any]],
     manifest: list[dict[str, Any]],
+    root_members: dict[tuple[str, str], set[str]],
 ) -> tuple[list[dict[str, Any]], list[str]]:
-    scope = (group["channel_id"], group["thread_id"])
+    scope = group["channel_id"]
     source = [index[message_id] for message_id in group["source_message_ids"]]
     old_ids: set[str] = set()
     selected_ids: set[str] = set(group["source_message_ids"])
@@ -240,13 +255,31 @@ def _shadow_records(
             if (
                 row.get("active", True)
                 and row.get("root_message_id") == root
-                and (str(row["channel_id"]), row.get("thread_id")) == scope
+                and str(row["channel_id"]) == scope
             ):
                 old_ids.add(str(row["point_id"]))
                 selected_ids.update(str(value) for value in row["message_ids"])
-        for message_id, record in index.items():
-            if _scope(record) == scope and _root_id(message_id, index, {}) == root:
-                selected_ids.add(message_id)
+        selected_ids.update(root_members.get((scope, root), set()))
+        # A late ancestor can turn previously unresolved window chunks into a
+        # trusted reply conversation. Replace every same-scope point that owns
+        # one of those descendants, even though its old root was null.
+        changed = True
+        while changed:
+            changed = False
+            for row in manifest:
+                row_message_ids = {
+                    str(value) for value in row.get("message_ids", [])
+                }
+                point_id = str(row["point_id"])
+                if (
+                    row.get("active", True)
+                    and point_id not in old_ids
+                    and str(row["channel_id"]) == scope
+                    and row_message_ids.intersection(selected_ids)
+                ):
+                    old_ids.add(point_id)
+                    selected_ids.update(row_message_ids)
+                    changed = True
     else:
         earliest = min(_dt(record["timestamp"]) for record in source)
         latest = max(_dt(record["timestamp"]) for record in source)
@@ -261,12 +294,7 @@ def _shadow_records(
         candidates.sort()
         selected_ids.update(message_id for _, message_id in candidates)
         for point_id, payload in point_payloads.items():
-            payload_scope = (
-                str(payload.get("channel_id")),
-                str(payload["thread_id"]) if payload.get("thread_id") else (
-                    str(payload["channel_id"]) if payload.get("thread_name") else None
-                ),
-            )
+            payload_scope = str(payload.get("channel_id"))
             if payload_scope != scope or not payload.get("start_ts"):
                 continue
             if _dt(payload["end_ts"]) >= lower and _dt(payload["start_ts"]) <= upper:
@@ -306,7 +334,7 @@ def create_shadow_plan(
     manifest: Iterable[dict[str, Any]],
     points: Iterable[tuple[str, dict[str, Any]]],
     collection: str = DEFAULT_COLLECTION,
-    chunker_version: str = "v10",
+    chunker_version: str = "v11",
     embedding_version: str = "nomic-ai/nomic-embed-text-v1.5",
     source_corpus: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
@@ -315,17 +343,18 @@ def create_shadow_plan(
     index = _record_index(records_list)
     manifest_list = list(manifest)
     payloads = _point_payloads(points)
-    baseline_roots = {
-        str(message_id): str(row["root_message_id"])
-        for row in manifest_list
-        if row.get("root_message_id")
-        for message_id in row["message_ids"]
-    }
-    groups = coalesce_work(work_list, records_list, baseline_roots)
+    groups = coalesce_work(work_list, records_list)
+    root_members: dict[tuple[str, str], set[str]] = {}
+    for message_id, record in index.items():
+        resolution = resolve_reply_root(message_id, index, record["channel_id"])
+        if resolution.root_message_id is not None:
+            root_members.setdefault(
+                (str(record["channel_id"]), resolution.root_message_id), set()
+            ).add(message_id)
     planned_groups: list[dict[str, Any]] = []
     for group in groups:
         selected, old_ids = _shadow_records(
-            group, index, payloads, manifest_list
+            group, index, payloads, manifest_list, root_members
         )
         chunks = chunk_records(selected)
         replacements = sorted((_chunk_row(chunk) for chunk in chunks), key=lambda row: int(row["point_id"]))
@@ -710,8 +739,9 @@ def load_postgres(
         cursor.execute(
             """
             SELECT w.source_message_id, w.capture_sequence, w.work_kind,
-                   w.parent_channel_id, w.thread_id, w.parent_message_id
+                   d.channel_id, NULL, w.parent_message_id
             FROM rag_pending_chunk_work w
+            JOIN rag_discord_messages d ON d.message_id=w.source_message_id
             WHERE w.status=ANY(%s) AND w.capture_sequence <= %s
             ORDER BY w.capture_sequence
             """,
@@ -730,8 +760,8 @@ def load_postgres(
             (cutoff_sql,),
         )
         live = [{
-            "id": row[0], "channel_id": row[3], "channel": row[4],
-            "thread_id": row[5], "thread_name": row[6], "parent_id": row[7],
+            "id": row[0], "channel_id": row[1], "channel": row[2],
+            "thread_id": None, "thread_name": row[6], "parent_id": row[7],
             "author": row[8], "content": row[9], "timestamp": row[10].isoformat(),
         } for row in cursor.fetchall()]
         cursor.execute(

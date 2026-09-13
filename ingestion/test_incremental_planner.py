@@ -109,11 +109,12 @@ class IncrementalPlannerTests(unittest.TestCase):
 
     def test_cycle_fails_closed(self):
         records = [message(1, 0, 2), message(2, 1, 1)]
-        with self.assertRaisesRegex(PlanningError, "cycle"):
-            coalesce_work(
-                [WorkItem("2", 1, "reply_conversation", "10", None, "1")],
-                records,
-            )
+        groups = coalesce_work(
+            [WorkItem("2", 1, "reply_conversation", "10", None, "1")],
+            records,
+        )
+        self.assertEqual(groups[0]["work_kind"], "recent_window")
+        self.assertIsNone(groups[0]["root_message_id"])
 
     def test_plan_is_deterministic_and_selects_no_unrelated_points(self):
         records = [message(1, 0), message(2, 1, 1), message(9, 2, channel="99")]

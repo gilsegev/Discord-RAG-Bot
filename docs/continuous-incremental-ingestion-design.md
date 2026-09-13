@@ -209,16 +209,23 @@ silently enter the new corpus.
 ### Replies
 
 For a reply, persist `parent_message_id` from Discord's message reference.
-Follow known parents in Postgres to determine the oldest known
-`root_message_id`. The work key is:
+The shared ingestion resolver walks only upward and assigns `root_message_id`
+only when it reaches an available parentless message and every record has the
+same stable `channel_id`. Missing ancestors, cycles, and cross-channel references
+remain unrooted; their reason is operational evidence, not persisted payload.
+The reply work key is:
 
 ```text
-(channel_id, thread_id, root_message_id)
+(channel_id, root_message_id)
 ```
 
-If the direct parent is already present in the baseline corpus manifest but not
-in the live-message table, the baseline message-to-chunk map supplies its root or
-conversation identity.
+`channel_id` is the authoritative chunk scope; the legacy nullable `thread_id`
+columns remain for schema compatibility but new ownership and plans leave them
+null rather than duplicating the same Discord thread ID.
+Discord threads already supply their own stable `channel_id`, so display names
+do not define chunk scope. When a previously missing
+ancestor arrives, planning reevaluates same-channel descendants and replaces the
+affected fallback windows with the now-complete reply conversation.
 
 ### Non-reply messages
 

@@ -4,6 +4,11 @@ Full ingestion pipeline: parse -> chunk -> embed -> store.
 Usage:
   python ingestion/run.py            # incremental upsert (default)
   python ingestion/run.py --recreate # drop and recreate collection
+v9 fix:
+  - Fix 9 (Issue #17): root_message_id added to Qdrant payload,
+    sourced from chunker's v11 root-resolution. Enables Phase 6
+    reply-root dedupe grouping by shared root, not just message-
+    overlap fallback.
 v8 fixes:
   - Fix 1: stable ID includes split_index — prevents lost vectors
   - Fix 2: CPU time estimate formula corrected
@@ -17,6 +22,9 @@ v8 fixes:
 Note: v8 chunker stores per-piece message_ids for split chunks.
 Stable IDs for split pieces differ from v7 — run --recreate when
 upgrading from v7 to v8.
+
+Note: v9 payload adds root_message_id — existing points won't have
+this field until the collection is rebuilt with --recreate.
 Author: ThinkInSystems (Hemanth Aragonda)
 """
 import os
@@ -231,6 +239,8 @@ def _upsert_batch(client, batch_chunks: list,
     Discord link construction and dedupe by n8n.
     first_message_id sourced from chunker per split piece — reflects
     actual first message in that piece, not the original chunk.
+    Fix 9 (Issue #17): root_message_id added — None for non-reply
+    chunks, shared by every split piece of the same reply chain.
     """
     from qdrant_client.models import PointStruct
     points = [
@@ -249,6 +259,7 @@ def _upsert_batch(client, batch_chunks: list,
                 "message_ids":      batch_chunks[j].get("message_ids", []),
                 "first_message_id": batch_chunks[j].get(
                     "first_message_id", ""),
+                "root_message_id":  batch_chunks[j].get("root_message_id"),
                 "token_count":      batch_chunks[j].get("token_count", 0),
                 "span_days":        batch_chunks[j].get("span_days", 0),
                 "split_index":      batch_chunks[j].get("split_index", 0),
