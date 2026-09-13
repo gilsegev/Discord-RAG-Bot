@@ -4,7 +4,7 @@ const path = 'workflows/n8n/rag-regression-batch-runner-phase-8.json';
 const workflow = JSON.parse(fs.readFileSync(path, 'utf8'));
 const node = name => workflow.nodes.find(item => item.name === name);
 
-workflow.nodes = workflow.nodes.filter(item => !['Normalize Regression Target', 'Authorize Regression Target'].includes(item.name));
+workflow.nodes = workflow.nodes.filter(item => !['Normalize Regression Target', 'Authorize Regression Target', 'Restore Authorized Regression Target'].includes(item.name));
 workflow.nodes.push({
   parameters: { jsCode: `const requiredWebhookSecret = String($env.N8N_WEBHOOK_SHARED_SECRET || '');
 if (requiredWebhookSecret) {
@@ -28,6 +28,12 @@ return [{json:{serving_target:serving, regression_run_id:runId, qdrant_collectio
   target_corpus_version_id:serving?null:String(body.target_corpus_version_id), target_manifest_digest:serving?null:String(body.target_manifest_digest),
   target_capture_cutoff_sequence:serving?null:Number(body.target_capture_cutoff_sequence)}}];` },
   id: 'candidate-regression-normalize', name: 'Normalize Regression Target', type: 'n8n-nodes-base.code', typeVersion: 2, position: [-780, 0],
+});
+workflow.nodes.push({
+  parameters: { jsCode: `const target = $items('Normalize Regression Target')[0].json;
+if ($json.admitted !== true) throw new Error('Candidate regression authorization was not admitted');
+return [{json:{...target, authorization_admitted:true}}];` },
+  id: 'candidate-regression-restore', name: 'Restore Authorized Regression Target', type: 'n8n-nodes-base.code', typeVersion: 2, position: [-340, 0],
 });
 workflow.nodes.push({
   parameters: { operation: 'executeQuery', query: `SELECT CASE WHEN {{ $json.serving_target }} THEN true ELSE rag_consume_candidate_regression_authorization(
@@ -58,6 +64,7 @@ load.parameters.jsCode = load.parameters.jsCode.replace(
 
 workflow.connections['Regression Batch Webhook'] = {main:[[{node:'Normalize Regression Target',type:'main',index:0}]]};
 workflow.connections['Normalize Regression Target'] = {main:[[{node:'Authorize Regression Target',type:'main',index:0}]]};
-workflow.connections['Authorize Regression Target'] = {main:[[{node:'Load Regression Cases',type:'main',index:0}]]};
+workflow.connections['Authorize Regression Target'] = {main:[[{node:'Restore Authorized Regression Target',type:'main',index:0}]]};
+workflow.connections['Restore Authorized Regression Target'] = {main:[[{node:'Load Regression Cases',type:'main',index:0}]]};
 
 fs.writeFileSync(path, JSON.stringify(workflow, null, 2) + '\n');
