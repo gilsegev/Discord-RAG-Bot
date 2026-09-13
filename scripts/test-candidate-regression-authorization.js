@@ -18,6 +18,11 @@ const bound = normalize({qdrant_collection:'candidate', candidate_authorization_
   target_corpus_version_id:'v', target_manifest_digest:'d', target_capture_cutoff_sequence:7});
 assert.equal(bound.qdrant_collection, 'candidate');
 assert.equal(bound.target_capture_cutoff_sequence, 7);
+const loadCode = node('Load Regression Cases').parameters.jsCode;
+const authCheckCount = workflow.nodes.reduce((count, item) =>
+  count + ((item.parameters?.jsCode?.match(/Unauthorized webhook request/g) || []).length), 0);
+assert.equal(authCheckCount, 1, 'webhook authentication must occur exactly once');
+assert(!loadCode.includes('Unauthorized webhook request'), 'case loading must not repeat authentication after headers are consumed');
 
 const now = new Date('2026-09-13T00:00:00Z');
 const authorization = {authorization_id:'a', candidate_id:'c', collection_name:'candidate', corpus_version_id:'v',
@@ -42,5 +47,10 @@ const callSql = node('Authorize Regression Target').parameters.query;
 assert(callSql.includes("target_capture_cutoff_sequence) }}::bigint"), 'cutoff function argument must be bigint');
 assert.equal((callSql.match(/'::text/g) || []).length, 4, 'text function arguments must be explicitly typed');
 assert.deepEqual(workflow.connections['Regression Batch Webhook'].main[0][0].node, 'Normalize Regression Target');
+assert.deepEqual(workflow.connections['Normalize Regression Target'].main[0][0].node, 'Authorize Regression Target');
 assert.deepEqual(workflow.connections['Authorize Regression Target'].main[0][0].node, 'Load Regression Cases');
+assert.equal(normalize({}, 'secret', 'secret').serving_target, true, 'authenticated serving path reaches authorization then case loading');
+assert.equal(normalize({qdrant_collection:'candidate', candidate_authorization_id:'a', candidate_id:'c',
+  target_corpus_version_id:'v', target_manifest_digest:'d', target_capture_cutoff_sequence:7}, 'secret', 'secret').serving_target,
+  false, 'authenticated bound candidate path reaches authorization then case loading');
 console.log('candidate regression authorization gate tests passed');
