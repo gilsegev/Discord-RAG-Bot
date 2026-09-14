@@ -243,22 +243,21 @@ when the originating request did not. Retain `generated_answer` and
 delete both fields while keeping the transaction row. Retain the transaction
 metadata needed for operations and correlation—status, timing, route,
 `transaction_id`, hashes, model, and non-content generation metadata—for
-**90 days** from `completed_at`, then delete trace and retrieval-detail rows
-and minimize the transaction to a correlation tombstone. Feedback and
-evaluation labels have a one-year retention requirement, so their parent
-transaction must remain as the minimal foreign-key record until those
-dependents are deleted or detached into an archive. Do not cascade-delete a
-transaction at the 90-day metadata boundary. The 30-day window gives
+**one year** from `completed_at`, aligned with feedback and evaluation-label
+retention. After one year, delete or archive the dependent records before
+deleting the transaction so foreign-key cascades do not silently remove
+longer-lived evidence. The 30-day window gives
 maintainers enough time to investigate feedback and safety reports; the
-shorter content lifetime reduces exposure of community material. The 90-day
-metadata window supports reliability trends and incident correlation without
-retaining response text.
+shorter content lifetime reduces exposure of community material. The one-year
+metadata window supports seasonal trend analysis and incident correlation
+without retaining response text.
 
 Phoenix is not an archive: it receives only a bounded, redacted generation
-preview, the output length, and the `transaction_id`. The production retention
-job must clear expired response fields before the 90-day minimization, retain
-only the required correlation tombstone for feedback/evaluation retention, and
-record its completion count as an operational event.
+preview, the output length, and the `transaction_id`. Retain Phoenix traces for
+**one year**. The production retention job must clear expired full response
+fields after 30 days, retain transaction metadata alongside Phoenix,
+feedback, and evaluation evidence for one year, and record its completion
+count as an operational event.
 
 Allowed `refusal_reason` values:
 
@@ -643,15 +642,16 @@ Guidelines:
 - Redact bot tokens, API keys, and secrets.
 - Avoid storing unnecessary user PII.
 - Keep Phoenix private or behind authentication.
-- Keep operational logs for 30 days by default.
+- Keep Phoenix traces and operational transaction metadata for one year.
 - Keep feedback and aggregate metrics longer.
 
 Suggested retention:
 
 | Data | Retention |
 |---|---|
-| Full prompt/context traces | 14-30 days |
-| Transaction metadata | 90 days |
+| Phoenix traces and redacted generation previews | 1 year |
+| Full generated-answer text in Postgres | 30 days |
+| Transaction metadata | 1 year |
 | Feedback records | 1 year |
 | Aggregated metrics | Indefinite |
 
