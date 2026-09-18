@@ -20,6 +20,8 @@ Discord event
 
 This reuses the existing Gemini call; there is no separate intent-model call. Passive responses stay in Postgres-only shadow mode until a separate authorization enables posting. Active calls and retrieval-only regression keep their existing generation contracts.
 
+The shared retrieval gate still applies before Gemini. When reranking or context assembly finds no usable evidence, the passive transaction records the specific retrieval refusal, leaves the answer empty, sets `should_post=false`, and makes no Gemini or Discord call. A passive message with usable context reaches Gemini for the structured post decision. The final Discord gate requires an explicit `should_post=true` for passive traffic.
+
 ## Four early mechanical exclusions
 
 For ordinary passive traffic, only these checks may stop a message before retrieval:

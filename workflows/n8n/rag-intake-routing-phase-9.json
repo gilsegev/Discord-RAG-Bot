@@ -911,7 +911,7 @@
           "conditions": [
             {
               "id": "phase8-allow-discord-post",
-              "leftValue": "={{ $json.allow_discord_post && !$json.output_integrity_failed && $json.should_post !== false }}",
+              "leftValue": "={{ $json.allow_discord_post && !$json.output_integrity_failed && ($json.trigger_source !== 'discord_passive' || $json.should_post === true) }}",
               "rightValue": true,
               "operator": {
                 "type": "boolean",
