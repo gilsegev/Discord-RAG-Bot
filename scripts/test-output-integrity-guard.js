@@ -106,7 +106,7 @@ assert.strictEqual(finalDrafting.gemini_response_text, '');
 assert.strictEqual(finalDrafting.discord_response_text, '');
 
 const shouldPostExpression = shouldPostNode.parameters.conditions.conditions[0].leftValue;
-assert.strictEqual(shouldPostExpression, '={{ $json.allow_discord_post && !$json.output_integrity_failed }}');
+assert.strictEqual(shouldPostExpression, '={{ $json.allow_discord_post && !$json.output_integrity_failed && $json.should_post !== false }}');
 const notPostedDrafting = buildNotPosted({
   ...finalDrafting,
   allow_discord_post: true,

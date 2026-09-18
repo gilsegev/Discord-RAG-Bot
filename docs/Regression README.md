@@ -6,10 +6,11 @@ Curated evaluation data for the Evaluation and Feedback Scoring workstream. The 
 
 The v1 bot was deprecated for ungrounded, generic answers. This set is the fixed yardstick that proves the new bot is grounded and refuses appropriately.
 
-Passive intent routing uses a separate sanitized fixture suite that executes
-the intake workflow's actual routing code. It covers deterministic exclusions,
-knowledge-request admission, fail-closed ambiguity, routing telemetry, and
-explicit-invocation bypass as defined in `docs/Passive intent gate design.md`.
+Passive intent routing uses a separate focused fixture suite that executes
+the intake and Gemini-result workflow code. It covers the four mechanical
+exclusions, valid and malformed structured post decisions, and active-call
+bypass as defined in `docs/Passive intent gate design.md`. Population-level
+precision and recall still require labels from the historical message replay.
 
 Use it as:
 

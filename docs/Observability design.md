@@ -72,10 +72,9 @@ Design constraints:
 | Feedback quality | Discord reactions or explicit feedback tied to one transaction |
 | Operations | Error rates, slow nodes, Qdrant/Gemini failures, dispatch failures |
 
-Passive routing decisions also record the gate level, policy version, intent
-class, confidence, and bounded evidence signals defined in
-`docs/Passive intent gate design.md`. This makes pre-retrieval admission
-measurable without adding raw Discord message content to trace payloads.
+Passive routing records the mechanical gate result and policy version.
+Gemini's validated intent and post decision are stored with generation
+metadata, without adding raw Discord message content to trace payloads.
 
 ### Refusal Quality Metrics
 

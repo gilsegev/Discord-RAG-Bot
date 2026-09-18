@@ -1,245 +1,105 @@
-# Passive Intent Gate Design
+# Passive Gemini Post-Decision Design
 
-**Status:** Implemented in shadow mode
+**Status:** Implemented; one production shadow non-question verified on 2026-09-18
+
 **Owner:** Discord RAG Bot maintainers
-**Related:** Phase 9; Retrieval, Context & Prompt Contracts; Observability Design; Regression README
+**Related:** Phase 9; Retrieval, Context & Prompt Contracts; Observability Design
 
-## 1. Purpose
+## Purpose and decision
 
-Passive routing currently uses broad lexical signals before sending ordinary Discord messages through embedding, retrieval, reranking, and generation. A fourteen-day production shadow review ending 2026-09-13 found that 49 of 179 passive candidates were marked answered. Thirty-seven of those answers had no question mark, and manual review found that most answered messages were replies, acknowledgements, coordination, job or referral activity, advertisements, or statements rather than requests for historical community knowledge.
-
-This design adds a conservative intent contract before the shared RAG core. It protects the shared retrieval path from non-questions without duplicating that path or changing explicit bot invocation behavior.
-
-## 2. Decision
-
-Use three ordered gate levels for passive Discord messages:
+The prior three-level, regex-heavy passive gate suppressed legitimate questions about referrals, community calls, contacts, and interview preparation. The problem is not whether a message contains a question mark; it is whether an unsolicited bot response would usefully address a member request. Mechanical intake checks must not make that semantic judgment.
 
 ```text
-Discord intake
-    |
-    +-- explicit bot invocation --------------------------> shared RAG core
-    |
-    +-- passive message
-            |
-            v
-      Level 1: deterministic exclusion
-            | excluded
-            +---------------------------------------------> ignored
-            |
-            v
-      Level 2: knowledge-request admission
-            | admitted
-            +---------------------------------------------> shared RAG core
-            |
-            v
-      Level 3: ambiguous disposition ---------------------> ignored
+Discord event
+  -> four mechanical checks
+  -> shared retrieval and Gemini generation
+  -> structured Gemini post decision
+  -> grounding, citation, output-integrity, and posting guards
+  -> Discord post only when all guards approve
 ```
 
-Passive admission is intentionally precision-first. A member can always mention the bot explicitly when a message is ambiguous or when they want an answer despite the passive policy.
+This reuses the existing Gemini call; there is no separate intent-model call. Passive responses stay in Postgres-only shadow mode until a separate authorization enables posting. Active calls and retrieval-only regression keep their existing generation contracts.
 
-## 3. Contract
+## Four early mechanical exclusions
 
-The gate consumes the normalized Discord intake fields already available before retrieval. It does not inspect retrieved content and does not call Gemini.
+For ordinary passive traffic, only these checks may stop a message before retrieval:
 
-The gate produces:
+1. **Duplicate event:** The same Discord guild/message ID was delivered again; a durable intake-event claim is independent of corpus-capture eligibility. Identical text in a new message ID is not a duplicate.
+2. **Non-member event:** Bot-authored, webhook-authored, or system-generated events.
+3. **Empty content:** No usable message text after normalization.
+4. **Excluded channel:** The channel ID is on an explicit configured exclusion list.
 
-| Field | Meaning |
-|---|---|
-| `route_type` | Existing contract: `active_call`, `passive_candidate`, or `ignored`. |
-| `routing_reason` | Stable machine-readable reason for the final decision. |
-| `passive_gate_level` | `bypass`, `level_1`, `level_2`, or `level_3`. |
-| `passive_gate_policy_version` | Version of the deterministic intent policy. |
-| `passive_intent_class` | `knowledge_request`, `conversation`, `coordination`, `job_or_referral`, `promotion`, or `ambiguous`. |
-| `passive_intent_confidence` | `high`, `medium`, or `low`; this is policy confidence, not model probability. |
-| `passive_intent_evidence` | Bounded list of stable signal names used by the decision. |
+The passive-enabled switch remains an operational kill switch, not a content classification rule. No length threshold, URL-only rule, reply rule, job/referral rule, schedule rule, keyword list, or question-syntax rule may reject meaningful member text at intake. Direct mentions still use the active-call path after event-level checks. The older Stage 0 pre-retrieval privacy gate remains for active calls but is bypassed for passive calls; passive Gemini must instead decline answers requiring personal contact or identifying information.
 
-These fields travel with the existing workflow state and are written into routing trace events. The transaction schema and existing route-type values remain unchanged.
+## Gemini post-decision contract
 
-## 4. Gate Levels
+For passive messages, the existing final Gemini request receives the original message and retrieved context. It must decide intent before drafting. Its JSON schema is:
 
-### 4.1 Level 1: deterministic exclusion
-
-Level 1 rejects messages whose dominant intent is identifiable with high precision before evaluating whether their topic resembles the corpus.
-
-Initial exclusions:
-
-- Platform-invalid events already covered by Phase 9: duplicates, bot or webhook authors, system events, excluded channels, empty content, and URL-only content.
-- Acknowledgements and reactions such as thanks, agreement, confirmation, or conversational closure.
-- Coordination such as meeting times, attendance, availability, sign-up logistics, or link confirmation.
-- Job and referral transactions such as openings, recruiter introductions, requests to refer, requests to connect, or direct-message calls to action.
-- Promotions, surveys, solicitations, and advertisements.
-- Clear conversational answers, advice, anecdotes, or status updates that do not request information.
-
-Exclusions must use bounded phrase and clause patterns. A keyword appearing anywhere in a message is not sufficient. Channel is supporting evidence, not an automatic exclusion, because knowledge questions can appear in job, referral, or event channels.
-
-### 4.2 Level 2: knowledge-request admission
-
-Level 2 admits only messages with both a strong request for information and
-corpus-oriented evidence that historical TPM Unite conversations could answer
-it. Grammatical question syntax alone is not enough in passive mode: it also
-appears in clarifications, live coordination, current-status checks, rhetorical
-remarks, and replies directed at another member.
-
-Admission requires both of the following:
-
-1. At least one clause-level request signal:
-   - Direct interrogative construction such as `how`, `what`, `why`, `when`, `where`, `who`, or `which` introducing a question clause.
-   - Auxiliary-led question construction such as `can anyone`, `has anyone`, `should I`, `is it`, or `do people`.
-   - Explicit information request such as `looking for advice`, `seeking recommendations`, `would appreciate insights`, or `curious about others' experience`.
-2. At least one corpus-oriented signal: a stable, historically answerable TPM
-   topic (for example an interview process, leveling, role scope, career
-   practice, contract hiring, or company experience), or explicit TPM Unite
-   historical-community framing such as asking about member or community
-   experience, advice, or recommendations. Request words alone do not qualify:
-   the message must establish professional/TPM domain evidence or expressly
-   seek TPM Unite's historical community knowledge. General advice requests
-   about choosing a car, wedding planning, or renewing an H-1B visa are Level 3
-   outcomes unless they also establish that supported corpus relationship.
-
-An actual request marker must be present. For example, `any insights on
-contract hiring patterns` is an explicit request; a declarative statement that
-someone “has insight” is not. Topic nouns such as `insight`, `advice`,
-`interview`, or a company name do not independently establish request intent.
-
-Admission is blocked when a stronger Level 1 intent applies. A question mark
-alone is insufficient because rhetorical questions and coordination questions
-are not corpus-answerable knowledge requests. A request signal without
-corpus-oriented evidence is a Level 3 ignored outcome. Conversely, a question
-mark is not required when both an explicit information-request construction and
-corpus-oriented evidence are present.
-
-The existing broad heuristic that treats words such as `is`, `are`, `help`, `experience`, or `anyone` anywhere in a message as a question signal is retired.
-
-### 4.3 Level 3: ambiguous disposition
-
-Every passive message not excluded by Level 1 or admitted by Level 2 is ambiguous. Ambiguous passive messages are ignored without retrieval or generation.
-
-Level 3 does not introduce an LLM classifier in this implementation. The production evidence-first dataset is small, the current failure is excessive admission, and an LLM pre-classifier would add cost and another nondeterministic contract before the evidence supports it. A learned or model-based classifier may be proposed later using reviewed labels, but it must preserve fail-closed behavior and demonstrate a material recall improvement without reducing admission precision.
-
-## 5. Active Calls And Posting
-
-- Explicit bot mentions and supported active/regression triggers bypass all passive gates.
-- Duplicate protection remains ahead of the bypass and continues to ignore duplicate events.
-- Passive candidates remain `full_answer` plus `postgres_only` shadow evaluations.
-- Passive Discord posting remains disabled. Enabling it requires a separate reviewed decision after the acceptance metrics are met.
-
-## 6. Observability
-
-Each routing trace records the gate level, policy version, intent class, confidence, and evidence in addition to the existing route and reason.
-
-Operational review should report:
-
-- Passive messages evaluated, admitted, and ignored.
-- Decisions by reason, intent class, channel, and policy version.
-- Ambiguous rate.
-- Human-reviewed precision among admitted passive requests.
-- Recall against the labeled knowledge-request fixture set.
-- Downstream context-found, refusal, and inappropriate-answer rates.
-- Retrieval, generation-token, and latency cost avoided by pre-RAG rejection.
-
-No raw message content is added to trace payloads by this design.
-
-## 7. Verification Dataset
-
-The reviewed production sample becomes a sanitized, fixed routing fixture set rather than part of the answer-quality regression suite. It must include known false positives, genuine historical-knowledge questions with and without question marks, ambiguous statements, and explicit bot mentions using otherwise excluded text.
-
-Fixtures store synthetic or sanitized text and expected gate outcomes; they do not retain member identifiers or private contact information.
-
-## 8. Rollout
-
-1. Replay the fixed routing fixtures locally against the workflow code node.
-2. Push the intake workflow with the repository workflow-sync script.
-3. Keep passive behavior in `postgres_only` shadow mode.
-4. Review gate metrics and a human-labeled sample after at least one representative week. In particular, compare question-syntax-only traffic with admitted traffic; the two-week replay established that grammatical form alone is not a safe proxy for corpus-answerable intent.
-5. Tune by adding evidence-backed fixtures, not by broadening global keyword lists or relaxing the corpus-oriented evidence requirement.
-6. Consider visible passive answers only through a separate approval after the acceptance criteria pass.
-
-## 9. Acceptance Criteria
-
-- At least 95% of admitted passive messages are genuine, corpus-answerable knowledge requests in human review.
-- At least 90% of labeled legitimate knowledge requests are admitted.
-- No known production-derived non-question fixture reaches the shared RAG core.
-- Explicit bot mentions and regression calls preserve their existing behavior.
-- Every passive decision has a stable reason and complete gate telemetry.
-- Existing retrieval and full-answer regressions remain unchanged.
-- Passive responses remain unposted throughout rollout.
-
-## 10. Deferred Work
-
-- A statistical or LLM intent classifier for Level 3.
-- Conversation-thread context for determining whether a question targets another member or the bot.
-- Enabling passive Discord responses.
-- Output-integrity and temporal-caveat changes tracked separately in GitHub issues #59 and #61.
-
-## 11. Implementation Review Record
-
-**Review date:** 2026-09-13  
-**Result:** No remaining deviations after fixes.
-
-Three independent code-quality passes and a replay of the rolling production
-sample identified and corrected these deviations before deployment:
-
-- Coordination, rhetorical, reported, and quoted questions could still be admitted by question syntax alone.
-- Referral keywords could suppress legitimate questions about historical referral practices.
-- Some unpunctuated knowledge questions were too narrowly recognized.
-- Gate metadata did not survive both terminal workflow branches.
-- Explicit advice wording could admit off-topic requests without TPM or historical-community evidence.
-- Phase 9 retained an older instruction that conflicted with the precision-first contract.
-
-The review re-ran after these fixes. The repository-specific
-`docs/04_Coding_Agent_Rules/engineering_insights.md` checklist referenced by the
-review procedure is not present in this repository, so its numbered-clause audit
-was not applicable; the repository `AGENTS.md` rules were checked instead.
-
-### As-built system view
-
-```text
-Discord -> listener -> n8n intake -> shared RAG core
-                         |                 |
-                         v                 v
-                    Postgres trace     Qdrant/Gemini
-                         |
-                         v
-                  shadow result only
+```json
+{
+  "should_post": false,
+  "intent": "non_request",
+  "decision_reason": "The member shared an experience but did not ask for help.",
+  "final_answer": ""
+}
 ```
 
-### As-built component view
+- `intent` is `request`, `non_request`, or `unclear`.
+- `should_post` is true only for an explicit or implied request for help, advice, information, referral-process guidance, community resources, or a grounded answer; a question mark is not required.
+- Statements, anecdotes, acknowledgements, advertisements, rhetorical questions, and replies solely to another member receive `should_post=false`.
+- If intent is unclear, context cannot support a useful answer, or the answer would need private contact information, return `should_post=false` and an empty answer.
+- Referral and community-resource questions are valid requests; safety limits what can be said, not whether Gemini examines them.
+- `final_answer` is a Discord-ready, grounded, cited answer only when `should_post=true`; otherwise it is empty.
+- `decision_reason` is short diagnostic text, not user-facing output.
+
+The workflow validates the exact schema and requires `should_post=true`, `intent=request`, usable retrieved context, a nonempty answer, citation validation, and output-integrity validation. Missing, malformed, contradictory, or unclear output fails closed. The n8n posting condition independently checks the validated `should_post` field. The decision is stored with generation metadata for audit. No raw message is added to trace metadata.
+
+For passive traffic with no usable retrieval context, Gemini still makes the intent decision using an empty context and must decline posting; this lets us distinguish a valid question with insufficient corpus evidence from a non-request. This adds Gemini cost but does not add a second call. Existing active-call and regression behavior does not change.
+
+## Rollout and acceptance
+
+1. Unit-test the four mechanical checks and structured decision parser, including malformed output and contradictory decisions.
+2. Push only the intake and shared-core workflows with repository sync scripts after comparing remote versions.
+3. Run a non-question through the production passive route with Discord posting disabled; verify Gemini returned `non_request`, `should_post=false`, and no Discord post.
+4. Run a genuine request through the same route and verify it reaches Gemini as `request`; keep the answer unposted during shadow evaluation.
+5. Replay and label the 192-message historical set; calculate false-ignore and false-admit rates before considering live passive posting.
+
+**Pass criteria:** The non-question reaches Gemini but is not posted; valid requests are not mechanically dropped; malformed model output cannot post; active and retrieval-only regression paths remain unchanged. Posting passive answers requires a separate review and approval.
+
+## Previous design
+
+The September 13 three-level deterministic design (`passive-intent-v1`) is superseded. Its regex exclusions and knowledge-request admission rules were too brittle: among the reviewed ignored messages were valid contact, referral, scheduling, and interview-advice questions. The prior implementation-review record remains in Git history; this document describes the replacement contract and current verification status.
+
+## Verification record
+
+The Terra Medium production probe submitted a historical Think-Cell statement through passive intake with Discord posting disabled. After review fixes, transaction `7f9339a5-9590-4892-a708-d0e3e2a69855` reached Gemini. Gemini returned `intent=non_request`, `should_post=false`, and a reason that the member was sharing a statement rather than requesting help. The durable record shows `status=refused`, `response_status=not_posted`, no Discord response message ID, `final_response_text=null`, `citation_guard_failed=false`, and 1,205 total Gemini tokens. This verifies the non-question suppression journey, not population-level precision or recall; those still require the labeled historical replay.
+
+A separate production retry check used a corpus-ineligible two-character message with the same Discord message ID twice. The first delivery was a passive candidate; the second returned `ignored` with `duplicate_event`. A different message ID remains processable by the durable claim contract. No test call was allowed to post to Discord.
+
+## Implementation review record
+
+Three independent code-quality passes found four defects in the initial implementation: passive wording appeared in active prompts; empty non-request output was incorrectly marked as a citation failure; the earlier privacy gate could prevent passive contact/referral questions from reaching Gemini; and duplicate detection depended on corpus-capture eligibility. All four were fixed before the final production probe. The shared active-call privacy gate remains unchanged, while passive contact questions reach Gemini under the no-personal-details answer rule. A durable event claim now deduplicates the same Discord message ID even when the message is not eligible for corpus ingestion. The repository-specific `docs/04_Coding_Agent_Rules/engineering_insights.md` file referenced by the implementation-review skill is absent; current `AGENTS.md` was used instead. No known deviation remains from the requested four-check design. The historical recall study and live passive posting authorization remain intentionally open.
 
 ```text
-Intake
-  +-- normalize and capture
-  +-- Level 1 exclusions
-  +-- Level 2 evidenced admission
-  +-- Level 3 fail-closed result
-  +-- routing trace
-  +-- optional shared-core call
+System: Discord -> listener -> n8n -> Qdrant -> Gemini
+                    |         |                 |
+                    v         v                 v
+                event ID   Postgres          post decision
 ```
 
-### As-built code view
-
 ```text
-Set Intake Active Call
-  +-- ignore(level, reason, class, evidence)
-  +-- admit(reason, evidence)
-  +-- exclusion patterns
-  +-- request + corpus-evidence rules
-  +-- route fields
+Components: intake claim -> four checks -> shared core
+                                       -> Gemini decision
+                                       -> posting guard
 ```
 
-### As-built workflow view
+```text
+Code: intake route -> context prompt -> JSON parser
+                                       -> validated should_post
+                                       -> not-posted/post branch
+```
 
 ```text
-event -> duplicate check -> active/direct? -> bypass
-                              |
-                              no
-                              v
-                    L1 exclude? -> ignored
-                              |
-                              no
-                              v
-                    L2 admit? -> RAG shadow
-                              |
-                              no
-                              v
-                         L3 ignored
+Journey: member statement -> retrieval -> Gemini says no
+                             -> audit metadata -> no Discord post
 ```
