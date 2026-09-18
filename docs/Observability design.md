@@ -72,6 +72,10 @@ Design constraints:
 | Feedback quality | Discord reactions or explicit feedback tied to one transaction |
 | Operations | Error rates, slow nodes, Qdrant/Gemini failures, dispatch failures |
 
+Passive routing records the mechanical gate result and policy version.
+Gemini's validated intent and post decision are stored with generation
+metadata, without adding raw Discord message content to trace payloads.
+
 ### Refusal Quality Metrics
 
 Refusal is a core product behavior. The bot should refuse when retrieval is weak instead of producing an ungrounded answer.

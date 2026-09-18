@@ -8,22 +8,28 @@ now proven in production (August 12, 2026). This document remains the passive
 listener design reference; `docs/n8n execution plan.md` is authoritative for
 the current Phase 9C execution status and the planned 9C.5/9C.6 work.
 
+Passive admission now uses four mechanical checks followed by a structured
+Gemini post decision, as defined in `docs/Passive intent gate design.md`.
+Explicit bot invocations bypass passive intent classification, and passive
+responses remain unposted during shadow verification.
+
 ## Goal
 
 Phase 9 replaces the Phase 8 intake with smarter routing for active, passive, and
 ignored Discord events. Active calls continue directly into the shared RAG core.
-Ordinary messages first pass a lightweight relevance gate so obvious noise does
-not consume embedding, Qdrant, reranker, or Gemini work.
+Ordinary nonempty member messages reach the shared retrieval and Gemini path;
+Gemini decides whether an unsolicited answer would be appropriate. This costs
+more retrieval and generation work but avoids deterministic false ignores.
 
 The first implementation is a **shadow-mode passive listener**:
 
 ```text
 Discord message
 -> classify active / passive / ignored
--> passive relevance gate when needed
--> Shared RAG Core for active calls and relevant passive candidates
+-> four mechanical checks for passive events
+-> Shared RAG Core for active calls and passive candidates
 -> retrieval, reranking, dedupe, and context assembly
--> optional Gemini generation
+-> Gemini generation and passive post decision
 -> Postgres and Phoenix evidence
 -> no Discord post
 ```
@@ -88,32 +94,21 @@ shadow-mode events, regardless of caller input.
 
 ## Event Eligibility
 
-At the current server volume, the gate should be conservative rather than
-aggressive: it should remove obvious non-questions and noise while allowing
-uncertain but potentially useful messages into shadow-mode retrieval.
+At the current server volume, the early gate rejects only mechanical events.
+Semantic intent is evaluated in the existing final Gemini call.
 
 Exclude before retrieval:
 
-- messages authored by this bot or another configured bot
-- webhook, integration, system, join, boost, or other non-user message events
-- message edits and duplicate delivery of an already-seen message ID
-- empty messages and attachment-only messages with no supported text
-- messages from explicitly excluded channels
-- active bot mentions, which must continue through the active-call route
-- acknowledgement-only messages such as "thanks", "got it", or "sounds good"
-- emoji-only, URL-only, or punctuation-only messages
-- very short conversational fragments with no question or help-seeking signal
+- duplicate delivery of the same Discord guild/message ID
+- bot, webhook, and system-generated events
+- empty content after normalization
+- messages from explicitly excluded channel IDs
 
-Do not initially exclude messages merely because they:
-
-- lack a question mark but contain a clear help-seeking phrase
-- are short but contain a clear question
-- look conversational rather than like a direct question
-- are unlikely to produce an answer
-
-The gate must store a stable decision reason for every ignored message. Its rules
-should be configurable and covered by focused routing tests. Shadow outcomes can
-then show whether the gate is too broad or too strict.
+Active bot mentions continue through the active-call route after event-level
+checks. Acknowledgements, short text, replies, referral questions, scheduling
+questions, links, and statements are not mechanically excluded. Gemini returns
+`request`, `non_request`, or `unclear` with a validated `should_post` decision;
+unclear or malformed decisions fail closed. See `docs/Passive intent gate design.md`.
 
 ## Routing Contract
 
@@ -147,9 +142,9 @@ Routing order:
 ```text
 regression / evaluator request -> active_call -> shared core
 direct bot mention            -> active_call -> shared core
-ordinary Discord message      -> passive relevance gate
-                                 -> relevant: passive_candidate -> shared core
-                                 -> irrelevant: ignored -> stop
+ordinary Discord message      -> four mechanical checks
+                                 -> pass: passive_candidate -> shared core
+                                 -> reject: ignored -> stop
 bot/system/duplicate event     -> ignored -> stop
 ```
 
