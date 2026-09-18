@@ -16,6 +16,7 @@ from pathlib import Path
 from typing import Any, Iterable
 
 from ingestion.parser import parse_all_exports
+from ingestion.reply_roots import resolve_reply_root
 from ingestion.run import _stable_id
 
 DEFAULT_COLLECTION = "tpm_unite_history"
@@ -46,12 +47,6 @@ def _canonical_digest(value: Any) -> str:
     return hashlib.sha256(encoded).hexdigest()
 
 
-def _thread_id(record: dict[str, Any]) -> str | None:
-    # DiscordChatExporter identifies a forum thread in channel.id. Normal
-    # channels have no thread_name and therefore no separate thread identity.
-    return str(record["channel_id"]) if record.get("thread_name") else None
-
-
 def build_message_index(records: Iterable[dict[str, Any]]) -> dict[str, dict[str, Any]]:
     index: dict[str, dict[str, Any]] = {}
     for record in records:
@@ -60,23 +55,6 @@ def build_message_index(records: Iterable[dict[str, Any]]) -> dict[str, dict[str
             raise OwnershipError(f"conflicting baseline records for message {message_id}")
         index[message_id] = record
     return index
-
-
-def resolve_root(message_id: str, records: dict[str, dict[str, Any]]) -> str:
-    """Resolve the oldest known reply ancestor, failing on cycles."""
-    current = message_id
-    seen: set[str] = set()
-    while True:
-        if current in seen:
-            raise OwnershipError(f"reply cycle detected at message {current}")
-        seen.add(current)
-        record = records.get(current)
-        if not record or not record.get("parent_id"):
-            return current
-        parent = str(record["parent_id"])
-        if parent not in records:
-            return parent
-        current = parent
 
 
 def _validate_payload(point_id: str, payload: dict[str, Any]) -> tuple[list[str], str]:
@@ -116,45 +94,58 @@ def point_to_manifest(
     # could include a cross-channel reply root in a chunk, so export records are
     # optional enrichment and must not redefine the point's owning scope.
     thread_name = payload.get("thread_name")
+    # Thread ID remains metadata only. Forum exports do not expose it apart
+    # from their channel ID, so retain that value for compatibility.
     thread_id = (
         str(payload["thread_id"])
         if payload.get("thread_id") is not None
         else channel_id if thread_name else None
     )
     root_message_id: str | None = None
-    logical_group_id = f"point:{channel_id}:{thread_id or '-'}:{point_id}"
+    logical_group_id = f"point:{channel_id}:{point_id}"
     if records and all(message_id in records for message_id in message_ids):
         point_records = [records[message_id] for message_id in message_ids]
         reply_ids = [
             message_id for message_id, record in zip(message_ids, point_records)
             if record.get("parent_id")
         ]
-        roots = {resolve_root(message_id, records) for message_id in reply_ids}
+        resolutions = [
+            resolve_reply_root(message_id, records, channel_id)
+            for message_id in reply_ids
+        ]
+        roots = {
+            resolution.root_message_id
+            for resolution in resolutions
+            if resolution.root_message_id is not None
+        }
+        all_replies_resolved = all(
+            resolution.root_message_id is not None
+            for resolution in resolutions
+        )
         candidate_root = next(iter(roots)) if len(roots) == 1 else None
         root_record = records.get(candidate_root) if candidate_root else None
         ownership_records = point_records + ([root_record] if root_record else [])
         scope_is_safe = bool(root_record) and all(
             str(record["channel_id"]) == channel_id
-            and record.get("thread_name") == thread_name
             for record in ownership_records
         )
         # Split pieces can omit their root. Infer it only when every piece
         # message resolves to one available root and all records agree with
-        # Qdrant's authoritative channel/thread scope.
+        # Qdrant's authoritative stable-channel scope.
         is_reply_group = (
-            scope_is_safe
+            all_replies_resolved
+            and scope_is_safe
             and all(
                 message_id == candidate_root
-                or resolve_root(message_id, records) == candidate_root
+                or resolve_reply_root(
+                    message_id, records, channel_id
+                ).root_message_id == candidate_root
                 for message_id in message_ids
             )
         )
         if is_reply_group:
             root_message_id = candidate_root
-            logical_group_id = (
-                f"reply:{channel_id}:{thread_id or '-'}:"
-                f"{root_message_id}"
-            )
+            logical_group_id = f"reply:{channel_id}:{root_message_id}"
 
     owned_payload = {
         "channel_id": channel_id,

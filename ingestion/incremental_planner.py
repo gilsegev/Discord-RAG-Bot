@@ -26,9 +26,10 @@ from typing import Any, Iterable
 from ingestion.chunk_manifest import scan_qdrant
 from ingestion.chunker import OVERLAP_MSGS, WINDOW_MINS, chunk_records
 from ingestion.parser import parse_all_exports
+from ingestion.reply_roots import resolve_reply_root
 from ingestion.run import _stable_id
 
-PLAN_VERSION = 2
+PLAN_VERSION = 3
 DEFAULT_COLLECTION = "tpm_unite_history"
 
 
@@ -57,10 +58,9 @@ def _dt(value: str) -> datetime:
     return datetime.fromisoformat(value.replace("Z", "+00:00"))
 
 
-def _scope(record: dict[str, Any]) -> tuple[str, str | None]:
-    return str(record["channel_id"]), (
-        str(record["thread_id"]) if record.get("thread_id") else None
-    )
+def _scope(record: dict[str, Any]) -> str:
+    """Return the sole chunk-membership boundary: Discord channel_id."""
+    return str(record["channel_id"])
 
 
 def _record_index(records: Iterable[dict[str, Any]]) -> dict[str, dict[str, Any]]:
@@ -72,45 +72,45 @@ def _record_index(records: Iterable[dict[str, Any]]) -> dict[str, dict[str, Any]
     return result
 
 
-def _root_id(
-    message_id: str,
-    records: dict[str, dict[str, Any]],
-    baseline_roots: dict[str, str],
-) -> str:
-    current = message_id
-    seen: set[str] = set()
-    while True:
-        if current in seen:
-            raise PlanningError(f"reply cycle at {current}")
-        seen.add(current)
-        record = records.get(current)
-        parent = str(record.get("parent_id") or "") if record else ""
-        if not parent:
-            return baseline_roots.get(current, current)
-        if parent not in records:
-            return baseline_roots.get(parent, parent)
-        current = parent
-
-
 def coalesce_work(
     work: Iterable[WorkItem],
     records: Iterable[dict[str, Any]],
-    baseline_roots: dict[str, str] | None = None,
 ) -> list[dict[str, Any]]:
-    """Coalesce replies by root and windows exactly as the v10 chunker does."""
+    """Coalesce replies by trusted root and channel-local fallback windows."""
     index = _record_index(records)
-    roots = baseline_roots or {}
-    reply_groups: dict[tuple[str, str | None, str], list[WorkItem]] = {}
-    windows: dict[tuple[str, str | None], list[WorkItem]] = {}
+    reply_groups: dict[tuple[str, str], list[WorkItem]] = {}
+    windows: dict[str, list[WorkItem]] = {}
     ordered_work = sorted(work, key=lambda value: value.capture_sequence)
+    recent_ids = {
+        item.message_id for item in ordered_work
+        if item.work_kind == "recent_window"
+    }
+    repaired_roots: dict[str, set[str]] = {message_id: set() for message_id in recent_ids}
+    for message_id, record in index.items():
+        if not record.get("parent_id"):
+            continue
+        resolution = resolve_reply_root(message_id, index, record["channel_id"])
+        if resolution.root_message_id is None:
+            continue
+        for ancestor_id in _ancestor_ids(message_id, index).intersection(recent_ids):
+            repaired_roots[ancestor_id].add(resolution.root_message_id)
     for item in ordered_work:
         if item.message_id not in index:
             raise PlanningError(f"pending message {item.message_id} is missing")
+        record_channel_id = _scope(index[item.message_id])
+        if item.channel_id != record_channel_id:
+            raise PlanningError(
+                f"pending message {item.message_id} channel_id {item.channel_id} "
+                f"does not match source record {record_channel_id}"
+            )
         if item.work_kind == "reply_conversation":
-            root = _root_id(item.message_id, index, roots)
-            reply_groups.setdefault(
-                (item.channel_id, item.thread_id, root), []
-            ).append(item)
+            root = resolve_reply_root(
+                item.message_id, index, item.channel_id
+            ).root_message_id
+            if root is None:
+                windows.setdefault(item.channel_id, []).append(item)
+            else:
+                reply_groups.setdefault((item.channel_id, root), []).append(item)
         elif item.work_kind != "recent_window":
             raise PlanningError(f"unsupported work kind {item.work_kind}")
 
@@ -120,34 +120,38 @@ def coalesce_work(
     for item in ordered_work:
         if item.work_kind != "recent_window":
             continue
+        newly_resolved_roots = repaired_roots[item.message_id]
+        if len(newly_resolved_roots) == 1:
+            root = next(iter(newly_resolved_roots))
+            reply_groups.setdefault((item.channel_id, root), []).append(item)
+            continue
         matching_reply_key = next(
             (
                 key for key in reply_groups
                 if key[0] == item.channel_id
-                and key[1] == item.thread_id
-                and key[2] == item.message_id
+                and key[1] == item.message_id
             ),
             None,
         )
         if matching_reply_key:
             reply_groups[matching_reply_key].append(item)
         else:
-            windows.setdefault((item.channel_id, item.thread_id), []).append(item)
+            windows.setdefault(item.channel_id, []).append(item)
 
     groups: list[dict[str, Any]] = []
-    for (channel_id, thread_id, root), items in reply_groups.items():
+    for (channel_id, root), items in reply_groups.items():
         groups.append({
-            "group_key": f"reply:{channel_id}:{thread_id or '-'}:{root}",
+            "group_key": f"reply:{channel_id}:{root}",
             "work_kind": "reply_conversation",
             "channel_id": channel_id,
-            "thread_id": thread_id,
+            "thread_id": items[0].thread_id,
             "root_message_id": root,
             "source_message_ids": sorted(
                 (item.message_id for item in items), key=int
             ),
         })
     threshold = timedelta(minutes=WINDOW_MINS)
-    for (channel_id, thread_id), items in windows.items():
+    for channel_id, items in windows.items():
         ordered = sorted(items, key=lambda item: _dt(index[item.message_id]["timestamp"]))
         batches: list[list[WorkItem]] = []
         batch_start: datetime | None = None
@@ -168,16 +172,31 @@ def coalesce_work(
         for batch in batches:
             source_ids = [item.message_id for item in batch]
             start = _dt(index[source_ids[0]]["timestamp"])
-            key = f"window:{channel_id}:{thread_id or '-'}:{start.isoformat()}"
+            key = f"window:{channel_id}:{start.isoformat()}"
             groups.append({
                 "group_key": key,
                 "work_kind": "recent_window",
                 "channel_id": channel_id,
-                "thread_id": thread_id,
+                "thread_id": batch[0].thread_id,
                 "root_message_id": None,
                 "source_message_ids": source_ids,
             })
     return sorted(groups, key=lambda group: group["group_key"])
+
+
+def _ancestor_ids(
+    message_id: str, records: dict[str, dict[str, Any]]
+) -> set[str]:
+    """Return available ancestors for late-ancestor repair detection."""
+    ancestors: set[str] = set()
+    current = str(message_id)
+    while current in records and current not in ancestors:
+        ancestors.add(current)
+        parent = records[current].get("parent_id")
+        if not parent:
+            break
+        current = str(parent)
+    return ancestors
 
 
 def _point_payloads(
@@ -199,6 +218,7 @@ def _chunk_row(chunk: dict[str, Any]) -> dict[str, Any]:
         "split_index": int(chunk.get("split_index", 0)),
         "channel_id": str(chunk["channel_id"]),
         "thread_name": chunk.get("thread_name"),
+        "root_message_id": chunk.get("root_message_id"),
         "text_digest": hashlib.sha256(chunk["text"].encode("utf-8")).hexdigest(),
         "text": chunk["text"],
         # Private apply material. It is deliberately excluded from the
@@ -216,6 +236,7 @@ def _chunk_row(chunk: dict[str, Any]) -> dict[str, Any]:
             "message_count": chunk["message_count"],
             "message_ids": [str(value) for value in chunk.get("message_ids", [])],
             "first_message_id": str(chunk.get("first_message_id", "")),
+            "root_message_id": chunk.get("root_message_id"),
             "token_count": chunk.get("token_count", 0),
             "span_days": chunk.get("span_days", 0),
             "split_index": int(chunk.get("split_index", 0)),
@@ -228,8 +249,9 @@ def _shadow_records(
     index: dict[str, dict[str, Any]],
     point_payloads: dict[str, dict[str, Any]],
     manifest: list[dict[str, Any]],
+    root_members: dict[tuple[str, str], set[str]],
 ) -> tuple[list[dict[str, Any]], list[str]]:
-    scope = (group["channel_id"], group["thread_id"])
+    scope = group["channel_id"]
     source = [index[message_id] for message_id in group["source_message_ids"]]
     old_ids: set[str] = set()
     selected_ids: set[str] = set(group["source_message_ids"])
@@ -239,14 +261,35 @@ def _shadow_records(
         for row in manifest:
             if (
                 row.get("active", True)
-                and row.get("root_message_id") == root
-                and (str(row["channel_id"]), row.get("thread_id")) == scope
+                and str(row["channel_id"]) == scope
+                and (
+                    row.get("root_message_id") == root
+                    or root in {str(value) for value in row["message_ids"]}
+                )
             ):
                 old_ids.add(str(row["point_id"]))
                 selected_ids.update(str(value) for value in row["message_ids"])
-        for message_id, record in index.items():
-            if _scope(record) == scope and _root_id(message_id, index, {}) == root:
-                selected_ids.add(message_id)
+        selected_ids.update(root_members.get((scope, root), set()))
+        # A late ancestor can turn previously unresolved window chunks into a
+        # trusted reply conversation. Replace every same-scope point that owns
+        # one of those descendants, even though its old root was null.
+        changed = True
+        while changed:
+            changed = False
+            for row in manifest:
+                row_message_ids = {
+                    str(value) for value in row.get("message_ids", [])
+                }
+                point_id = str(row["point_id"])
+                if (
+                    row.get("active", True)
+                    and point_id not in old_ids
+                    and str(row["channel_id"]) == scope
+                    and row_message_ids.intersection(selected_ids)
+                ):
+                    old_ids.add(point_id)
+                    selected_ids.update(row_message_ids)
+                    changed = True
     else:
         earliest = min(_dt(record["timestamp"]) for record in source)
         latest = max(_dt(record["timestamp"]) for record in source)
@@ -261,12 +304,7 @@ def _shadow_records(
         candidates.sort()
         selected_ids.update(message_id for _, message_id in candidates)
         for point_id, payload in point_payloads.items():
-            payload_scope = (
-                str(payload.get("channel_id")),
-                str(payload["thread_id"]) if payload.get("thread_id") else (
-                    str(payload["channel_id"]) if payload.get("thread_name") else None
-                ),
-            )
+            payload_scope = str(payload.get("channel_id"))
             if payload_scope != scope or not payload.get("start_ts"):
                 continue
             if _dt(payload["end_ts"]) >= lower and _dt(payload["start_ts"]) <= upper:
@@ -306,7 +344,7 @@ def create_shadow_plan(
     manifest: Iterable[dict[str, Any]],
     points: Iterable[tuple[str, dict[str, Any]]],
     collection: str = DEFAULT_COLLECTION,
-    chunker_version: str = "v10",
+    chunker_version: str = "v11",
     embedding_version: str = "nomic-ai/nomic-embed-text-v1.5",
     source_corpus: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
@@ -315,20 +353,32 @@ def create_shadow_plan(
     index = _record_index(records_list)
     manifest_list = list(manifest)
     payloads = _point_payloads(points)
-    baseline_roots = {
-        str(message_id): str(row["root_message_id"])
-        for row in manifest_list
-        if row.get("root_message_id")
-        for message_id in row["message_ids"]
-    }
-    groups = coalesce_work(work_list, records_list, baseline_roots)
+    groups = coalesce_work(work_list, records_list)
+    root_members: dict[tuple[str, str], set[str]] = {}
+    for message_id, record in index.items():
+        resolution = resolve_reply_root(message_id, index, record["channel_id"])
+        if resolution.root_message_id is not None:
+            root_members.setdefault(
+                (str(record["channel_id"]), resolution.root_message_id), set()
+            ).add(message_id)
     planned_groups: list[dict[str, Any]] = []
     for group in groups:
         selected, old_ids = _shadow_records(
-            group, index, payloads, manifest_list
+            group, index, payloads, manifest_list, root_members
         )
         chunks = chunk_records(selected)
         replacements = sorted((_chunk_row(chunk) for chunk in chunks), key=lambda row: int(row["point_id"]))
+        if group["work_kind"] == "recent_window":
+            source_ids = set(group["source_message_ids"])
+            old_point_ids = set(old_ids)
+            # Bounded reconstruction can start inside an earlier overlap chain.
+            # Keep unchanged old pieces and pieces containing pending messages;
+            # discard a new prefix that only duplicates an unaffected neighbor.
+            replacements = [
+                row for row in replacements
+                if row["point_id"] in old_point_ids
+                or source_ids.intersection(row["message_ids"])
+            ]
         status = "ready" if replacements else "deferred"
         planned_groups.append({
             **group,
@@ -367,6 +417,9 @@ def create_shadow_plan(
         ),
         "source_manifest_digest": (
             source_corpus.get("manifest_digest") if source_corpus else None
+        ),
+        "source_chunker_version": (
+            source_corpus.get("chunker_version") if source_corpus else None
         ),
         "groups": public_groups,
     }
@@ -474,11 +527,15 @@ def render_plan(
         rendered.get("source_corpus_version_id")
         and rendered.get("source_manifest_digest")
     )
+    source_version_matches = (
+        rendered.get("source_chunker_version") == rendered["chunker_version"]
+    )
     checks = {
         "complete_production_embeddings": embedding_complete,
         "zero_qdrant_mutations": rendered["qdrant_mutations"] == 0,
         "source_corpus_linked": source_linked,
         "source_corpus_current": source_corpus_current is True,
+        "source_chunker_version_matches": source_version_matches,
     }
     contradictions: list[str] = []
     missing: list[str] = []
@@ -496,6 +553,10 @@ def render_plan(
             contradictions.append("measurement is not replacement embedding evidence")
     if not source_linked:
         missing.append("source corpus linkage")
+    if rendered.get("source_chunker_version") is None:
+        missing.append("source corpus chunker version")
+    elif not source_version_matches:
+        contradictions.append("source corpus chunker version mismatch")
     if source_corpus_current is None:
         missing.append("source corpus freshness evidence")
     elif source_corpus_current is not True:
@@ -567,9 +628,12 @@ def persist_plan(connection: Any, rendered: dict[str, Any]) -> None:
         with connection.cursor() as cursor:
             cursor.execute(
                 """
-                SELECT corpus_version_id, manifest_digest
-                FROM rag_corpus_versions
-                WHERE collection_name=%s AND status='healthy'
+                SELECT cv.corpus_version_id, cv.manifest_digest,
+                       run.chunker_version
+                FROM rag_corpus_versions cv
+                JOIN rag_ingestion_runs run
+                  ON run.run_id = cv.ingestion_run_id
+                WHERE cv.collection_name=%s AND cv.status='healthy'
                 FOR SHARE
                 """,
                 (rendered["collection_name"],),
@@ -579,6 +643,8 @@ def persist_plan(connection: Any, rendered: dict[str, Any]) -> None:
                 current_corpus
                 and current_corpus[0] == rendered.get("source_corpus_version_id")
                 and current_corpus[1] == rendered.get("source_manifest_digest")
+                and current_corpus[2] == rendered.get("source_chunker_version")
+                and current_corpus[2] == rendered.get("chunker_version")
             )
             validation = dict(rendered.get("validation") or {})
             contradictions = list(validation.get("contradictions") or [])
@@ -710,8 +776,9 @@ def load_postgres(
         cursor.execute(
             """
             SELECT w.source_message_id, w.capture_sequence, w.work_kind,
-                   w.parent_channel_id, w.thread_id, w.parent_message_id
+                   m.channel_id, w.thread_id, w.parent_message_id
             FROM rag_pending_chunk_work w
+            JOIN rag_discord_messages m ON m.message_id=w.source_message_id
             WHERE w.status=ANY(%s) AND w.capture_sequence <= %s
             ORDER BY w.capture_sequence
             """,
@@ -730,7 +797,7 @@ def load_postgres(
             (cutoff_sql,),
         )
         live = [{
-            "id": row[0], "channel_id": row[3], "channel": row[4],
+            "id": row[0], "channel_id": row[1], "channel": row[4],
             "thread_id": row[5], "thread_name": row[6], "parent_id": row[7],
             "author": row[8], "content": row[9], "timestamp": row[10].isoformat(),
         } for row in cursor.fetchall()]
@@ -748,9 +815,11 @@ def load_postgres(
         } for row in cursor.fetchall()]
         cursor.execute(
             """
-            SELECT corpus_version_id, manifest_digest
-            FROM rag_corpus_versions
-            WHERE collection_name=%s AND status='healthy'
+            SELECT cv.corpus_version_id, cv.manifest_digest,
+                   run.chunker_version
+            FROM rag_corpus_versions cv
+            JOIN rag_ingestion_runs run ON run.run_id = cv.ingestion_run_id
+            WHERE cv.collection_name=%s AND cv.status='healthy'
             """,
             (collection,),
         )
@@ -759,6 +828,7 @@ def load_postgres(
             {
                 "corpus_version_id": corpus_row[0],
                 "manifest_digest": corpus_row[1],
+                "chunker_version": corpus_row[2],
             }
             if corpus_row
             else None

@@ -39,7 +39,7 @@ This design is not fully implementation-ready on current `main`. The table below
 | Area | What exists today | What is missing | Blocks |
 |---|---|---|---|
 | Full rebuild path | `ingestion/run.py` — full recreate mode working | Nothing — this path stays as-is | Nothing |
-| Chunker algorithm | `ingestion/chunker.py` v10 — reply-aware, per-piece metadata, regression tests passing | `get_new_messages()` function for watermark split | Phase 3 |
+| Chunker algorithm | `ingestion/chunker.py` v11 — stable `channel_id` grouping, reply-aware, per-piece metadata, regression tests passing | `get_new_messages()` function for watermark split | Phase 3 |
 | Qdrant state | 9,521 points, stable SHA-256 point IDs, correct per-piece `message_ids` (PR #22 merged) | No per-file ingestion state recorded anywhere | Phase 1 |
 | Postgres schema | 6 RAG tables in `ragbot` DB — `rag_transactions`, `rag_retrieval_results`, etc. | `rag_ingestion_state` table does not exist | Phase 1 |
 | Observability | Phoenix OTLP tracing live for active-call path | No ingestion-specific Phoenix spans exist | Phase 3 |
@@ -316,11 +316,15 @@ if is_suspected_truncation(new_message_count, stored_message_count):
 
 ## Qdrant Point ID Stability
 
-Current point IDs are SHA-256 hashes of `channel_id + first_message_id`. This is stable by design — the same chunk always produces the same point ID.
+Current point IDs are truncated SHA-256 hashes of the complete sorted
+`message_ids` membership plus `split_index`. The same split piece is
+deterministic, but any membership or split-boundary change produces a new point
+ID.
 
 For rechunked boundary windows:
 - If chunk content is unchanged → same point ID → Qdrant upsert is a no-op
-- If chunk content changed (new messages added to window) → same point ID → Qdrant upsert updates the vector and payload atomically at the point level
+- If membership changes → new point ID → the replacement path must upsert the
+  new point and delete the superseded point recorded by the ownership manifest
 
 **Upsert atomicity:** Qdrant guarantees atomic upserts at the individual point level. A query running concurrently with a boundary rechunk upsert will receive either the old vector+payload or the new vector+payload — never a mixed state. Reference: [Qdrant upsert documentation](https://qdrant.tech/documentation/concepts/points/#upsert-points).
 

@@ -209,8 +209,8 @@ class ChunkManifestTests(unittest.TestCase):
 
     def test_reply_cycle_fails_closed(self):
         records = [record(1, 2), record(2, 1)]
-        with self.assertRaisesRegex(OwnershipError, "reply cycle"):
-            create_plan([point([1, 2])], records, "c", "v10", "embed")
+        plan = create_plan([point([1, 2])], records, "c", "v10", "embed")
+        self.assertIsNone(plan["rows"][0]["root_message_id"])
 
     def test_orphan_replies_with_multiple_roots_are_a_window(self):
         records = [record(1), record(2, 1), record(3), record(4, 3)]
@@ -237,6 +237,43 @@ class ChunkManifestTests(unittest.TestCase):
         plan = create_plan(
             [point([2, 3], channel_id="10")], records, "c", "v10", "embed"
         )
+        self.assertIsNone(plan["rows"][0]["root_message_id"])
+
+    def test_thread_id_is_metadata_not_a_second_grouping_identity(self):
+        records = [record(1, thread_name="forum topic")]
+        plan = create_plan(
+            [point([1], thread_name="forum topic", thread_id="10")],
+            records,
+            "c",
+            "v11",
+            "embed",
+        )
+
+        row = plan["rows"][0]
+        self.assertEqual(row["thread_id"], "10")
+        self.assertEqual(row["logical_group_id"], f"point:10:{row['point_id']}")
+
+    def test_cross_channel_intermediate_ancestor_does_not_infer_root(self):
+        records = [
+            record(1, 2, channel_id="10"),
+            record(2, 3, channel_id="20"),
+            record(3, channel_id="10"),
+        ]
+        plan = create_plan(
+            [point([1], channel_id="10")], records, "c", "v11", "embed"
+        )
+
+        self.assertIsNone(plan["rows"][0]["root_message_id"])
+
+    def test_cross_channel_cycle_does_not_abort_manifest(self):
+        records = [
+            record(1, 2, channel_id="10"),
+            record(2, 1, channel_id="20"),
+        ]
+        plan = create_plan(
+            [point([1], channel_id="10")], records, "c", "v11", "embed"
+        )
+
         self.assertIsNone(plan["rows"][0]["root_message_id"])
 
 

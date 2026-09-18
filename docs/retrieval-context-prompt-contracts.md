@@ -107,7 +107,10 @@ If multiple retrieved chunks share the same root/parent message ID:
 - Keep the highest `boosted_reranker_score` chunk
 - Only retain an additional chunk if it contains meaningfully different child replies (i.e. `overlap_ratio <= 0.5` against the kept chunk)
 
-**Current implementation note:** `root_message_id` is not yet stored in the Qdrant payload — deferred to PR #5 (see Open Question 7). Until it is added, n8n must include a dedupe placeholder after reaction boost and before context assembly that applies rule 1 formula across all candidate pairs. This placeholder must be in place before this PR is merged. Full reply-root dedupe upgrades automatically when `root_message_id` arrives in PR #5.
+**Current implementation note:** ingestion stores nullable `root_message_id` in
+Qdrant only for complete, same-`channel_id` reply chains. The dedupe stage uses
+that trusted value for reply-root overlap diagnostics and retains the existing
+`message_ids` overlap rule as the fallback for null roots and ordinary windows.
 
 ### 1.6 Reaction-based ranking boost
 
@@ -183,12 +186,12 @@ presence, and `normalizer_version` in Postgres. These fields are operational
 source data for later rechunk planning; they are not added to the LLM context
 block.
 
-Phase 9C.2 adds `root_message_id` where deterministically known, a deterministic
+Phase 9C.2 records `root_message_id` where deterministically known, a deterministic
 conversation/window identity, and chunker/embedding/corpus versions to the
 Postgres chunk manifest. It seeds ownership from the existing Qdrant payload
-without mutating production points. Payload enrichment and targeted replacement
-remain later phases. Until those migrations are verified, n8n continues to use
-the existing `message_ids` overlap dedupe rule.
+without mutating production points. Full and incremental ingestion use the same
+fail-closed ancestor resolver; missing ancestors, cycles, and cross-channel
+references remain unrooted and searchable through channel-local time windows.
 
 During Phase 9C.4 maintenance, durable Discord capture occurs before the runtime
 gate. Active calls receive the approved maintenance response; passive calls are

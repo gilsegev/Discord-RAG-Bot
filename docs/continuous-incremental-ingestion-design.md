@@ -99,6 +99,27 @@ exceptional baseline migration, but is not a steady-state production dependency.
 
 ## 3. Scope
 
+### Stable chunk grouping contract
+
+Full and incremental chunking use the Discord `channel_id` as the sole scope
+identity. Equal display names do not combine distinct channels, and a rename
+does not create a second scope for one channel. Discord threads already have
+their own stable `channel_id`, so `thread_id` remains compatibility metadata
+and is not a second grouping identity. `channel_name` and `thread_name` remain display metadata;
+the established thread header and single-message thread policy are unchanged.
+Reply ancestry is resolved only inside the originating `channel_id`; a
+cross-channel reply reference cannot import its parent into the chunk.
+
+This contract is chunker v11. Point IDs remain deterministic hashes of each
+split piece's `message_ids` and `split_index`, but correcting a boundary changes
+message membership and therefore changes affected point IDs. Deployment requires
+a future full Qdrant rebuild from the exports, followed by regeneration and
+verification of the chunk ownership manifest against that rebuilt collection.
+Run the complete retrieval regression suite after the rebuild and manifest seed
+before marking the new corpus healthy. Merging the code does not perform any of
+those production operations; as of 2026-09-13 production Qdrant has not been
+rebuilt for this correction.
+
 ### MVP scope
 
 - `MESSAGE_CREATE` events from permitted server channels and threads
@@ -209,20 +230,27 @@ silently enter the new corpus.
 ### Replies
 
 For a reply, persist `parent_message_id` from Discord's message reference.
-Follow known parents in Postgres to determine the oldest known
-`root_message_id`. The work key is:
+The shared ingestion resolver walks only upward and assigns `root_message_id`
+only when it reaches an available parentless message and every record has the
+same stable `channel_id`. Missing ancestors, cycles, and cross-channel references
+remain unrooted; their reason is operational evidence, not persisted payload.
+The reply work key is:
 
 ```text
-(channel_id, thread_id, root_message_id)
+(channel_id, root_message_id)
 ```
 
-If the direct parent is already present in the baseline corpus manifest but not
-in the live-message table, the baseline message-to-chunk map supplies its root or
-conversation identity.
+`channel_id` is the authoritative chunk scope; the legacy nullable `thread_id`
+columns remain for schema compatibility but new ownership and plans leave them
+null rather than duplicating the same Discord thread ID.
+Discord threads already supply their own stable `channel_id`, so display names
+do not define chunk scope. When a previously missing
+ancestor arrives, planning reevaluates same-channel descendants and replaces the
+affected fallback windows with the now-complete reply conversation.
 
 ### Non-reply messages
 
-Non-reply traffic is assigned to a provisional channel/thread time window using
+Non-reply traffic is assigned to a provisional channel time window using
 the chunker's existing window rules. Adjacent dirty windows are merged before
 processing so the chunker receives enough preceding and following context to
 reproduce overlap correctly.
@@ -237,7 +265,7 @@ independent rechunk jobs.
 CREATE TABLE rag_chunk_work_queue (
     work_key             TEXT PRIMARY KEY,
     channel_id           TEXT NOT NULL,
-    thread_id            TEXT,
+    thread_id            TEXT, -- compatibility metadata; not grouping identity
     root_message_id      TEXT,
     earliest_message_id  TEXT NOT NULL,
     latest_message_id    TEXT NOT NULL,
@@ -430,8 +458,9 @@ answer routing has no regression.
   ingestion-run/corpus-version state needed to identify the seeded baseline.
 - Build the manifest from the current Qdrant payloads without deleting,
   replacing, or re-embedding any production point.
-- Record deterministic logical ownership for every point using its channel,
-  thread, reply-root where known, and bounded window identity otherwise.
+- Record deterministic logical ownership for every point using its stable
+  channel ID, reply-root where known, and bounded window identity otherwise.
+  Thread ID is retained only as compatibility metadata.
 - Preserve the current point ID, complete per-piece `message_ids`, first/last
   message IDs, chunker version, embedding version, and corpus version.
 - Add indexed message-to-point, logical-group-to-point, and reply-root lookup

@@ -1,5 +1,7 @@
 # Regression Question Set
 
+Candidate collections are non-serving targets. A batch may query one only when its request supplies the exact short-lived authorization tuple issued by the candidate builder: `candidate_authorization_id`, `candidate_id`, `qdrant_collection`, `target_corpus_version_id`, `target_manifest_digest`, and `target_capture_cutoff_sequence`. The runner consumes and validates that tuple before invoking intake. Missing, wrong, expired, or consumed authorization stops the batch before retrieval; ordinary `tpm_unite_history` batches are unchanged.
+
 Curated evaluation data for the Evaluation and Feedback Scoring workstream. The full rubric, gates, metrics, and launch criteria live in [evaluation-and-feedback-scoring-design.md](evaluation-and-feedback-scoring-design.md). This README describes the canonical question file used by the Phase 8 regression harness.
 
 ## Why This Exists
