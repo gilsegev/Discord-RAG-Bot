@@ -15,19 +15,20 @@ So the privacy-safe answer to the action request collapses back into the generic
 
 ## Scope
 
-This document specifies the **referral registry (v2)**. It depends on, but does not define, the `referral_request` intent (v1), which is specified against the Passive intent gate / Stage 0 routing work.
+This document specifies the **consent-based referral table** and the deterministic lookup that pulls a name from it. The recognition-and-routing upstream of the lookup — how a referral request is detected at the start of the chain, how the company is extracted and normalized, and how it reaches the table before the RAG path while preserving posting permissions and duplicate prevention — is specified in [Referral-Request Recognition & Routing](referral-request-routing-design.md). The two docs together are the full, implementation-ready design.
 
-- **In scope:** the consent model, data model, opt-in/opt-out/expiry flows, the lookup path, and the privacy invariants.
-- **Out of scope:** the intent classifier itself; auto-brokering (the bot contacting a referrer on a user's behalf); any corpus/ingestion change.
+- **In scope (this doc):** the consent model, data model, the deterministic lookup, opt-in/opt-out/expiry flows, and the privacy invariants.
+- **Specified in the linked routing doc:** deterministic recognition, company extraction/normalization, active vs passive handling, edge cases, and the pre-RAG routing.
+- **Out of scope (both docs):** auto-brokering (the bot contacting a referrer on a user's behalf); any corpus/ingestion change.
 
-## Phasing — do not build the registry first
+## Rollout
 
-| Phase | What | Infra |
-|---|---|---|
-| **v1 (now)** | `referral_request` intent returns a purpose-built response: name the ask, state the consent boundary, route to #referrals with the posting norm. **No matching.** | none |
-| **v2 (when volume justifies)** | This document: a consent-based registry the bot queries to surface opted-in referrers. | one Postgres table + opt-in command |
+The table, the opt-in command, and the deterministic lookup are built together as one feature. Two facts about how it comes to life, neither a reason to defer:
 
-v1 resolves the reported complaint with zero new infrastructure, and the v1 response is also the registry's empty-match fallback — so it is never wasted. **Gate the v2 build on observed demand:** if referral requests are rare, "ask in #referrals" is a complete answer and the registry is over-building. Ship v1, measure request volume for a few weeks, then decide.
+- **It launches empty, and that is fine.** On day one the table has no rows, so every lookup misses and returns the generic "post in #referrals" reply. That generic reply is simply the empty-result path — not a separate phase. The feature is correct from the first deploy; it just has nothing to surface yet.
+- **It fills by demand, not by seeding.** The table is never populated from the corpus (Principle 1). It fills through opt-in, driven by the discovery loop in the consent model: every referral response advertises the opt-in. Hit-rate is logged from day one (see the routing doc's observability line), so the value of the feature is measurable as the table fills.
+
+A thin first iteration is fine (see MVP); the re-confirmation DM and optional fields can follow. But the lookup against the table is the core behavior and ships in the first iteration.
 
 ## Principles
 
@@ -45,8 +46,8 @@ Three invariants hold at all times. Everything below serves them.
 
 1. **The act is private, self-serve, and self-only.** A member opts themselves in via a private/ephemeral interaction with the bot (slash command with an ephemeral response, or a DM). It writes the **invoker's own** member ID — a member can never volunteer a colleague. It does not broadcast the member's employer to the server.
 2. **Privacy is the feature.** Today, offering a referral means publicly posting *"I work at Apple, DM me"* to ~7k people. The registry lets a member offer referrals **without** publicly disclosing their employer: the offer is revealed only to the specific person who asks about that company, through the contact method the member chose. This is strictly better than the status quo and is why a privacy-conscious senior member would use it.
-3. **Discovery is demand-driven.** The primary channel is the bot itself: every v1 referral-request response appends one line — *"If you're willing to give referrals, opt in with `/refer-offer`."* Each request to **receive** a referral advertises the ability to **give** one. Supplemented by a single pinned announcement in #referrals. No mass pings.
-4. **Cold-start is intentional.** The registry launches empty; the v1 "post in #referrals" response is the fallback on every no-match, which is also the day-one state. It fills organically via (3). It is never seeded from the corpus.
+3. **Discovery is demand-driven.** The primary channel is the bot itself: every referral response appends one line — *"If you're willing to give referrals, opt in with `/refer-offer`."* Each request to **receive** a referral advertises the ability to **give** one. Supplemented by a single pinned announcement in #referrals. No mass pings.
+4. **Cold-start is intentional.** The table launches empty; the generic "post in #referrals" reply is the response on every no-match, which is also the day-one state. It fills organically via (3). It is never seeded from the corpus.
 
 ### Consent lifecycle
 
@@ -54,7 +55,7 @@ Three invariants hold at all times. Everything below serves them.
 |---|---|
 | **Offers expire (TTL ~6 months) and require re-confirmation** | Members change jobs. A stale "I refer at Apple" from someone who has left is both wrong and embarrassing. Near expiry, the bot DMs "still offering Apple referrals?" |
 | **Opt-out is immediate and complete** | One command sets the row inactive; the bot stops surfacing it that second. |
-| **The bot surfaces; the member initiates contact** | The bot says "@X opted in — reach them via DM." It does **not** contact the referrer on the user's behalf. Auto-brokering is a separate, heavier consent design, explicitly out of scope for v2. |
+| **The bot surfaces; the member initiates contact** | The bot says "@X opted in — reach them via DM." It does **not** contact the referrer on the user's behalf. Auto-brokering is a separate, heavier consent design, explicitly out of scope. |
 
 ## Data model
 
@@ -86,16 +87,16 @@ One deliberate departure from the eval tables: **`member_id` is the real Discord
   -> ephemeral confirmation to the invoker only
 ```
 
-### Lookup / match (the referral_request intent, v2 path)
+### Lookup / match (the deterministic flow)
 ```
-referral_request intent fires with a company
-  -> canonicalize company (shared utility; reuse the retrieval-side alias map, e.g. NVDA->NVIDIA)
+referral request recognized with a company (see routing doc)
+  -> company already canonicalized upstream (shared alias map, e.g. NVDA->NVIDIA)
   -> SELECT ... WHERE company = ? AND status = 'active' AND expires_at > now()
   -> matches:    respond with count + how to reach each, per contact_pref
-  -> no matches: fall back to the v1 response (post in #referrals)
+  -> no matches: generic response (post in #referrals)
 ```
 
-This routes off the intake/routing layer as a branch **parallel to** the RAG core — not through it. That decoupling is what keeps the identity data off the Q&A path (Principle 3).
+This runs as a Stage 0 branch **parallel to** the RAG core — not through it. That decoupling is what keeps the identity data off the Q&A path (Principle 3).
 
 ### Opt-out / expiry
 ```
@@ -114,17 +115,16 @@ near expires_at                 -> bot DMs re-confirm prompt; no response -> lap
 
 ## MVP
 
-Minimum that works end to end:
+First iteration that works end to end:
 - the `referral_offers` table
 - `/refer-offer` + `/refer-withdraw`
-- the lookup node in the `referral_request` intent
+- the deterministic lookup wired into the referral route (see routing doc)
 - a flat 6-month `expires_at` (manual; no re-confirmation DM yet)
 
-Deferred to v2.1: the re-confirmation DM, the `note` field, `mention_ok` as a contact option.
+Deferred to a later iteration: the re-confirmation DM, the `note` field, `mention_ok` as a contact option.
 
 ## Open decisions (for Gil)
 
 1. **Opt-in surface.** Slash command (needs interaction handling — does the merged Discord Bot API dispatch already give us this?) vs. a lower-code structured-reply channel that n8n ingests. Leaning slash command for clarity and auditability.
-2. **Company canonicalization.** Factor a shared alias/canonicalization utility used by both retrieval (freshness/alias work) and this registry, rather than duplicating. Who owns it?
-3. **Build trigger.** Agree the demand threshold that justifies building v2 — e.g. "N referral_requests/week sustained for 3 weeks." Until then, v1 only.
-4. **Re-confirmation cadence.** 6-month TTL assumed; confirm.
+2. **Company canonicalization.** Factor a shared alias/canonicalization utility used by both retrieval (query-rewriting) and this lookup, rather than duplicating. Who owns it?
+3. **Re-confirmation cadence.** 6-month TTL assumed; confirm.
