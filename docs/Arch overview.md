@@ -28,7 +28,7 @@ server environment and is never stored in workflow JSON.
 ### n8n Orchestrator
 **Role:** Intake router, execution state machine, dual-ingress filtering engine for active and passive events, context assembly layer, LLM coordinator, and telemetry dispatcher.
 **Responsibility:** Handles request intake, mode routing, filtering, shared RAG execution, context assembly, LLM coordination, and telemetry dispatch.
-**Implementation:** Advanced AI Workflow Canvas hosted on Oracle Cloud.
+**Implementation:** Advanced AI Workflow Canvas hosted on Railway.
 
 n8n should use a shared execution shape rather than separate copies of the RAG path. Active calls, passive candidates, manual regression runs, CI regression runs, and evaluator runs enter through a common intake/routing contract. That intake layer sets mode flags such as `trigger_source`, `run_mode`, `response_mode`, `allow_gemini`, and `allow_discord_post`, then calls the shared RAG core for retrieval, reranking, dedupe, context assembly, and optional generation.
 

@@ -11,16 +11,10 @@ workflows/n8n/
 Instead of manually importing the JSON through the n8n UI, the workflow can be pushed to n8n through the n8n public API.
 
 ## Local Setup
-Open an SSH tunnel to repo-owned n8n:
-
-```powershell
-ssh -i "$HOME\mykey.key" -L 5679:127.0.0.1:5679 ubuntu@discord-notifier.duckdns.org
-```
-
-Open n8n:
+Production n8n runs on Railway. Open:
 
 ```text
-http://127.0.0.1:5679
+https://n8n-production-951e.up.railway.app
 ```
 
 Create an n8n API key:
@@ -32,7 +26,7 @@ Settings -> n8n API -> Create an API key
 Create `.env.local` in the repo root:
 
 ```env
-N8N_API_URL=http://127.0.0.1:5679/api/v1
+N8N_API_URL=https://n8n-production-951e.up.railway.app/api/v1
 N8N_API_KEY=replace_with_n8n_personal_api_key
 ```
 

@@ -52,100 +52,44 @@ Key design docs:
 - `docs/Observability design.md`
 - `docs/Regression README.md`
 
-## 2. Oracle Server And Component Access
-The project runs on an Oracle Cloud Ubuntu VM. The repo-owned services are managed from:
+## 2. Railway Production Access
+Production runs in the Railway project `Discord-RAG-Bot`, environment
+`production`, in `us-west2`. Oracle is retired and must not be used for routine
+operations, data inspection, workflow sync, or deployment.
 
-```bash
-~/Discord-RAG-Bot/deploy/phase0
-```
-
-### Admin SSH
-Trusted maintainers use the shared `ubuntu` account:
-
-```bash
-ssh -i /path/to/private/key ubuntu@discord-notifier.duckdns.org
-```
-
-Admin access is documented in:
+Public application endpoints:
 
 ```text
-docs/Admin access.md
+n8n:     https://n8n-production-951e.up.railway.app
+Phoenix: https://phoenix-production-1386.up.railway.app
 ```
 
-Limited evaluator access is documented separately:
+Postgres, Qdrant, the embedder, reranker, trace emitter, and incremental worker
+are private Railway services. Access them through `railway run`, `railway ssh`,
+or a temporary Railway TCP proxy when the operation requires one.
 
-```text
-docs/AltCtrlDeliver regression access.md
-docs/Haragonda regression access.md
-```
-
-### Open Local Tunnels
-Use one tunnel for n8n and Phoenix:
+### Railway CLI
 
 ```bash
-ssh -i /path/to/private/key \
-  -L 5679:127.0.0.1:5679 \
-  -L 6006:127.0.0.1:6006 \
-  ubuntu@discord-notifier.duckdns.org
+railway login
+railway link -p Discord-RAG-Bot -e production
+railway status
+railway service list
+railway logs --service n8n
+railway logs --service discord-listener
+railway logs --service postgres
 ```
 
-Then open:
-
-```text
-n8n:     http://127.0.0.1:5679
-Phoenix: http://127.0.0.1:6006
-```
-
-Qdrant can be tunneled when needed:
-
-```bash
-ssh -i /path/to/private/key \
-  -L 6333:127.0.0.1:6333 \
-  ubuntu@discord-notifier.duckdns.org
-```
-
-Then open:
-
-```text
-Qdrant dashboard: http://127.0.0.1:6333/dashboard
-```
-
-### Server Service Commands
-On the Oracle server:
-
-```bash
-cd ~/Discord-RAG-Bot/deploy/phase0
-docker compose ps
-docker compose up -d
-docker compose restart
-```
-
-View logs:
-
-```bash
-docker compose logs -f n8n
-docker compose logs -f postgres
-docker compose logs -f qdrant
-docker compose logs -f embedder
-docker compose logs -f reranker
-docker compose logs -f phoenix
-docker compose logs -f trace-emitter
-```
-
-Validate service reachability from n8n:
-
-```bash
-docker compose exec n8n node -e "fetch('http://qdrant:6333/collections').then(r=>console.log('qdrant', r.status))"
-docker compose exec n8n node -e "fetch('http://embedder:8000/health').then(r=>console.log('embedder', r.status))"
-docker compose exec n8n node -e "fetch('http://reranker:8002/health').then(r=>console.log('reranker', r.status))"
-docker compose exec n8n node -e "fetch('http://trace-emitter:8001/health').then(r=>console.log('trace-emitter', r.status))"
-```
+Use `docs/Railway migration.md` as the production deployment and operations
+runbook. Oracle-era access, setup, and phase documents are retained only as
+historical records and rollback provenance; their commands are not current
+production instructions.
 
 ### Security Rules
-- Never commit private SSH keys.
+- Never commit private SSH keys or Railway access tokens.
 - Never commit `.env`, `.env.local`, Gemini API keys, Discord webhooks, n8n API keys, or generated service passwords.
-- Prefer Docker service names (`postgres`, `qdrant`, `embedder`, `reranker`, `phoenix`, `trace-emitter`) over container IPs.
-- Keep n8n, Phoenix, Qdrant, and Postgres behind SSH tunnels unless deployment docs explicitly say otherwise.
+- Prefer Railway private service names and `*.railway.internal` URLs over container IPs.
+- Do not create public endpoints for Postgres, Qdrant, model services, or the trace emitter except for a short, authenticated maintenance window explicitly required by the Railway runbook.
 
 ## 3. n8n Workflow Sync
 Workflows live in:
@@ -161,16 +105,10 @@ docs/n8n workflow sync.md
 ```
 
 ### Local Setup
-Open the n8n tunnel:
-
-```bash
-ssh -i /path/to/private/key -L 5679:127.0.0.1:5679 ubuntu@discord-notifier.duckdns.org
-```
-
-Open n8n:
+Open Railway n8n:
 
 ```text
-http://127.0.0.1:5679
+https://n8n-production-951e.up.railway.app
 ```
 
 Create an n8n API key:
@@ -182,7 +120,7 @@ Settings -> n8n API -> Create an API key
 Create `.env.local` in the repo root:
 
 ```env
-N8N_API_URL=http://127.0.0.1:5679/api/v1
+N8N_API_URL=https://n8n-production-951e.up.railway.app/api/v1
 N8N_API_KEY=replace_with_n8n_personal_api_key
 ```
 

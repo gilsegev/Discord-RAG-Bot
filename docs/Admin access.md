@@ -1,5 +1,9 @@
 # Admin Access
 
+> **Deprecated:** This document describes the retired Oracle deployment. It is
+> retained only for historical recovery provenance. Production runs on Railway;
+> use `docs/Railway migration.md` and the Railway CLI for current operations.
+
 ## Purpose
 This document explains how trusted project maintainers can access the Oracle server with admin-level SSH access.
 

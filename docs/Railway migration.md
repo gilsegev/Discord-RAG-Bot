@@ -2,8 +2,12 @@
 
 ## Status
 
-This document is the deployment, cutover, restore, and rollback runbook for
-moving the production Discord RAG Bot from Oracle Cloud to Railway.
+**Current production platform: Railway. Cutover is complete. Oracle is retired.**
+
+This document began as the deployment, cutover, restore, and rollback runbook
+for moving the production Discord RAG Bot from Oracle Cloud to Railway. The
+cutover sections below are retained as historical recovery provenance, not as
+instructions to use Oracle for routine production work.
 
 The Railway project is `Discord-RAG-Bot` in `us-west2`. Production data
 services are private. The only public application endpoints are:
@@ -11,8 +15,19 @@ services are private. The only public application endpoints are:
 - n8n: `https://n8n-production-951e.up.railway.app`
 - Phoenix: `https://phoenix-production-1386.up.railway.app`
 
-Do not deploy the Railway `discord-listener` while the Oracle listener is
-running. Two connected listeners can produce duplicate responses.
+Exactly one production `discord-listener` must run, on Railway. Do not restart
+the retired Oracle listener; two connected listeners can produce duplicate
+responses.
+
+For routine inspection and operations, link the Railway CLI from the repository
+root:
+
+```bash
+railway login
+railway link -p Discord-RAG-Bot -e production
+railway status
+railway service list
+```
 
 ## Service Inventory
 
@@ -50,7 +65,7 @@ Values are stored only in Railway. Never copy their values into Git.
 All internal URLs use `*.railway.internal`; do not expose Postgres, Qdrant,
 the model services, or the trace emitter publicly.
 
-## Initial Backup
+## Historical Cutover: Initial Backup
 
 Run on Oracle:
 
@@ -67,7 +82,7 @@ must pass after the archive is copied off the server.
 The backup contains production secrets and must not be committed or placed in
 shared storage without encryption.
 
-## Restore
+## Historical Cutover: Restore
 
 Postgres restore is destructive to the three target databases. Keep Railway
 `n8n`, `phoenix`, and `trace-emitter` stopped and the Railway listener
@@ -110,10 +125,9 @@ creation. It does **not** yet provide the nightly chunk-building worker.
 
 ## Workflow Deployment
 
-The active Git workflow JSON must be reconciled from the Oracle production
-workflows before cutover. This preserves the Stage 0 PII/safety gate and the
-latest regression cases. Then apply the Railway URL and webhook-auth
-transformations:
+Workflow JSON is deployed from Git to Railway n8n. The following transformation
+commands remain relevant when their inputs change; Oracle reconciliation was a
+one-time cutover step and must not be repeated:
 
 ```bash
 node scripts/migration/configure-workflow-service-urls.js
@@ -129,7 +143,7 @@ The three public webhooks validate `X-RAG-Webhook-Secret` when
 send the same header. An unauthenticated request must stop at the first code
 node and must not start retrieval, capture, or feedback work.
 
-## Pre-Cutover Validation
+## Historical Cutover: Pre-Cutover Validation
 
 1. Confirm every Railway dependency is running and the listener is not
    deployed.
@@ -146,7 +160,7 @@ The Railway public edge can close a synchronous full-regression request after
 execution summary through the authenticated n8n API; do not treat the HTTP
 timeout as a failed regression.
 
-## Final Cutover
+## Historical Cutover: Final Cutover
 
 Use a short Discord maintenance window because the listener queue is
 in-memory and the project does not yet have a Discord-history backfill tool.
@@ -171,7 +185,12 @@ in-memory and the project does not yet have a Discord-history backfill tool.
 Keep the Oracle VM stopped but recoverable for 24–48 hours. Do not terminate
 the VM or delete its boot volume until the Railway observation window passes.
 
-## Rollback
+## Historical Emergency Rollback
+
+This procedure is retained only for disaster-recovery context. Oracle is not a
+supported routine rollback target. Prefer restoring Railway backups into
+Railway. Do not start an Oracle Discord listener without explicit maintainer
+authorization and confirmation that the Railway listener is stopped.
 
 1. Stop the Railway listener first and confirm it disconnected.
 2. Back up Railway Postgres and record Discord message IDs handled since
@@ -196,3 +215,21 @@ railway logs --service trace-emitter
 Railway health checks are deployment-readiness checks, not continuous
 monitoring. Keep external uptime checks for n8n and Phoenix, create scheduled
 Postgres/Qdrant exports, and monitor reranker memory and Railway spending.
+
+### Reranker idle sleep
+
+The production CrossEncoder reranker has Railway Serverless sleep enabled in
+`deploy/phase0/reranker/railway.json`. The shared RAG core allows up to three
+attempts, five seconds apart, when its private reranker HTTP request fails.
+This handles the observed connection refusal during a cold wake; an exhausted
+request still fails closed. Cold scoring added about 11 seconds in the two
+verified real-query runs. See
+`docs/regression-reports/reranker-idle-sleep-benchmark.md` for the test evidence.
+
+To check sleep without waking the service, inspect the Railway deployment's
+`SLEEPING` status and read-only metrics. Do not probe `/health` while waiting.
+Railway's raw memory chart can carry forward its last nonzero value during
+sleep, so the chart alone does not establish sleeping RAM or billing. The
+model cache volume remains allocated. If a cold call fails after the bounded
+attempts, inspect the n8n CrossEncoder node output and reranker deployment
+status before adjusting retry timing.

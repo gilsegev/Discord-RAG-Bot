@@ -1,0 +1,24 @@
+# Cost of the proposed Jev plus local fallback
+
+This is a conditional cost model for the October 2, 2026 hybrid proposal, separate from the completed all-Jev experiment and Railway billing analysis in [jev-railway-cost-analysis.md](jev-railway-cost-analysis.md). No production routing or Railway service setting was changed.
+
+The proposed hybrid route sends Jev scores above `2.5` directly, rejects scores below `2`, and sends scores from `2` through `2.5` inclusive to the existing CrossEncoder. In the frozen 150-query holdout, `51` requests (`34%`) fell into that fallback band. This was a stratified historical sample, so `34%` is a scenario input **rather than a measured production fallback rate**. The active/passive strata differed: active `11/30`, passive historically answered `23/60`, and passive historically refused `17/60`.
+
+Railway [Serverless](https://docs.railway.com/deployments/serverless) can sleep the existing private reranker after approximately `5–10` minutes without outbound traffic and wake it on an internal request. The model loads on process startup from the persistent `/models` volume. An existing [local Docker benchmark](../../tmp/reranker-baseline/RESULTS.md) measured `11.243` seconds from container start to `/health` with the model cache already available, using Docker Desktop's Linux engine, Python 3.11 slim, PyTorch 2.5.1, Sentence Transformers 3.3.1, and the same MiniLM CrossEncoder; **Railway cold-start time is unmeasured**. The first waking request can return `502`. The service must be redeployed after enabling Serverless for the setting to take effect. There is no reliable per-request stop; clustered fallbacks share an awake interval. Persistent volume storage continues to accrue its roughly `$0.027` monthly charge while compute sleeps.
+
+To expose sensitivity to traffic, assume independent arrivals spread over a 30-day month, a `34%` fallback chance for each request, `11.243` seconds startup plus about `3` seconds of local work, and an idle window of `5` or `10` minutes. With `N` Jev calls and `F = 0.34N` fallbacks, the modeled awake fraction is `1 − exp[-F × (idle minutes + 14.243/60) / 43,200]`. The Railway compute basis is the actual recent `$11.585` per full month (`$11.50` memory + `$0.085` CPU); hybrid local cost is `$11.585 × awake fraction + $0.027` volume, plus unmeasured cold-start CPU. Jev uses the measured holdout mean of `$0.00026139764` on **every** routed call.
+
+| Traffic scenario | Estimated fallback calls/month | Modeled awake time, 5–10 min idle | Local Railway + Jev per month | Saving vs. `$11.61` always-on local reranker |
+| --- | ---: | ---: | ---: | ---: |
+| Low-repeat subset: 330 calls/month | 112 | 1.35–2.62% | $0.27–$0.42 | $11.34–$11.19 |
+| Observed load including replay-like traffic: 3,380 calls/month | 1,149 | 13.0–23.8% | $2.42–$3.67 | $9.19–$7.94 |
+
+These are **modeled ranges, not billing forecasts**. Actual fallback timestamps, clustering, Railway wake time, and startup CPU were not measured. Network activity from telemetry or health checks could prevent sleep entirely; then the hybrid retains about `$11.61` of local cost **plus** Jev inference (`$0.09` or `$0.88` in the two traffic scenarios), making it more expensive than the present always-on reranker. The separate all-Jev retirement scenario assumes the CrossEncoder service and volume are removed; its savings cannot be reused as the hybrid cost.
+
+Adding the projected non-reranker Railway base from the [billing analysis](jev-railway-cost-analysis.md) (`$35.17` bot project, `$49.31` workspace), the hybrid would total about **`$35.44–$35.59` for the bot project** and `$49.58–$49.73` for the workspace at low-repeat traffic. At observed load including replay-like traffic it would be **`$37.59–$38.84` for the bot project** and `$51.73–$52.98` for the workspace. For the same recent Railway rate, keeping the local reranker continuously resident implies about `$46.78` for the bot project or `$60.92` for the workspace, with no Jev charge. These are future full-cycle comparisons, so already-accrued current-cycle charges cannot be avoided.
+
+**Test:** Before production routing, enable Serverless on an isolated Railway test reranker, redeploy, and use real fallback-band queries through the test n8n workflow; record wake-to-health and first-request behavior, then verify metrics show zero compute after two idle windows with the volume retained. Measure actual production fallback-band timestamps before replacing the modeled awake fractions. This verification is proposed, not yet executed.
+
+**Pass when:** Every cold and warm fallback returns a valid local rerank within the response budget, including a bounded retry for a waking `502`, and Railway usage confirms the service sleeps between real fallback bursts; otherwise retain the current always-on cost in the business case.
+
+

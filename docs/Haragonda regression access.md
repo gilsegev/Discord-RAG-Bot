@@ -1,4 +1,7 @@
-# Haragonda Regression Access
+# Haragonda Regression Access (Deprecated Oracle Procedure)
+
+> Production runs on Railway. This Oracle SSH procedure is retained only as a
+> historical record and must not be used for current evaluator access.
 
 ## Purpose
 Give Haragonda a safe way to run Phase 8 retrieval-only regression batches without Gil's Gemini key, Discord webhook, or broad shell access to the Oracle server.
